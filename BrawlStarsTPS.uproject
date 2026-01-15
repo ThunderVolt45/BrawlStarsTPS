@@ -34,6 +34,10 @@
 		{
 			"Name": "RelativeIKOp",
 			"Enabled": true
+		},
+		{
+			"Name": "GameplayAbilities",
+			"Enabled": true
 		}
 	]
 }

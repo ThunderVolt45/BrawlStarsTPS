@@ -1,0 +1,1 @@
+# Key File Paths for BrawlStarsTPS
