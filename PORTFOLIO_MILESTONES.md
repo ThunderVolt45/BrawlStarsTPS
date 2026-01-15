@@ -8,10 +8,11 @@
 3. **C++ Proficiency** (Strict C++ implementation for core systems).
 
 ## Phase 1: Foundation & Character Reboot (Current Focus)
-- [ ] **Character System Re-implementation:**
-    - [ ] **Clean Slate:** Create `ABrawlCharacter` from scratch (discarding old logic if necessary).
+- [x] **Character System Re-implementation:**
+    - [x] **Clean Slate:** Create `ABrawlCharacter` from scratch (discarding old logic if necessary).
+    - [x] **Base Class:** Implement `UBrawlPawnComponent` base class for modular components.
     - [ ] **Modular Components:** Implement `UBrawlHeroComponent` for input/camera handling (Lyra pattern).
-    - [ ] **GAS Initialization:** Implement `IAbilitySystemInterface` and bind `AbilitySystemComponent`.
+    - [x] **GAS Initialization:** Implement `IAbilitySystemInterface` and bind `AbilitySystemComponent`.
 - [ ] **Input Architecture:**
     - [ ] Implement `UInputConfig` DataAssets.
     - [ ] C++ Input Binding via `EnhancedInput`.
