@@ -26,11 +26,11 @@ public:
 	FGameplayTag StartupInputTag;
 
 protected:
-	/** 자신에게 GE를 적용하고 SetByCaller 값 설정 (쿨다운, 코스트 등) */
+	// 자신에게 GE를 적용하고 SetByCaller 값 설정 (쿨다운, 코스트 등)
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Abilities")
 	void ApplyEffectToSelf(TSubclassOf<UGameplayEffect> EffectClass, FGameplayTag DataTag, float Magnitude);
 
-	/** 타겟에게 데미지 GE 적용 */
+	// 타겟에게 데미지 GE 적용
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Abilities")
 	void ApplyDamageEffect(AActor* TargetActor, TSubclassOf<UGameplayEffect> DamageEffectClass, float DamageAmount);
 	
