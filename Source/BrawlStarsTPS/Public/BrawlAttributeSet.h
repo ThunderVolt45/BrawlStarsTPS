@@ -51,4 +51,8 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
 	FGameplayAttributeData SuperCharge;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, SuperCharge);
+
+	//~UAttributeSet interface
+	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
+	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
 };
