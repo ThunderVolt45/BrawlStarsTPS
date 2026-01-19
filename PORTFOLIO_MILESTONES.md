@@ -7,19 +7,23 @@
 2. **AI-Driven Gameplay** (Behavior Trees/State Trees mimicking player behavior).
 3. **C++ Proficiency** (Strict C++ implementation for core systems).
 
-## Phase 1: Foundation & Character Reboot (Current Focus)
+## Phase 1: Foundation & Character Reboot (Completed)
 - [x] **Character System Re-implementation:**
-    - [x] **Clean Slate:** Create `ABrawlCharacter` from scratch (discarding old logic if necessary).
+    - [x] **Clean Slate:** Create `ABrawlCharacter` from scratch.
     - [x] **Base Class:** Implement `UBrawlPawnComponent` base class for modular components.
-    - [ ] **Modular Components:** Implement `UBrawlHeroComponent` for input/camera handling (Lyra pattern).
+    - [x] **Modular Components:** Implement `UBrawlHeroComponent` for input/camera handling (Lyra pattern).
     - [x] **GAS Initialization:** Implement `IAbilitySystemInterface` and bind `AbilitySystemComponent`.
-- [ ] **Input Architecture:**
-    - [ ] Implement `UInputConfig` DataAssets.
-    - [ ] C++ Input Binding via `EnhancedInput`.
-- [ ] **Core Movement:**
-    - [ ] Tune `CharacterMovementComponent` for "Brawl Stars-like" snappy movement (high acceleration/friction).
+- [x] **Input Architecture (Lyra-Style):**
+    - [x] **Input Config:** Implement `UBrawlInputConfig` DataAssets for Tag-to-Action mapping.
+    - [x] **Custom Input Component:** Implement `UBrawlInputComponent` for automated tag-based binding.
+    - [x] **Enhanced Input:** C++ Input Binding via `EnhancedInput` and Gameplay Tags.
+- [x] **Core Movement & Camera:**
+    - [x] **TPS Camera:** Implement `SpringArm` & `CameraComponent` with Over-the-shoulder offset.
+    - [x] **Rotation Logic:** Character Yaw synced with Controller/Camera rotation for strafing.
+    - [x] **Movement Tuning:** Basic setup for snappy movement in `CharacterMovementComponent`.
+    - [ ] **Jump Logic:** Implement jump functionality using the new Input System.
 
-## Phase 2: Combat System (GAS)
+## Phase 2: Combat System (GAS) (Next Focus)
 - [ ] **Ability System Core:**
     - [ ] `UBrawlAttributeSet`: Health, Ammo, SuperCharge.
     - [ ] `UBrawlGameplayAbility`: Base class with policy support.

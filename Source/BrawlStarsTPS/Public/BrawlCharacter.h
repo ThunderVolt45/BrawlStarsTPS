@@ -8,8 +8,10 @@
 #include "GameplayTagContainer.h"
 #include "BrawlCharacter.generated.h"
 
+class USpringArmComponent;
 class UBrawlAbilitySystemComponent;
 class UBrawlAttributeSet;
+class UBrawlHeroComponent;
 
 /**
  * ABrawlCharacter
@@ -44,15 +46,30 @@ protected:
 	void InitAbilityActorInfo();
 
 protected:
-	/** Ability System Component. */
+	// 어빌리티 시스템 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Character", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UBrawlAbilitySystemComponent> AbilitySystemComponent;
 
-	/** Attribute Set. */
+	// 어트리뷰트 세트
 	UPROPERTY()
 	TObjectPtr<const UBrawlAttributeSet> AttributeSet;
+	
+	// 플레이어 전용 로직 및 입력을 담당하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Character")
+	TObjectPtr<UBrawlHeroComponent> HeroComponent;
+	
+	// 스프링 암
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Camera")
+	TObjectPtr<USpringArmComponent> CameraBoom;
+	
+	// 카메라
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Camera")
+	TObjectPtr<class UCameraComponent> FollowCamera;
 
 public:	
+	FORCEINLINE USpringArmComponent* GetCameraBoom() { return CameraBoom; }
+	FORCEINLINE UCameraComponent* GetFollowCamera() { return FollowCamera; }
+	
 	virtual void Tick(float DeltaTime) override;
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;

@@ -3,8 +3,9 @@
 
 #include "Components/BrawlHeroComponent.h"
 
-#include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Input/BrawlInputComponent.h"
+#include "Input/BrawlInputConfig.h"
 
 UBrawlHeroComponent::UBrawlHeroComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -46,28 +47,31 @@ void UBrawlHeroComponent::InitializePlayerInput(UInputComponent* PlayerInputComp
 	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
 	check(Subsystem);
 	
-	// 매핑 컨텍스트 초기화
-	Subsystem->ClearAllMappings();
+	// 커스텀 입력 컨텍스트로 캐스팅
+	UBrawlInputComponent* BrawlInputComponent = CastChecked<UBrawlInputComponent>(PlayerInputComponent);
 	
+	// 입력 컨텍스트 설정
+	Subsystem->ClearAllMappings();
 	if (DefaultInputMappingContext)
 	{
 		Subsystem->AddMappingContext(DefaultInputMappingContext, 0);
 	}
 	
+	// 블루프린트 에디터(Project Settings)에 등록된 태그 이름과 정확히 일치해야 합니다.
+	// 오타 방지를 위해 나중에 const 변수로 빼는 것을 고려해볼 수 있습니다.
+	const FGameplayTag InputTag_Move = FGameplayTag::RequestGameplayTag(FName("InputTag.Move"));
+	const FGameplayTag InputTag_Look = FGameplayTag::RequestGameplayTag(FName("InputTag.Look"));
+	
 	// 입력 액션 바인딩
-	UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent);
+	BrawlInputComponent->BindNativeAction(InputConfig, InputTag_Move, ETriggerEvent::Triggered, 
+		this, &UBrawlHeroComponent::Input_Move, true);
+	BrawlInputComponent->BindNativeAction(InputConfig, InputTag_Look, ETriggerEvent::Triggered,
+		this, &UBrawlHeroComponent::Input_Look, true);
 	
-	if (Input_MoveAction)
-	{
-		EnhancedInputComponent->BindAction(Input_MoveAction, ETriggerEvent::Triggered, 
-			this, &UBrawlHeroComponent::Input_Move);
-	}
-	
-	if (Input_LookAction)
-	{
-		EnhancedInputComponent->BindAction(Input_LookAction, ETriggerEvent::Triggered,
-			this, &UBrawlHeroComponent::Input_Look);
-	}
+	// 어빌리티 액션 바인딩
+	BrawlInputComponent->BindAbilityAction(InputConfig, this,
+		&UBrawlHeroComponent::Input_AbilityInputTagPressed, &UBrawlHeroComponent::Input_AbilityInputTagReleased, 
+		BindHandles);
 }
 
 void UBrawlHeroComponent::Input_Move(const FInputActionValue& InputActionValue)
@@ -113,4 +117,14 @@ void UBrawlHeroComponent::Input_Look(const FInputActionValue& InputActionValue)
 	{
 		Pawn->AddControllerPitchInput(Value.Y);
 	}
+}
+
+void UBrawlHeroComponent::Input_AbilityInputTagPressed(FGameplayTag InputTag)
+{
+	
+}
+
+void UBrawlHeroComponent::Input_AbilityInputTagReleased(FGameplayTag InputTag)
+{
+	
 }

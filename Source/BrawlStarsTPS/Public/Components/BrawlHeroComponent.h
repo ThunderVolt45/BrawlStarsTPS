@@ -6,9 +6,12 @@
 #include "BrawlPawnComponent.h"
 #include "BrawlHeroComponent.generated.h"
 
+struct FGameplayTag;
+class UBrawlInputConfig;
 class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
+
 /*
  * UBrawlHeroComponent
  * 
@@ -35,20 +38,19 @@ protected:
 	void Input_Move(const FInputActionValue& InputActionValue);
 	void Input_Look(const FInputActionValue& InputActionValue);
 	
-	// 추후 Ability Input 바인딩 함수 추가
-	// void Input_AbilityInputTagPressed(FGameplayTag InputTag);
-	// void Input_AbilityInputTagReleased(FGameplayTag InputTag);
+	// 어빌리티 입력 바인딩 함수
+	void Input_AbilityInputTagPressed(FGameplayTag InputTag);
+	void Input_AbilityInputTagReleased(FGameplayTag InputTag);
 	
 protected:
 	// 기본 입력 매핑 컨텍스트
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Brawl|Input")
 	TObjectPtr<UInputMappingContext> DefaultInputMappingContext;
 	
-	// 이동 입력 액션
+	// 액션 설정 에셋
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Brawl|Input")
-	TObjectPtr<UInputAction> Input_MoveAction;
+	TObjectPtr<UBrawlInputConfig> InputConfig;
 	
-	// 시선 입력 액션
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Brawl|Input")
-	TObjectPtr<UInputAction> Input_LookAction;
+	// 추후 제거/해제를 위한 어빌리티 입력 핸들 저장
+	TArray<uint32> BindHandles;
 };

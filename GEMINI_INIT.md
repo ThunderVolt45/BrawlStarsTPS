@@ -20,7 +20,8 @@
 
 ## Instructions for Gemini
 - **Architecture:** Follow **Lyra Starter Game** patterns (Modular Game Mode, Component-Based Logic, GAS).
-- **Language:** **Strict C++ First.** Implement core logic (Abilities, Movement, Rules) in C++. **C++ 코드는 사용자가 직접 생성 및 작성하므로, Gemini는 상세한 코드 가이드와 로직 설계를 제공하는 데 집중한다.**
+- **Language:** **Strict C++ First.** Implement core logic (Abilities, Movement, Rules) in C++.
+- **C++ 코드는 사용자가 직접 생성 및 작성하므로, Gemini는 상세한 코드 가이드와 로직 설계를 제공하는 데 집중한다.**
 - **Planning:** Always reference `PORTFOLIO_MILESTONES.md` before suggesting changes.
 - **Localization:**
     - **Answer in Korean.**

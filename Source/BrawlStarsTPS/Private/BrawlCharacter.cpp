@@ -5,10 +5,34 @@
 #include "BrawlAbilitySystemComponent.h"
 #include "BrawlAttributeSet.h"
 #include "BrawlStarsTPS.h"
+#include "Camera/CameraComponent.h"
+#include "Components/BrawlHeroComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 
 ABrawlCharacter::ABrawlCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
+	
+	// 캐릭터 몸체의 회전이 컨트롤러의 Yaw 값을 따라가도록 한다
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = true;
+	bUseControllerRotationRoll = false;
+	
+	// 캐릭터가 이동 방향으로 자동으로 회전하지 않도록 한다
+	GetCharacterMovement()->bOrientRotationToMovement = false;
+	
+	// 스프링 암 설정
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+	CameraBoom->SetupAttachment(RootComponent);
+	CameraBoom->TargetArmLength = 300.0f;
+	CameraBoom->SocketOffset = FVector(0.0f, 50.0f, 70.0f); // 카메라의 위치를 살짝 조정
+	CameraBoom->bUsePawnControlRotation = true; // 스프링 암이 컨트롤러의 회전을 사용하도록 한다
+	
+	// 카메라 설정
+	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
+	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	FollowCamera->bUsePawnControlRotation = false; // 카메라는 스프링 암의 회전만 따라가면 됨
 
 	// GAS 컴포넌트 생성
 	AbilitySystemComponent = CreateDefaultSubobject<UBrawlAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -17,6 +41,9 @@ ABrawlCharacter::ABrawlCharacter()
 
 	// Attribute Set 생성
 	AttributeSet = CreateDefaultSubobject<UBrawlAttributeSet>(TEXT("AttributeSet"));
+	
+	// Hero 컴포넌트 생성
+	HeroComponent = CreateDefaultSubobject<UBrawlHeroComponent>(TEXT("HeroComponent"));
 }
 
 void ABrawlCharacter::BeginPlay()
@@ -61,4 +88,10 @@ void ABrawlCharacter::Tick(float DeltaTime)
 void ABrawlCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	
+	// Hero 컴포넌트를 통해 입력 바인딩 초기화
+	if (HeroComponent)
+	{
+		HeroComponent->InitializePlayerInput(PlayerInputComponent);
+	}
 }
