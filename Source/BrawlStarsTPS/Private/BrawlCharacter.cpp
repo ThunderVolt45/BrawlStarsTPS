@@ -5,6 +5,7 @@
 #include "BrawlAbilitySystemComponent.h"
 #include "BrawlAttributeSet.h"
 #include "BrawlStarsTPS.h"
+#include "Data/BrawlCharacterData.h"
 #include "Camera/CameraComponent.h"
 #include "Components/BrawlHeroComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -63,6 +64,9 @@ void ABrawlCharacter::PossessedBy(AController* NewController)
 	// 서버에서 GAS 초기화
 	InitAbilityActorInfo();
 
+	// 속성 초기화
+	InitializeAttributes();
+
 	// 기본 어빌리티 부여
 	if (AbilitySystemComponent)
 	{
@@ -99,5 +103,41 @@ void ABrawlCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	if (HeroComponent)
 	{
 		HeroComponent->InitializePlayerInput(PlayerInputComponent);
+	}
+}
+
+void ABrawlCharacter::InitializeAttributes()
+{
+	if (!AbilitySystemComponent || !CharacterDataTable || !InitStatsEffectClass)
+	{
+		return;
+	}
+
+	// 데이터 테이블에서 Row 찾기
+	static const FString ContextString(TEXT("Init Attributes"));
+	FBrawlCharacterData* Row = CharacterDataTable->FindRow<FBrawlCharacterData>(CharacterID, ContextString);
+	
+	if (Row)
+	{
+		// Context 생성
+		FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+		Context.AddSourceObject(this);
+
+		// Spec 생성
+		FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(InitStatsEffectClass, 1.0f, Context);
+		if (SpecHandle.IsValid())
+		{
+			// SetByCaller 값 주입
+			// Data.MaxHealth, Data.MaxAmmo 태그를 사용합니다.
+			// (주의: 태그가 Native Gameplay Tag로 등록되어 있지 않다면 RequestGameplayTag로 생성/검색합니다)
+			static FGameplayTag MaxHealthTag = FGameplayTag::RequestGameplayTag(FName("Data.MaxHealth"));
+			static FGameplayTag MaxAmmoTag = FGameplayTag::RequestGameplayTag(FName("Data.MaxAmmo"));
+
+			SpecHandle.Data.Get()->SetSetByCallerMagnitude(MaxHealthTag, Row->MaxHealth);
+			SpecHandle.Data.Get()->SetSetByCallerMagnitude(MaxAmmoTag, Row->MaxAmmo);
+			
+			// 적용
+			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
 	}
 }

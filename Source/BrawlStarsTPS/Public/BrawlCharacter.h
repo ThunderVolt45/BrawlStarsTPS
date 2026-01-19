@@ -43,8 +43,24 @@ protected:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_PlayerState() override;
 
-	// 캐릭터 기본 설정 (GAS 관련)
+	/** 캐릭터 기본 설정 (GAS 관련) */
 	void InitAbilityActorInfo();
+
+	/** 데이터 테이블을 이용한 속성 초기화 */
+	void InitializeAttributes();
+
+protected:
+	// 캐릭터 ID (데이터 테이블의 Row Name과 일치해야 함)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
+	FName CharacterID = FName("Colt");
+
+	// 능력치 데이터 테이블
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
+	TObjectPtr<class UDataTable> CharacterDataTable;
+
+	// 초기화용 Gameplay Effect 클래스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
+	TSubclassOf<class UGameplayEffect> InitStatsEffectClass;
 
 protected:
 	// 어빌리티 시스템 컴포넌트

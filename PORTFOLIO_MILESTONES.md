@@ -27,21 +27,22 @@
 - [x] **Ability System Core:**
     - [x] `UBrawlAttributeSet`: Health, Ammo, SuperCharge.
     - [x] `UBrawlGameplayAbility`: Base class with policy support.
-- [ ] **Combat Assets & Logic:**
-    - [ ] **Animation Montages:** Implement Primary Fire, Reload, and Super montages with Anim Notifies.
-    - [ ] **Gameplay Effects (GE):**
-        - [ ] `GE_Damage`: Handle Instant damage application.
-        - [ ] `GE_Cost_Ammo`: Deduct ammo on fire.
-        - [ ] `GE_Restore_Ammo`: Logic for auto/manual reload.
-        - [ ] `GE_Cooldown`: Manage cooldowns for Gadgets/Super.
-- [ ] **Ability Implementation:**
-    - [ ] **Primary Fire:** HitScan/Projectile logic with spread/recoil.
-    - [ ] **Reload Strategy:**
-        - [ ] Implement `GA_Reload_Auto` (Passive) and `GA_Reload_Manual` (Active).
-        - [ ] **C++: Automatic activation logic for passive reload abilities.**
+- [x] **Combat Assets & Logic:**
+    - [x] **Animation Montages:** Implement Primary Fire, Reload, and Super montages with Anim Notifies.
+    - [x] **Gameplay Effects (GE):**
+        - [x] `GE_Damage`: Handle Instant damage application.
+        - [x] `GE_Cost_Ammo`: Deduct ammo on fire.
+        - [x] `GE_Restore_Ammo`: Logic for auto/manual reload.
+        - [x] `GE_Cooldown`: Manage cooldowns for Gadgets/Super.
+- [x] **Ability Implementation:**
+    - [x] **Primary Fire:** HitScan/Projectile logic with spread/recoil.
+    - [x] **Reload Strategy:**
+        - [x] Implement `GA_Reload_Auto` (Passive) and `GA_Reload_Manual` (Active).
+        - [x] **C++: Automatic activation logic for passive reload abilities.**
     - [ ] **Super:** Ultimate ability charging and execution logic.
-- [ ] **Damage & Health:**
-    - [ ] Implement `GameplayEffect` execution calculation (Damage vs Armor).
+- [x] **Damage & Health:**
+    - [x] Implement `GameplayEffect` execution calculation (Damage vs Armor).
+    - [x] **C++: DataTable based Attribute Initialization.**
     - [ ] Death and Respawn flow.
 
 ## Phase 3: Brawler Content (Colt)
@@ -50,16 +51,20 @@
     - [ ] **Specific Abilities:** Dual pistols fire, Bullet Storm (Super).
     - [ ] **Feedback:** Recoil, VFX, SFX via Gameplay Cues.
 
-## Phase 4: Game Modes & AI (The "Single Player" Core)
+## Phase 4: Game Modes & UI (The "Single Player" Core)
+- [ ] **UI Implementation (Next Focus):**
+    - [ ] **HUD Base:** Implement `WBP_BrawlHUD` with Health, Ammo, and Super bars.
+    - [ ] **C++:** Create `UBrawlUserWidget` for event-driven attribute updates.
+    - [ ] **HUD Integration:** Initialize HUD via PlayerController or HUD class.
 - [ ] **AI System (Critical):**
     - [ ] **AI Controller:** `ABrawlAIController` with perception.
     - [ ] **Bot Logic:** Behavior Trees / State Trees to mimic player tactics (cover, attack, retreat, collect gems).
 - [ ] **Game Modes:**
     - [ ] **Showdown:** Free-for-all logic, Power Cube spawning, Poison clouds.
     - [ ] **Gem Grab:** Gem spawning mine, countdown logic, team scoring.
-- [ ] **UI:**
-    - [ ] HUD (Health, Ammo, Super).
+- [ ] **Game Specific UI:**
     - [ ] Game Mode specific widgets (Gem count, Players alive).
+    - [ ] Death and Victory screens.
 
 ## Phase 5: Polish & Multiplayer (Bonus)
 - [ ] **Polish:**

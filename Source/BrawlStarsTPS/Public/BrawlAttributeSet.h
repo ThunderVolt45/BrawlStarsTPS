@@ -52,6 +52,31 @@ public:
 	FGameplayAttributeData SuperCharge;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, SuperCharge);
 
+	// 기본 공격 데미지
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
+	FGameplayAttributeData AttackDamage;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, AttackDamage);
+
+	// 가젯 데미지
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
+	FGameplayAttributeData GadgetDamage;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, GadgetDamage);
+
+	// 궁극기 데미지
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
+	FGameplayAttributeData SuperDamage;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, SuperDamage);
+
+	// 가젯 쿨다운 (초)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Cooldown")
+	FGameplayAttributeData GadgetCooldown;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, GadgetCooldown);
+
+	// 궁극기 소모량 (게이지)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Cost")
+	FGameplayAttributeData SuperCost;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, SuperCost);
+
 	//~UAttributeSet interface
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
