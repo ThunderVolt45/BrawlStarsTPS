@@ -62,6 +62,12 @@ void ABrawlCharacter::PossessedBy(AController* NewController)
 
 	// 서버에서 GAS 초기화
 	InitAbilityActorInfo();
+
+	// 기본 어빌리티 부여
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->AddCharacterAbilities(StartupAbilities);
+	}
 }
 
 void ABrawlCharacter::OnRep_PlayerState()

@@ -24,15 +24,24 @@
     - [x] **Jump Logic:** Implement jump functionality using the new Input System.
 
 ## Phase 2: Combat System (GAS) (Next Focus)
-- [ ] **Ability System Core:**
-    - [ ] `UBrawlAttributeSet`: Health, Ammo, SuperCharge.
-    - [ ] `UBrawlGameplayAbility`: Base class with policy support.
-- [ ] **Standard Abilities:**
+- [x] **Ability System Core:**
+    - [x] `UBrawlAttributeSet`: Health, Ammo, SuperCharge.
+    - [x] `UBrawlGameplayAbility`: Base class with policy support.
+- [ ] **Combat Assets & Logic:**
+    - [ ] **Animation Montages:** Implement Primary Fire, Reload, and Super montages with Anim Notifies.
+    - [ ] **Gameplay Effects (GE):**
+        - [ ] `GE_Damage`: Handle Instant damage application.
+        - [ ] `GE_Cost_Ammo`: Deduct ammo on fire.
+        - [ ] `GE_Restore_Ammo`: Logic for auto/manual reload.
+        - [ ] `GE_Cooldown`: Manage cooldowns for Gadgets/Super.
+- [ ] **Ability Implementation:**
     - [ ] **Primary Fire:** HitScan/Projectile logic with spread/recoil.
-    - [ ] **Reload:** Auto-replenish mechanics.
-    - [ ] **Super:** Ultimate ability charging and execution.
+    - [ ] **Reload Strategy:**
+        - [ ] Implement `GA_Reload_Auto` (Passive) and `GA_Reload_Manual` (Active).
+        - [ ] **C++: Automatic activation logic for passive reload abilities.**
+    - [ ] **Super:** Ultimate ability charging and execution logic.
 - [ ] **Damage & Health:**
-    - [ ] Implement `GameplayEffect` for damage calculation.
+    - [ ] Implement `GameplayEffect` execution calculation (Damage vs Armor).
     - [ ] Death and Respawn flow.
 
 ## Phase 3: Brawler Content (Colt)

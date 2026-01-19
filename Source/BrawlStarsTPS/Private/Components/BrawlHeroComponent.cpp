@@ -4,6 +4,8 @@
 #include "Components/BrawlHeroComponent.h"
 
 #include "GameFramework/Character.h"
+#include "BrawlCharacter.h"
+#include "BrawlAbilitySystemComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Input/BrawlInputComponent.h"
 #include "Input/BrawlInputConfig.h"
@@ -143,10 +145,28 @@ void UBrawlHeroComponent::Input_StopJumping(const FInputActionValue& InputAction
 
 void UBrawlHeroComponent::Input_AbilityInputTagPressed(FGameplayTag InputTag)
 {
-	
+	if (const APawn* Pawn = GetPawn<APawn>())
+	{
+		if (const ABrawlCharacter* BrawlCharacter = Cast<ABrawlCharacter>(Pawn))
+		{
+			if (UBrawlAbilitySystemComponent* ASC = BrawlCharacter->GetBrawlAbilitySystemComponent())
+			{
+				ASC->AbilityInputTagPressed(InputTag);
+			}
+		}
+	}
 }
 
 void UBrawlHeroComponent::Input_AbilityInputTagReleased(FGameplayTag InputTag)
 {
-	
+	if (const APawn* Pawn = GetPawn<APawn>())
+	{
+		if (const ABrawlCharacter* BrawlCharacter = Cast<ABrawlCharacter>(Pawn))
+		{
+			if (UBrawlAbilitySystemComponent* ASC = BrawlCharacter->GetBrawlAbilitySystemComponent())
+			{
+				ASC->AbilityInputTagReleased(InputTag);
+			}
+		}
+	}
 }

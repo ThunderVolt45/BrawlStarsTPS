@@ -12,6 +12,7 @@ class USpringArmComponent;
 class UBrawlAbilitySystemComponent;
 class UBrawlAttributeSet;
 class UBrawlHeroComponent;
+class UBrawlGameplayAbility;
 
 /**
  * ABrawlCharacter
@@ -38,11 +39,11 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	/** GAS 초기화 */
+	// GAS 초기화
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_PlayerState() override;
 
-	/** 캐릭터 기본 설정 (GAS 관련) */
+	// 캐릭터 기본 설정 (GAS 관련)
 	void InitAbilityActorInfo();
 
 protected:
@@ -57,6 +58,10 @@ protected:
 	// 플레이어 전용 로직 및 입력을 담당하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Character")
 	TObjectPtr<UBrawlHeroComponent> HeroComponent;
+
+	// 게임 시작 시 부여할 기본 어빌리티 목록
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Abilities")
+	TArray<TSubclassOf<UBrawlGameplayAbility>> StartupAbilities;
 	
 	// 스프링 암
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Camera")
