@@ -12,11 +12,16 @@ UBrawlGameplayAbility::UBrawlGameplayAbility()
 	// 태그 설정 등 초기화
 }
 
-void UBrawlGameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
-	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
-	const FGameplayEventData* TriggerEventData)
+void UBrawlGameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	
-	// 공통 발동 로직 추가 (Logging, Debugging 등)
+
+	// 디버그 메시지: 화면과 로그에 출력
+	if (GEngine)
+	{
+		FString DebugMsg = FString::Printf(TEXT("Ability Activated: %s"), *GetName());
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Cyan, DebugMsg);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("BrawlAbility: [%s] Activated on [%s]"), *GetName(), *GetAvatarActorFromActorInfo()->GetName());
 }

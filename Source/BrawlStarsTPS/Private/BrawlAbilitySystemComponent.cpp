@@ -19,9 +19,21 @@ void UBrawlAbilitySystemComponent::AddCharacterAbilities(const TArray<TSubclassO
 		FGameplayAbilitySpec AbilitySpec = FGameplayAbilitySpec(AbilityClass, 1);
 		if (const UBrawlGameplayAbility* BrawlAbility = Cast<UBrawlGameplayAbility>(AbilitySpec.Ability))
 		{
-			// 어빌리티의 InputTag를 Spec의 DynamicTags에 추가하여 입력과 매핑
-			AbilitySpec.GetDynamicSpecSourceTags().AddTag(BrawlAbility->StartupInputTag);
-			GiveAbility(AbilitySpec);
+			// 1. 입력 태그가 있다면 매핑
+			if (BrawlAbility->StartupInputTag.IsValid())
+			{
+				AbilitySpec.GetDynamicSpecSourceTags().AddTag(BrawlAbility->StartupInputTag);
+			}
+
+			// 2. 어빌리티 부여 및 핸들 획득
+			const FGameplayAbilitySpecHandle Handle = GiveAbility(AbilitySpec);
+
+			// 3. 입력 태그가 없다면 패시브로 간주하고 즉시 활성화 시도
+			// (GA_Reload_Auto 등의 자동 실행을 위해 필요)
+			if (!BrawlAbility->StartupInputTag.IsValid())
+			{
+				TryActivateAbility(Handle);
+			}
 		}
 	}
 	bCharacterAbilitiesGiven = true;
