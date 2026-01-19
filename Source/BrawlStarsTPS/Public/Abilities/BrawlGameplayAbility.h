@@ -24,6 +24,15 @@ public:
 	// UBrawlHeroComponent에서 입력을 처리할 때 식별자로 사용
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	FGameplayTag StartupInputTag;
+
+protected:
+	/** 자신에게 GE를 적용하고 SetByCaller 값 설정 (쿨다운, 코스트 등) */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Abilities")
+	void ApplyEffectToSelf(TSubclassOf<UGameplayEffect> EffectClass, FGameplayTag DataTag, float Magnitude);
+
+	/** 타겟에게 데미지 GE 적용 */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Abilities")
+	void ApplyDamageEffect(AActor* TargetActor, TSubclassOf<UGameplayEffect> DamageEffectClass, float DamageAmount);
 	
 protected:
 	// 어빌리티 활성화 시 실행될 로직 (C++에서 오버라이드하거나 블루프린트에서 이벤트 그래프 사용)
