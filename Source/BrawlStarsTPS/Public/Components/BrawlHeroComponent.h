@@ -37,6 +37,8 @@ protected:
 	// 입력 바인딩 함수
 	void Input_Move(const FInputActionValue& InputActionValue);
 	void Input_Look(const FInputActionValue& InputActionValue);
+	void Input_Jump(const FInputActionValue& InputActionValue);
+	void Input_StopJumping(const FInputActionValue& InputActionValue);
 	
 	// 어빌리티 입력 바인딩 함수
 	void Input_AbilityInputTagPressed(FGameplayTag InputTag);

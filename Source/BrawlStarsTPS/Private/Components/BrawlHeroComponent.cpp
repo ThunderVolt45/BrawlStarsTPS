@@ -3,6 +3,7 @@
 
 #include "Components/BrawlHeroComponent.h"
 
+#include "GameFramework/Character.h"
 #include "EnhancedInputSubsystems.h"
 #include "Input/BrawlInputComponent.h"
 #include "Input/BrawlInputConfig.h"
@@ -61,12 +62,17 @@ void UBrawlHeroComponent::InitializePlayerInput(UInputComponent* PlayerInputComp
 	// 오타 방지를 위해 나중에 const 변수로 빼는 것을 고려해볼 수 있습니다.
 	const FGameplayTag InputTag_Move = FGameplayTag::RequestGameplayTag(FName("InputTag.Move"));
 	const FGameplayTag InputTag_Look = FGameplayTag::RequestGameplayTag(FName("InputTag.Look"));
+	const FGameplayTag InputTag_Jump = FGameplayTag::RequestGameplayTag(FName("InputTag.Jump"));
 	
 	// 입력 액션 바인딩
 	BrawlInputComponent->BindNativeAction(InputConfig, InputTag_Move, ETriggerEvent::Triggered, 
 		this, &UBrawlHeroComponent::Input_Move, true);
 	BrawlInputComponent->BindNativeAction(InputConfig, InputTag_Look, ETriggerEvent::Triggered,
 		this, &UBrawlHeroComponent::Input_Look, true);
+	BrawlInputComponent->BindNativeAction(InputConfig, InputTag_Jump, ETriggerEvent::Started,
+		this, &UBrawlHeroComponent::Input_Jump, true);
+	BrawlInputComponent->BindNativeAction(InputConfig, InputTag_Jump, ETriggerEvent::Completed,
+		this, &UBrawlHeroComponent::Input_StopJumping, true);
 	
 	// 어빌리티 액션 바인딩
 	BrawlInputComponent->BindAbilityAction(InputConfig, this,
@@ -116,6 +122,22 @@ void UBrawlHeroComponent::Input_Look(const FInputActionValue& InputActionValue)
 	if (Value.Y != 0.0f)
 	{
 		Pawn->AddControllerPitchInput(Value.Y);
+	}
+}
+
+void UBrawlHeroComponent::Input_Jump(const FInputActionValue& InputActionValue)
+{
+	if (ACharacter* Character = GetPawn<ACharacter>())
+	{
+		Character->Jump();
+	}
+}
+
+void UBrawlHeroComponent::Input_StopJumping(const FInputActionValue& InputActionValue)
+{
+	if (ACharacter* Character = GetPawn<ACharacter>())
+	{
+		Character->StopJumping();
 	}
 }
 

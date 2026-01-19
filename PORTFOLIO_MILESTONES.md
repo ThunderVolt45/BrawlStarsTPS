@@ -21,7 +21,7 @@
     - [x] **TPS Camera:** Implement `SpringArm` & `CameraComponent` with Over-the-shoulder offset.
     - [x] **Rotation Logic:** Character Yaw synced with Controller/Camera rotation for strafing.
     - [x] **Movement Tuning:** Basic setup for snappy movement in `CharacterMovementComponent`.
-    - [ ] **Jump Logic:** Implement jump functionality using the new Input System.
+    - [x] **Jump Logic:** Implement jump functionality using the new Input System.
 
 ## Phase 2: Combat System (GAS) (Next Focus)
 - [ ] **Ability System Core:**
