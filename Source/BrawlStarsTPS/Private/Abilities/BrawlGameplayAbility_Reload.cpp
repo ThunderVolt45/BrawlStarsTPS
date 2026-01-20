@@ -63,7 +63,7 @@ void UBrawlGameplayAbility_Reload::TryReloadToken()
 	float CurrentAmmo = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetAmmoAttribute(), bFoundAmmo);
 	float MaxAmmo = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetMaxAmmoAttribute(), bFoundMaxAmmo);
 
-	UE_LOG(LogTemp, Warning, TEXT("ReloadAbility Checking: Ammo %f / %f"), CurrentAmmo, MaxAmmo);
+	UE_LOG(LogTemp, Log, TEXT("ReloadAbility Checking: Ammo %f / %f"), CurrentAmmo, MaxAmmo);
 
 	if (bFoundAmmo && bFoundMaxAmmo)
 	{
@@ -103,6 +103,7 @@ void UBrawlGameplayAbility_Reload::CommitReload()
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Reloaded! +%.0f"), ReloadAmount));
 	}
+	
 	UE_LOG(LogTemp, Log, TEXT("Reload Complete. Added %f Ammo."), ReloadAmount);
 
 	// 중요: 타이머 콜백 내부에서 다시 타이머를 설정하려면, 
