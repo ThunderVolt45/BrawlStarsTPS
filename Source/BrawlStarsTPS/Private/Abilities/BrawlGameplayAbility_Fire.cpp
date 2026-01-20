@@ -66,16 +66,30 @@ void UBrawlGameplayAbility_Fire::OnFireEventReceived(FGameplayEventData Payload)
 
 void UBrawlGameplayAbility_Fire::SpawnProjectile()
 {
-	if (!ProjectileClass)
+	// 1. 발사체 클래스 결정 (하이퍼차지 여부 확인)
+	TSubclassOf<AActor> ClassToSpawn = ProjectileClass;
+	
+	if (const UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		static FGameplayTag HyperStateTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
+		if (ASC->HasMatchingGameplayTag(HyperStateTag))
+		{
+			if (ProjectileClass_Hyper)
+			{
+				ClassToSpawn = ProjectileClass_Hyper;
+				// UE_LOG(LogTemp, Log, TEXT("Fire Ability: Using Hypercharged Projectile!"));
+			}
+		}
+	}
+
+	if (!ClassToSpawn) 
 	{
 		UE_LOG(LogTemp, Error, TEXT("SpawnProjectile Failed: ProjectileClass is NULL"));
 		return;
 	}
 
-	ACharacter* Character = CastChecked<ACharacter>(GetAvatarActorFromActorInfo());
-
-	// 서버 권한 확인 (클라이언트 예측을 원하면 로직 추가 필요, 여기선 서버 권한만 체크)
-	if (!Character->HasAuthority()) return;
+	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character) return;
 
 	// 1. 발사 시작점 (Muzzle)
 	FVector MuzzleLocation = Character->GetActorLocation();
@@ -122,7 +136,7 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 	SpawnParams.Owner = Character;
 	SpawnParams.Instigator = Character;
 	
-	GetWorld()->SpawnActor<AActor>(ProjectileClass, MuzzleLocation, ProjectileRotation, SpawnParams);
+	GetWorld()->SpawnActor<AActor>(ClassToSpawn, MuzzleLocation, ProjectileRotation, SpawnParams);
 }
 
 void UBrawlGameplayAbility_Fire::OnMontageEnded()

@@ -62,9 +62,9 @@ void UBrawlGameplayAbility_Hyper::ActivateAbility(const FGameplayAbilitySpecHand
 		UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, HyperActivateMontage);
 		if (MontageTask)
 		{
-			MontageTask->OnCompleted.AddDynamic(this, &UBrawlGameplayAbility::K2_EndAbility);
-			MontageTask->OnInterrupted.AddDynamic(this, &UBrawlGameplayAbility::K2_EndAbility);
-			MontageTask->OnBlendOut.AddDynamic(this, &UBrawlGameplayAbility::K2_EndAbility);
+			MontageTask->OnCompleted.AddDynamic(this, &UBrawlGameplayAbility_Hyper::OnMontageEnded);
+			MontageTask->OnInterrupted.AddDynamic(this, &UBrawlGameplayAbility_Hyper::OnMontageEnded);
+			MontageTask->OnBlendOut.AddDynamic(this, &UBrawlGameplayAbility_Hyper::OnMontageEnded);
 			MontageTask->ReadyForActivation();
 		}
 	}
@@ -72,4 +72,9 @@ void UBrawlGameplayAbility_Hyper::ActivateAbility(const FGameplayAbilitySpecHand
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 	}
+}
+
+void UBrawlGameplayAbility_Hyper::OnMontageEnded()
+{
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }

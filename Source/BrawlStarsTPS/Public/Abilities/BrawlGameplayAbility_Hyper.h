@@ -38,4 +38,8 @@ protected:
 	// 하이퍼차지 사용 시 필요한 게이지 양
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Hyper")
 	float HyperCostAmount = 100.0f;
+
+private:
+	UFUNCTION()
+	void OnMontageEnded();
 };
