@@ -52,6 +52,21 @@ public:
 	FGameplayAttributeData SuperCharge;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, SuperCharge);
 
+	// 최대 궁극기 게이지
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData MaxSuperCharge;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, MaxSuperCharge);
+
+	// 하이퍼차지 게이지 (HyperCharge)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData HyperCharge;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, HyperCharge);
+
+	// 최대 하이퍼차지 게이지
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData MaxHyperCharge;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, MaxHyperCharge);
+
 	// 기본 공격 데미지
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
 	FGameplayAttributeData AttackDamage;

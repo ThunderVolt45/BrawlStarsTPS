@@ -132,7 +132,15 @@ void ABrawlCharacter::InitializeAttributes()
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxAmmoAttribute(), Row->MaxAmmo);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetAmmoAttribute(), Row->MaxAmmo);
 
-		// 3. 기타 (필요하다면 추가)
+		// 3. 게이지 초기화
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxSuperChargeAttribute(), Row->MaxSuperCharge);
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargeAttribute(), 0.0f);
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperCostAttribute(), Row->SuperCost);
+
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxHyperChargeAttribute(), Row->MaxHyperCharge);
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargeAttribute(), 0.0f);
+
+		// 4. 기타 (필요하다면 추가)
 		// AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetAttackDamageAttribute(), Row->AttackDamage);
 		
 		UE_LOG(LogTemp, Warning, TEXT("Attributes Initialized via C++ Direct Set."));

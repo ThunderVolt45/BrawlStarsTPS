@@ -20,6 +20,14 @@ void UBrawlAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute,
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxAmmo());
 	}
+	else if (Attribute == GetSuperChargeAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxSuperCharge());
+	}
+	else if (Attribute == GetHyperChargeAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxHyperCharge());
+	}
 }
 
 void UBrawlAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
@@ -34,5 +42,13 @@ void UBrawlAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 	else if (Data.EvaluatedData.Attribute == GetAmmoAttribute())
 	{
 		SetAmmo(FMath::Clamp(GetAmmo(), 0.0f, GetMaxAmmo()));
+	}
+	else if (Data.EvaluatedData.Attribute == GetSuperChargeAttribute())
+	{
+		SetSuperCharge(FMath::Clamp(GetSuperCharge(), 0.0f, GetMaxSuperCharge()));
+	}
+	else if (Data.EvaluatedData.Attribute == GetHyperChargeAttribute())
+	{
+		SetHyperCharge(FMath::Clamp(GetHyperCharge(), 0.0f, GetMaxHyperCharge()));
 	}
 }

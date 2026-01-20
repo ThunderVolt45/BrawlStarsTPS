@@ -37,9 +37,11 @@
 - [x] **Ability Implementation:**
     - [x] **Primary Fire:** HitScan/Projectile logic with spread/recoil.
     - [x] **Reload Strategy:**
-        - [x] Implement `GA_Reload_Auto` (Passive) and `GA_Reload_Manual` (Active).
+        - [x] Implement `GA_Reload_Auto` (Passive).
+        - [ ] *Postponed:* `GA_Reload_Manual` (Active).
         - [x] **C++: Automatic activation logic for passive reload abilities.**
-    - [ ] **Super:** Ultimate ability charging and execution logic.
+    - [ ] **Super:** Ultimate ability charging and execution logic. (Next Focus)
+    - [ ] **Gadget:** Special ability with cooldown. (Next Focus)
 - [x] **Damage & Health:**
     - [x] Implement `GameplayEffect` execution calculation (Damage vs Armor).
     - [x] **C++: DataTable based Attribute Initialization.**
