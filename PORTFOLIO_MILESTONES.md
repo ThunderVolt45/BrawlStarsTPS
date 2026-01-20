@@ -23,41 +23,33 @@
     - [x] **Movement Tuning:** Basic setup for snappy movement in `CharacterMovementComponent`.
     - [x] **Jump Logic:** Implement jump functionality using the new Input System.
 
-## Phase 2: Combat System (GAS) (Next Focus)
+## Phase 2: Combat System (GAS) (Completed)
 - [x] **Ability System Core:**
-    - [x] `UBrawlAttributeSet`: Health, Ammo, SuperCharge.
-    - [x] `UBrawlGameplayAbility`: Base class with policy support.
+    - [x] `UBrawlAttributeSet`: Health, Ammo, SuperCharge, HyperCharge.
+    - [x] **Data-Driven Initialization:** Initialize attributes from `DT_BrawlerStats`.
 - [x] **Combat Assets & Logic:**
-    - [x] **Animation Montages:** Implement Primary Fire, Reload, and Super montages with Anim Notifies.
-    - [x] **Gameplay Effects (GE):**
-        - [x] `GE_Damage`: Handle Instant damage application.
-        - [x] `GE_Cost_Ammo`: Deduct ammo on fire.
-        - [x] `GE_Restore_Ammo`: Logic for auto/manual reload.
-        - [x] `GE_Cooldown`: Manage cooldowns for Gadgets/Super.
-- [x] **Ability Implementation:**
-    - [x] **Primary Fire:** HitScan/Projectile logic with spread/recoil.
-    - [x] **Reload Strategy:**
-        - [x] Implement `GA_Reload_Auto` (Passive).
-        - [ ] *Postponed:* `GA_Reload_Manual` (Active).
-        - [x] **C++: Automatic activation logic for passive reload abilities.**
-    - [ ] **Super:** Ultimate ability charging and execution logic. (Next Focus)
-    - [ ] **Gadget:** Special ability with cooldown. (Next Focus)
-- [x] **Damage & Health:**
-    - [x] Implement `GameplayEffect` execution calculation (Damage vs Armor).
-    - [x] **C++: DataTable based Attribute Initialization.**
-    - [ ] Death and Respawn flow.
+    - [x] **Projectile System:** `ABrawlProjectile` with GAS integration and hybrid collision.
+    - [x] **Damage Logic:** Negative attribute application via GE.
+    - [x] **Charge Logic:** Super/Hyper accumulation on hit based on Data Table per-hit values.
+- [x] **Ability Implementation (C++):**
+    - [x] **Primary Fire:** `UBrawlGameplayAbility_Fire` & `Colt_Fire` (Dual wield support).
+    - [x] **Reload:** `UBrawlGameplayAbility_Reload` (Auto-replenish loop).
+    - [x] **Super:** `UBrawlGameplayAbility_Super` (Gauge check & consume).
+    - [x] **Gadget:** `UBrawlGameplayAbility_Gadget` (Cooldown based).
+    - [x] **Hypercharge:** `UBrawlGameplayAbility_Hyper` (Buff & projectile modification).
 
 ## Phase 3: Brawler Content (Colt)
 - [ ] **Colt Integration:**
-    - [ ] **Visuals:** Mesh, AnimBP setup.
-    - [ ] **Specific Abilities:** Dual pistols fire, Bullet Storm (Super).
+    - [x] **Specific Abilities:** Dual pistols fire (C++ logic done).
+    - [ ] **Visuals:** Mesh, AnimBP setup (Refinement needed).
     - [ ] **Feedback:** Recoil, VFX, SFX via Gameplay Cues.
 
-## Phase 4: Game Modes & UI (The "Single Player" Core)
-- [ ] **UI Implementation (Next Focus):**
-    - [ ] **HUD Base:** Implement `WBP_BrawlHUD` with Health, Ammo, and Super bars.
-    - [ ] **C++:** Create `UBrawlUserWidget` for event-driven attribute updates.
-    - [ ] **HUD Integration:** Initialize HUD via PlayerController or HUD class.
+## Phase 4: Game Modes & UI (Current Focus)
+- [ ] **UI Implementation:**
+    - [x] **C++ Foundation:** `UBrawlUserWidget` & `UBrawlHUDWidget` with attribute delegates.
+    - [ ] **HUD Design (WBP):** Create `WBP_BrawlHUD` with Health, Ammo, Super, Hyper bars. (Next Step)
+    - [ ] **HUD Integration:** Initialize HUD in PlayerController.
+    - [ ] **Crosshair:** Dynamic ammo display on crosshair.
 - [ ] **AI System (Critical):**
     - [ ] **AI Controller:** `ABrawlAIController` with perception.
     - [ ] **Bot Logic:** Behavior Trees / State Trees to mimic player tactics (cover, attack, retreat, collect gems).
