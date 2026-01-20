@@ -3,6 +3,7 @@
 
 #include "Abilities/BrawlGameplayAbility_Fire.h"
 #include "AbilitySystemComponent.h"
+#include "BrawlAttributeSet.h"
 #include "BrawlCharacter.h"
 #include "BrawlProjectile.h"
 #include "GameFramework/Character.h"
@@ -157,9 +158,18 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 				FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageEffectClass, GetAbilityLevel(), ContextHandle);
 				if (SpecHandle.IsValid())
 				{
-					// 데미지 양 설정 (Data.Damage 태그 사용)
+					// 데미지 양 설정 (AttributeSet에서 가져옴)
+					bool bFound = false;
+					float AttackDamage = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetAttackDamageAttribute(), bFound);
+					
+					// 못 찾았으면 기본값(DamageAmount) 사용
+					if (!bFound) AttackDamage = DamageAmount;
+
+					// 음수로 변환하여 데미지로 적용
+					float FinalDamage = -1.0f * FMath::Abs(AttackDamage);
+
 					static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
-					SpecHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, DamageAmount);
+					SpecHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, FinalDamage);
 					
 					// 발사체에 Spec 주입
 					Projectile->InitializeProjectile(SpecHandle);

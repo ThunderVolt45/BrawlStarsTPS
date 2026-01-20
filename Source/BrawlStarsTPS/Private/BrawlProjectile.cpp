@@ -45,18 +45,24 @@ ABrawlProjectile::ABrawlProjectile()
 void ABrawlProjectile::InitializeProjectile(const FGameplayEffectSpecHandle& InDamageSpecHandle)
 {
 	DamageSpecHandle = InDamageSpecHandle;
+	
+	if (!DamageSpecHandle.IsValid())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Projectile Initialized with INVALID Damage Spec!"));
+	}
 }
 
 void ABrawlProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// 발사자(Instigator)는 무시
 	if (AActor* MyInstigator = GetInstigator())
 	{
 		SphereComponent->IgnoreActorWhenMoving(MyInstigator, true);
 	}
 
-	SetLifeSpan(2.0f);
+	SetLifeSpan(1.5f);
 }
 
 void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
@@ -79,19 +85,29 @@ void ABrawlProjectile::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, 
 
 void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation)
 {
-	// 디버그 구체 그리기 (충돌 확인용)
+	if (!OtherActor) return;
+	
+	// 디버그 구체 그리기
 	if (GetWorld())
 	{
 		DrawDebugSphere(GetWorld(), HitLocation, 10.0f, 12, FColor::Red, false, 2.0f);
 	}
 
-	// 데미지 적용
-	if (UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor))
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor);
+	
+	if (!TargetASC)
 	{
-		if (DamageSpecHandle.IsValid())
-		{
-			TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpecHandle.Data.Get());
-		}
+		UE_LOG(LogTemp, Warning, TEXT("ProcessHit: Target [%s] has NO AbilitySystemComponent!"), *OtherActor->GetName());
+		return;
+	}
+
+	if (DamageSpecHandle.IsValid())
+	{
+		FActiveGameplayEffectHandle ActiveGE = TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpecHandle.Data.Get());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("ProcessHit: DamageSpecHandle is INVALID! Cannot apply damage."));
 	}
 }
 
