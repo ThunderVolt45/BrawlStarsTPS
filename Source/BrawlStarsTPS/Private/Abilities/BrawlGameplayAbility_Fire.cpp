@@ -3,7 +3,6 @@
 
 #include "Abilities/BrawlGameplayAbility_Fire.h"
 #include "AbilitySystemComponent.h"
-#include "BrawlCharacter.h"
 #include "GameFramework/Character.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
@@ -124,8 +123,6 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 	SpawnParams.Instigator = Character;
 	
 	GetWorld()->SpawnActor<AActor>(ProjectileClass, MuzzleLocation, ProjectileRotation, SpawnParams);
-	
-	// UE_LOG(LogTemp, Log, TEXT("Projectile Spawned at %s towards %s"), *MuzzleLocation.ToString(), *TargetLocation.ToString());
 }
 
 void UBrawlGameplayAbility_Fire::OnMontageEnded()
