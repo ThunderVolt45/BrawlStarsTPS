@@ -3,6 +3,8 @@
 
 #include "Abilities/BrawlGameplayAbility_Fire.h"
 #include "AbilitySystemComponent.h"
+#include "BrawlCharacter.h"
+#include "BrawlProjectile.h"
 #include "GameFramework/Character.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
@@ -136,12 +138,35 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 	// 4. 발사 방향 회전 (Muzzle -> Target)
 	FRotator ProjectileRotation = UKismetMathLibrary::FindLookAtRotation(MuzzleLocation, TargetLocation);
 
-	// 5. 발사체 스폰
+	// 4. 발사체 스폰
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = Character;
 	SpawnParams.Instigator = Character;
 	
-	GetWorld()->SpawnActor<AActor>(ClassToSpawn, MuzzleLocation, ProjectileRotation, SpawnParams);
+	AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(ClassToSpawn, MuzzleLocation, ProjectileRotation, SpawnParams);
+	if (ABrawlProjectile* Projectile = Cast<ABrawlProjectile>(SpawnedActor))
+	{
+		// GAS 데미지 Spec 생성 및 주입
+		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		{
+			FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+			ContextHandle.AddSourceObject(this);
+
+			if (DamageEffectClass)
+			{
+				FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageEffectClass, GetAbilityLevel(), ContextHandle);
+				if (SpecHandle.IsValid())
+				{
+					// 데미지 양 설정 (Data.Damage 태그 사용)
+					static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
+					SpecHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, DamageAmount);
+					
+					// 발사체에 Spec 주입
+					Projectile->InitializeProjectile(SpecHandle);
+				}
+			}
+		}
+	}
 }
 
 void UBrawlGameplayAbility_Fire::OnMontageEnded()

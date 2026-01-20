@@ -58,4 +58,8 @@ protected:
 	// 발사체 데미지 (Projectle에 전달할 값)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
 	float DamageAmount = 100.0f;
+
+	// 발사체에 적용할 데미지 GE 클래스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	TSubclassOf<class UGameplayEffect> DamageEffectClass;
 };

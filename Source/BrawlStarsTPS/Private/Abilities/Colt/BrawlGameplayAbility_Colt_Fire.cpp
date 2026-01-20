@@ -4,9 +4,9 @@
 #include "Abilities/Colt/BrawlGameplayAbility_Colt_Fire.h"
 
 #include "AbilitySystemComponent.h"
+#include "BrawlProjectile.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
-#include "Engine/SkeletalMeshSocket.h"
 #include "GameFramework/Character.h"
 #include "Kismet/KismetMathLibrary.h"
 
@@ -209,7 +209,30 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 	SpawnParams.Owner = Character;
 	SpawnParams.Instigator = Character;
 	
-	GetWorld()->SpawnActor<AActor>(ClassToSpawn, MuzzleLocation, ProjectileRotation, SpawnParams);
+	AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(ClassToSpawn, MuzzleLocation, ProjectileRotation, SpawnParams);
+	if (ABrawlProjectile* Projectile = Cast<ABrawlProjectile>(SpawnedActor))
+	{
+		// GAS 데미지 Spec 생성 및 주입
+		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		{
+			FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+			ContextHandle.AddSourceObject(this);
+
+			if (DamageEffectClass)
+			{
+				FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageEffectClass, GetAbilityLevel(), ContextHandle);
+				if (SpecHandle.IsValid())
+				{
+					// 데미지 양 설정 (Data.Damage 태그 사용)
+					static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
+					SpecHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, DamageAmount);
+					
+					// 발사체에 Spec 주입
+					Projectile->InitializeProjectile(SpecHandle);
+				}
+			}
+		}
+	}
 }
 
 void UBrawlGameplayAbility_Colt_Fire::OnMontageEnded()
