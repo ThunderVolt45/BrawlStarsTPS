@@ -46,6 +46,21 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
 	FGameplayAttributeData MaxAmmo;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, MaxAmmo);
+	
+	// 기본 공격 데미지
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
+	FGameplayAttributeData AttackDamage;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, AttackDamage);
+
+	// 가젯 데미지
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
+	FGameplayAttributeData GadgetDamage;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, GadgetDamage);
+
+	// 가젯 쿨다운 (초)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Cooldown")
+	FGameplayAttributeData GadgetCooldown;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, GadgetCooldown);
 
 	// 궁극기 게이지 (SuperCharge)
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
@@ -56,6 +71,21 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
 	FGameplayAttributeData MaxSuperCharge;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, MaxSuperCharge);
+	
+	// 궁극기 소모량 (게이지)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Cost")
+	FGameplayAttributeData SuperCost;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, SuperCost);
+	
+	// 궁극기 데미지
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
+	FGameplayAttributeData SuperDamage;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, SuperDamage);
+
+	// 평타 1회 명중 시 궁극기 충전량
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData SuperChargePerHit;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, SuperChargePerHit);
 
 	// 하이퍼차지 게이지 (HyperCharge)
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
@@ -67,30 +97,10 @@ public:
 	FGameplayAttributeData MaxHyperCharge;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, MaxHyperCharge);
 
-	// 기본 공격 데미지
-	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
-	FGameplayAttributeData AttackDamage;
-	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, AttackDamage);
-
-	// 가젯 데미지
-	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
-	FGameplayAttributeData GadgetDamage;
-	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, GadgetDamage);
-
-	// 궁극기 데미지
-	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
-	FGameplayAttributeData SuperDamage;
-	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, SuperDamage);
-
-	// 가젯 쿨다운 (초)
-	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Cooldown")
-	FGameplayAttributeData GadgetCooldown;
-	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, GadgetCooldown);
-
-	// 궁극기 소모량 (게이지)
-	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Cost")
-	FGameplayAttributeData SuperCost;
-	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, SuperCost);
+	// 평타 1회 명중 시 하이퍼차지 충전량
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData HyperChargePerHit;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, HyperChargePerHit);
 
 	//~UAttributeSet interface
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;

@@ -41,6 +41,10 @@ protected:
 	// 발사할 발사체 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
 	TSubclassOf<AActor> ProjectileClass;
+	
+	// 하이퍼차지 상태일 때 사용할 발사체 클래스 (설정되어 있으면 교체됨)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	TSubclassOf<AActor> ProjectileClass_Hyper;
 
 	// 공격 몽타주
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")

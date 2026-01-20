@@ -66,6 +66,14 @@ void UBrawlGameplayAbility_Fire::OnFireEventReceived(FGameplayEventData Payload)
 
 void UBrawlGameplayAbility_Fire::SpawnProjectile()
 {
+	// 0. 유효성 검사
+	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnProjectile Failed: AvatarActor is not a Character"));
+		return;
+	}
+	
 	// 1. 발사체 클래스 결정 (하이퍼차지 여부 확인)
 	TSubclassOf<AActor> ClassToSpawn = ProjectileClass;
 	
@@ -77,7 +85,6 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 			if (ProjectileClass_Hyper)
 			{
 				ClassToSpawn = ProjectileClass_Hyper;
-				// UE_LOG(LogTemp, Log, TEXT("Fire Ability: Using Hypercharged Projectile!"));
 			}
 		}
 	}
@@ -88,10 +95,7 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		return;
 	}
 
-	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
-	if (!Character) return;
-
-	// 1. 발사 시작점 (Muzzle)
+	// 2. 발사 시작점 (Muzzle) 설정
 	FVector MuzzleLocation = Character->GetActorLocation();
 	if (USkeletalMeshComponent* Mesh = Character->GetMesh())
 	{
@@ -101,7 +105,7 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		}
 	}
 
-	// 2. 목표 지점 (Camera Aim) 계산
+	// 3. 목표 지점 (Camera Aim) 계산
 	FVector TargetLocation = MuzzleLocation + (Character->GetActorForwardVector() * 1000.0f); // 기본값
 
 	if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
@@ -118,7 +122,8 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		FCollisionQueryParams QueryParams;
 		QueryParams.AddIgnoredActor(Character); // 자신은 무시
 
-		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, 
+			ECC_Visibility, QueryParams))
 		{
 			TargetLocation = HitResult.ImpactPoint;
 		}
@@ -128,10 +133,10 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		}
 	}
 
-	// 3. 발사 방향 회전 (Muzzle -> Target)
+	// 4. 발사 방향 회전 (Muzzle -> Target)
 	FRotator ProjectileRotation = UKismetMathLibrary::FindLookAtRotation(MuzzleLocation, TargetLocation);
 
-	// 4. 발사체 스폰
+	// 5. 발사체 스폰
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = Character;
 	SpawnParams.Instigator = Character;

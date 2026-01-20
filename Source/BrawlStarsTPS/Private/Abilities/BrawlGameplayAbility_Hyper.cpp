@@ -15,12 +15,16 @@ bool UBrawlGameplayAbility_Hyper::CheckCost(const FGameplayAbilitySpecHandle Han
 {
 	if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
 	{
-		bool bFound = false;
-		float CurrentHyper = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetHyperChargeAttribute(), bFound);
+		bool bFoundCharge = false;
+		bool bFoundMax = false;
 		
-		if (bFound && CurrentHyper < HyperCostAmount)
+		float CurrentHyper = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetHyperChargeAttribute(), bFoundCharge);
+		float MaxHyper = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetMaxHyperChargeAttribute(), bFoundMax);
+		
+		// 하이퍼차지는 게이지가 최대치에 도달해야 발동 가능
+		if (bFoundCharge && bFoundMax && CurrentHyper < MaxHyper)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("HyperCharge Not Ready! Current: %f / %f"), CurrentHyper, HyperCostAmount);
+			UE_LOG(LogTemp, Warning, TEXT("HyperCharge Not Ready! Current: %f / Max: %f"), CurrentHyper, MaxHyper);
 			return false;
 		}
 		return true;
@@ -32,7 +36,7 @@ void UBrawlGameplayAbility_Hyper::ApplyCost(const FGameplayAbilitySpecHandle Han
 {
 	if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
 	{
-		// 하이퍼차지 게이지 완전 소모 (또는 정해진 양만큼 차감)
+		// 하이퍼차지 게이지 완전 소모
 		bool bFound = false;
 		float CurrentHyper = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetHyperChargeAttribute(), bFound);
 		

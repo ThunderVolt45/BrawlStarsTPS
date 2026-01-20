@@ -54,22 +54,27 @@ public:
 	// 궁극기 데미지
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Stats")
 	float SuperDamage = 2000.0f;
-
-	// 궁극기 사용 시 필요한 게이지 양
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Stats")
-	float SuperCost = 100.0f;
-
+	
 	// 최대 궁극기 게이지
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Stats")
 	float MaxSuperCharge = 100.0f;
-
+	
+	// 궁극기 사용 시 필요한 게이지 양
+	// 어떤 브롤러는 한번 궁이 충전되면 모두 소모할 때까지 여러번 쓸 수 있음
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Stats")
+	float SuperCost = 100.0f;
+	
+	// 평타 1회 명중 시 궁극기 충전량
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Stats")
+	float SuperChargePerHit = 20.0f;
+	
 	// 최대 하이퍼차지 게이지
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Stats")
 	float MaxHyperCharge = 100.0f;
 
-	// 하이퍼차지 사용 시 필요한 게이지 양
+	// 평타 1회 명중 시 하이퍼차지 충전량
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Stats")
-	float HyperCost = 100.0f;
+	float HyperChargePerHit = 10.0f;
 	
 	// 캐릭터 아이콘 (UI)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Visuals")

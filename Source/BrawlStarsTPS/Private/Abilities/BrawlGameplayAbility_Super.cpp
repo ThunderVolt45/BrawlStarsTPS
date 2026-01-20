@@ -12,15 +12,17 @@ UBrawlGameplayAbility_Super::UBrawlGameplayAbility_Super()
 
 bool UBrawlGameplayAbility_Super::CheckCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, OUT FGameplayTagContainer* OptionalRelevantTags) const
 {
-	// 기본 부모(BrawlGameplayAbility)의 탄환 체크 대신 게이지 체크 수행
 	if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
 	{
-		bool bFound = false;
-		float CurrentSuperCharge = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetSuperChargeAttribute(), bFound);
+		bool bFoundCharge = false;
+		bool bFoundCost = false;
 		
-		if (bFound && CurrentSuperCharge < SuperCostAmount)
+		float CurrentSuperCharge = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetSuperChargeAttribute(), bFoundCharge);
+		float RequiredCost = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetSuperCostAttribute(), bFoundCost);
+		
+		if (bFoundCharge && bFoundCost && CurrentSuperCharge < RequiredCost)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Super Not Charged! Current: %f / %f"), CurrentSuperCharge, SuperCostAmount);
+			UE_LOG(LogTemp, Warning, TEXT("Super Not Charged! Current: %f / Required: %f"), CurrentSuperCharge, RequiredCost);
 			return false;
 		}
 	}

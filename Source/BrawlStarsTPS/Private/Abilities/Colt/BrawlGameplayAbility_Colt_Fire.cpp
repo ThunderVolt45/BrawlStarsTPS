@@ -3,6 +3,7 @@
 
 #include "Abilities/Colt/BrawlGameplayAbility_Colt_Fire.h"
 
+#include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Engine/SkeletalMeshSocket.h"
@@ -90,27 +91,41 @@ void UBrawlGameplayAbility_Colt_Fire::OnFireRightEventReceived(FGameplayEventDat
 
 void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketName)
 {
-	if (!ProjectileClass)
-	{
-		UE_LOG(LogTemp, Error, TEXT("SpawnProjectile Failed: ProjectileClass is NULL"));
-		return;
-	}
-
+	// 0. 유효성 검사
 	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
 	if (!Character)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("SpawnProjectile Failed: AvatarActor is not a Character"));
 		return;
 	}
+	
+	// 1. 발사체 클래스 결정 (하이퍼차지 여부 확인)
+	TSubclassOf<AActor> ClassToSpawn = ProjectileClass;
+	
+	if (const UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		static FGameplayTag HyperStateTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
+		if (ASC->HasMatchingGameplayTag(HyperStateTag))
+		{
+			if (ProjectileClass_Hyper)
+			{
+				ClassToSpawn = ProjectileClass_Hyper;
+				// UE_LOG(LogTemp, Log, TEXT("Fire Ability: Using Hypercharged Projectile!"));
+			}
+		}
+	}
 
-	// 서버 권한 확인
-	if (!Character->HasAuthority()) return;
+	if (!ClassToSpawn)
+	{
+		UE_LOG(LogTemp, Error, TEXT("SpawnProjectile Failed: ProjectileClass is NULL"));
+		return;
+	}
 
-	// 1. 발사 시작점 (Muzzle) 찾기
+	// 2. 발사 시작점 (Muzzle) 찾기
 	FVector MuzzleLocation = Character->GetActorLocation();
 	bool bSocketFound = false;
 
-	// 1-1. 메인 메쉬 확인 (AttachParentSocketName이 없거나 일치할 때만)
+	// 2-1. 메인 메쉬 확인 (AttachParentSocketName이 없거나 일치할 때만)
 	if (AttachParentSocketName.IsNone()) 
 	{
 		if (USkeletalMeshComponent* MainMesh = Character->GetMesh())
@@ -123,7 +138,7 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 		}
 	}
 
-	// 1-2. 직접 붙은 컴포넌트(Mesh Component) 확인
+	// 2-2. 직접 붙은 컴포넌트(Mesh Component) 확인
 	// (블루프린트 컴포넌트 패널에서 메쉬 아래에 자식으로 붙이고 Parent Socket을 설정한 경우)
 	if (!bSocketFound)
 	{
@@ -157,8 +172,8 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 		UE_LOG(LogTemp, Warning, TEXT("SpawnProjectile: Socket [%s] (Parent: %s) not found! Using ActorLocation."), 
 			*MuzzleSocketName.ToString(), *AttachParentSocketName.ToString());
 	}
-
-
+	
+	// 3. 목표 지점 (Camera Aim) 계산
 	FVector TargetLocation = MuzzleLocation + (Character->GetActorForwardVector() * 1000.0f); // 기본값
 
 	if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
@@ -175,7 +190,8 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 		FCollisionQueryParams QueryParams;
 		QueryParams.AddIgnoredActor(Character); // 자신은 무시
 
-		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, 
+			ECC_Visibility, QueryParams))
 		{
 			TargetLocation = HitResult.ImpactPoint;
 		}
@@ -185,20 +201,15 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 		}
 	}
 
-	// 3. 발사 방향 회전 (Muzzle -> Target)
+	// 4. 발사 방향 회전 (Muzzle -> Target)
 	FRotator ProjectileRotation = UKismetMathLibrary::FindLookAtRotation(MuzzleLocation, TargetLocation);
 
-	// 4. 발사체 스폰
+	// 5. 발사체 스폰
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = Character;
 	SpawnParams.Instigator = Character;
 	
-	AActor* SpawnedProjectile = GetWorld()->SpawnActor<AActor>(ProjectileClass, MuzzleLocation, ProjectileRotation, SpawnParams);
-	
-	if (SpawnedProjectile)
-	{
-		UE_LOG(LogTemp, Log, TEXT("Colt Fired from [%s]! Projectile: %s"), *MuzzleSocketName.ToString(), *SpawnedProjectile->GetName());
-	}
+	GetWorld()->SpawnActor<AActor>(ClassToSpawn, MuzzleLocation, ProjectileRotation, SpawnParams);
 }
 
 void UBrawlGameplayAbility_Colt_Fire::OnMontageEnded()
