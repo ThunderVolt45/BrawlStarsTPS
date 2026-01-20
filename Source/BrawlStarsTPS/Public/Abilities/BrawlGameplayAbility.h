@@ -25,6 +25,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	FGameplayTag StartupInputTag;
 
+
 protected:
 	// 자신에게 GE를 적용하고 SetByCaller 값 설정 (쿨다운, 코스트 등)
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Abilities")
@@ -40,12 +41,14 @@ protected:
 		const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 
 	// 코스트 체크 로직 오버라이드 (탄환 부족 시 사격 차단 등)
-	virtual bool CheckCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, OUT FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
+	virtual bool CheckCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, 
+		OUT FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
 
 	// 코스트 적용 로직 오버라이드 (SetByCaller 지원)
-	virtual void ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const override;
+	virtual void ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, 
+		const FGameplayAbilityActivationInfo ActivationInfo) const override;
 
-protected:
+	protected:
 	// 이 어빌리티 사용 시 소모할 비용 양 (SetByCaller로 전달됨)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Costs")
 	float AbilityCostAmount = 1.0f;

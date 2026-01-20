@@ -122,24 +122,36 @@ bool UBrawlGameplayAbility::CheckCost(const FGameplayAbilitySpecHandle Handle, c
 
 void UBrawlGameplayAbility::ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
 {
-	if (!CostGameplayEffectClass) return;
-
-	UE_LOG(LogTemp, Warning, TEXT("ApplyCost Called for Ability [%s]. GE: [%s], Amount: %f"), *GetName(), *CostGameplayEffectClass->GetName(), AbilityCostAmount);
+	UE_LOG(LogTemp, Warning, TEXT("ApplyCost Called for Ability [%s]. Amount: %f"), *GetName(), AbilityCostAmount);
 
 	if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
 	{
-		FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
-		ContextHandle.AddSourceObject(this);
-
-		// 코스트 GE Spec 생성
-		FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(CostGameplayEffectClass, GetAbilityLevel(), ContextHandle);
-		if (SpecHandle.IsValid())
+		// GE가 있다면 GE로 적용 (SetByCaller)
+		if (CostGameplayEffectClass)
 		{
-			// Data.Cost 태그로 비용 값 전달 (SetByCaller)
-			static FGameplayTag DataCostTag = FGameplayTag::RequestGameplayTag(FName("Data.Cost"));
-			SpecHandle.Data.Get()->SetSetByCallerMagnitude(DataCostTag, AbilityCostAmount);
-			
-			ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+			FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+			ContextHandle.AddSourceObject(this);
+
+			FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(CostGameplayEffectClass, GetAbilityLevel(), ContextHandle);
+			if (SpecHandle.IsValid())
+			{
+				static FGameplayTag DataCostTag = FGameplayTag::RequestGameplayTag(FName("Data.Cost"));
+				SpecHandle.Data.Get()->SetSetByCallerMagnitude(DataCostTag, AbilityCostAmount);
+				
+				ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+			}
+		}
+		else
+		{
+			// GE가 없다면 C++ 직접 차감 (안전하고 빠름)
+			// ApplyModToAttributeUnsafe 사용
+			ASC->ApplyModToAttributeUnsafe(UBrawlAttributeSet::GetAmmoAttribute(), EGameplayModOp::Additive, -AbilityCostAmount);
+		}
+
+		// 화면 출력 (성공 시)
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Yellow, FString::Printf(TEXT("Cost Applied! -%.0f"), AbilityCostAmount));
 		}
 	}
 }

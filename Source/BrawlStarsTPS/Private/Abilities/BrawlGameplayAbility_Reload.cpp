@@ -98,8 +98,12 @@ void UBrawlGameplayAbility_Reload::CommitReload()
 	
 	ASC->ApplyModToAttributeUnsafe(UBrawlAttributeSet::GetAmmoAttribute(), EGameplayModOp::Additive, ReloadAmount);
 
-	// 로그 출력
-	// UE_LOG(LogTemp, Log, TEXT("Reload Complete. Added %f Ammo."), ReloadAmount);
+	// 로그 및 화면 출력
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Reloaded! +%.0f"), ReloadAmount));
+	}
+	UE_LOG(LogTemp, Log, TEXT("Reload Complete. Added %f Ammo."), ReloadAmount);
 
 	// 재장전 후에도 탄환이 부족하면 다시 타이머 시작 (OnAmmoAttributeChanged가 호출되므로 자동 처리됨)
 	// ApplyModToAttributeUnsafe는 AttributeChangeDelegate를 트리거하므로, TryReloadToken이 다시 불림.

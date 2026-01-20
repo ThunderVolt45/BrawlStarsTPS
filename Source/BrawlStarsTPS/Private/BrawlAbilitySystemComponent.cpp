@@ -19,6 +19,8 @@ void UBrawlAbilitySystemComponent::AddCharacterAbilities(const TArray<TSubclassO
 		FGameplayAbilitySpec AbilitySpec = FGameplayAbilitySpec(AbilityClass, 1);
 		if (const UBrawlGameplayAbility* BrawlAbility = Cast<UBrawlGameplayAbility>(AbilitySpec.Ability))
 		{
+			UE_LOG(LogTemp, Warning, TEXT("Granting Ability: [%s]"), *AbilityClass->GetName());
+
 			// 1. 입력 태그가 있다면 매핑
 			if (BrawlAbility->StartupInputTag.IsValid())
 			{

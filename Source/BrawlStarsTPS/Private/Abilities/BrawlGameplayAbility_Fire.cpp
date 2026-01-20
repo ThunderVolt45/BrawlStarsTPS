@@ -19,14 +19,19 @@ void UBrawlGameplayAbility_Fire::ActivateAbility(const FGameplayAbilitySpecHandl
 	UE_LOG(LogTemp, Warning, TEXT("BrawlGameplayAbility_Fire::ActivateAbility Called!"));
 
 	// 1. 코스트 및 쿨다운 확인 및 지불
+	// CommitAbility는 Cost GE가 없으면 true를 반환하지만 ApplyCost를 부르지 않음.
+	// 따라서 CommitAbility 호출 후, 강제로 ApplyCost를 호출하여 C++ 변수 기반 차감을 수행.
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("BrawlGameplayAbility_Fire::ActivateAbility Failed CommitAbility"));
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+	
+	// 강제 코스트 적용 (GE 설정이 없어도 탄환 깎음)
+	ApplyCost(Handle, ActorInfo, ActivationInfo);
 
-	// 2. Gameplay Event 대기
+	// 2. Gameplay Event 대기 (Event.Weapon.Fire)
 	// 몽타주에서 노티파이로 이벤트를 보내면 OnFireEventReceived가 호출됨
 	UAbilityTask_WaitGameplayEvent* WaitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, FireEventTag);
 	if (WaitEventTask)
