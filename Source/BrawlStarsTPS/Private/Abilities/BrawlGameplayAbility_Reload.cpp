@@ -105,6 +105,14 @@ void UBrawlGameplayAbility_Reload::CommitReload()
 	}
 	UE_LOG(LogTemp, Log, TEXT("Reload Complete. Added %f Ammo."), ReloadAmount);
 
-	// 재장전 후에도 탄환이 부족하면 다시 타이머 시작 (OnAmmoAttributeChanged가 호출되므로 자동 처리됨)
-	// ApplyModToAttributeUnsafe는 AttributeChangeDelegate를 트리거하므로, TryReloadToken이 다시 불림.
+	// 중요: 타이머 콜백 내부에서 다시 타이머를 설정하려면, 
+	// 기존 핸들이 아직 'Active'로 간주될 수 있으므로 명시적으로 초기화해야 함.
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(ReloadTimerHandle);
+	}
+
+	// 재장전 후에도 탄환이 부족하면 다시 타이머 시작
+	// 델리게이트에만 의존하지 않고 명시적으로 호출하여 루프 보장
+	TryReloadToken();
 }
