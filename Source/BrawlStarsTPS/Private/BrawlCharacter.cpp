@@ -108,8 +108,9 @@ void ABrawlCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 void ABrawlCharacter::InitializeAttributes()
 {
-	if (!AbilitySystemComponent || !CharacterDataTable || !InitStatsEffectClass)
+	if (!AbilitySystemComponent || !CharacterDataTable)
 	{
+		UE_LOG(LogTemp, Error, TEXT("InitializeAttributes Failed! ASC or DT is NULL"));
 		return;
 	}
 
@@ -119,25 +120,21 @@ void ABrawlCharacter::InitializeAttributes()
 	
 	if (Row)
 	{
-		// Context 생성
-		FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
-		Context.AddSourceObject(this);
+		UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::InitializeAttributes - Loaded Data for [%s]. MaxHealth: %f, MaxAmmo: %f"), 
+			*CharacterID.ToString(), Row->MaxHealth, Row->MaxAmmo);
 
-		// Spec 생성
-		FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(InitStatsEffectClass, 1.0f, Context);
-		if (SpecHandle.IsValid())
-		{
-			// SetByCaller 값 주입
-			// Data.MaxHealth, Data.MaxAmmo 태그를 사용합니다.
-			// (주의: 태그가 Native Gameplay Tag로 등록되어 있지 않다면 RequestGameplayTag로 생성/검색합니다)
-			static FGameplayTag MaxHealthTag = FGameplayTag::RequestGameplayTag(FName("Data.MaxHealth"));
-			static FGameplayTag MaxAmmoTag = FGameplayTag::RequestGameplayTag(FName("Data.MaxAmmo"));
+		// GE를 사용하지 않고 직접 Base Value 설정 (안전하고 확실함)
+		// 1. 체력
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxHealthAttribute(), Row->MaxHealth);
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHealthAttribute(), Row->MaxHealth);
 
-			SpecHandle.Data.Get()->SetSetByCallerMagnitude(MaxHealthTag, Row->MaxHealth);
-			SpecHandle.Data.Get()->SetSetByCallerMagnitude(MaxAmmoTag, Row->MaxAmmo);
-			
-			// 적용
-			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-		}
+		// 2. 탄환
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxAmmoAttribute(), Row->MaxAmmo);
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetAmmoAttribute(), Row->MaxAmmo);
+
+		// 3. 기타 (필요하다면 추가)
+		// AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetAttackDamageAttribute(), Row->AttackDamage);
+		
+		UE_LOG(LogTemp, Warning, TEXT("Attributes Initialized via C++ Direct Set."));
 	}
 }

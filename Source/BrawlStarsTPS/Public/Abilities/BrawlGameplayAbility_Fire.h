@@ -1,0 +1,57 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Abilities/BrawlGameplayAbility.h"
+#include "BrawlGameplayAbility_Fire.generated.h"
+
+/**
+ * UBrawlGameplayAbility_Fire
+ * 
+ * 기본 공격 및 발사체 발사를 담당하는 어빌리티
+ */
+UCLASS()
+class BRAWLSTARSTPS_API UBrawlGameplayAbility_Fire : public UBrawlGameplayAbility
+{
+	GENERATED_BODY()
+	
+public:
+	UBrawlGameplayAbility_Fire();
+
+	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
+
+protected:
+	// Gameplay Event 수신 시 호출될 콜백
+	UFUNCTION()
+	void OnFireEventReceived(FGameplayEventData Payload);
+
+	// 발사체 스폰 로직 (Blueprint에서 호출 가능하도록)                                                                      │
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
+	void SpawnProjectile();  
+
+	// 몽타주 종료 콜백
+	UFUNCTION()
+	void OnMontageEnded();
+
+protected:
+	// 발사할 발사체 클래스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	TSubclassOf<AActor> ProjectileClass;
+
+	// 공격 몽타주
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UAnimMontage> FireMontage;
+
+	// 발사체를 생성할 게임플레이 이벤트 이름
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	FGameplayTag FireEventTag = FGameplayTag::RequestGameplayTag(FName("Event.Weapon.Fire"));
+		
+	// 발사체 스폰 위치 (소켓 이름)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	FName MuzzleSocketName = FName("Muzzle");
+	
+	// 발사체 데미지 (Projectle에 전달할 값)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	float DamageAmount = 100.0f;
+};

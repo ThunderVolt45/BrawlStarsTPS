@@ -4,6 +4,7 @@
 #include "Abilities/BrawlGameplayAbility.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "BrawlAttributeSet.h"
 
 UBrawlGameplayAbility::UBrawlGameplayAbility()
 {
@@ -17,6 +18,9 @@ UBrawlGameplayAbility::UBrawlGameplayAbility()
 void UBrawlGameplayAbility::ApplyEffectToSelf(TSubclassOf<UGameplayEffect> EffectClass, FGameplayTag DataTag, float Magnitude)
 {
 	if (!EffectClass) return;
+
+	UE_LOG(LogTemp, Warning, TEXT("ApplyEffectToSelf Called by [%s]. Effect: [%s], Tag: [%s], Mag: %f"), 
+		*GetName(), *EffectClass->GetName(), *DataTag.ToString(), Magnitude);
 
 	if (const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo())
 	{
@@ -38,6 +42,9 @@ void UBrawlGameplayAbility::ApplyEffectToSelf(TSubclassOf<UGameplayEffect> Effec
 void UBrawlGameplayAbility::ApplyDamageEffect(AActor* TargetActor, TSubclassOf<UGameplayEffect> DamageEffectClass, float DamageAmount)
 {
 	if (!TargetActor || !DamageEffectClass) return;
+
+	UE_LOG(LogTemp, Warning, TEXT("ApplyDamageEffect Called by [%s]. Target: [%s], Effect: [%s], Damage: %f"), 
+		*GetName(), *TargetActor->GetName(), *DamageEffectClass->GetName(), DamageAmount);
 
 	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
 	if (!TargetASC) return;
@@ -73,4 +80,66 @@ void UBrawlGameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Han
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("BrawlAbility: [%s] Activated on [%s]"), *GetName(), *GetAvatarActorFromActorInfo()->GetName());
+}
+
+bool UBrawlGameplayAbility::CheckCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, OUT FGameplayTagContainer* OptionalRelevantTags) const
+{
+	// 디버깅: 모든 어빌리티의 코스트 체크 로그 출력 (Warning으로 격상)
+	// UE_LOG(LogTemp, Warning, TEXT("CheckCost Called for Ability: %s"), *GetName());
+
+	if (!Super::CheckCost(Handle, ActorInfo, OptionalRelevantTags))
+	{
+		// UE_LOG(LogTemp, Warning, TEXT("Ability [%s] failed Super::CheckCost"), *GetName());
+		return false;
+	}
+
+	// 사격 어빌리티인 경우 탄환 체크
+	static FGameplayTag FireInputTag = FGameplayTag::RequestGameplayTag(FName("InputTag.Ability.Fire"));
+	if (StartupInputTag.MatchesTag(FireInputTag))
+	{
+		if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
+		{
+			bool bFound = false;
+			float CurrentAmmo = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetAmmoAttribute(), bFound);
+			
+			UE_LOG(LogTemp, Warning, TEXT("Ability [%s] Checking Ammo. Current: %f, Required: %f"), *GetName(), CurrentAmmo, AbilityCostAmount);
+
+			// 탄환이 설정된 코스트 미만이면 사격 불가
+			if (bFound && CurrentAmmo < AbilityCostAmount)
+			{
+				if (GEngine)
+				{
+					GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Red, TEXT("Not Enough Ammo!"));
+				}
+				UE_LOG(LogTemp, Warning, TEXT("Ability [%s] Blocked: Not Enough Ammo!"), *GetName());
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+void UBrawlGameplayAbility::ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
+{
+	if (!CostGameplayEffectClass) return;
+
+	UE_LOG(LogTemp, Warning, TEXT("ApplyCost Called for Ability [%s]. GE: [%s], Amount: %f"), *GetName(), *CostGameplayEffectClass->GetName(), AbilityCostAmount);
+
+	if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
+	{
+		FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+		ContextHandle.AddSourceObject(this);
+
+		// 코스트 GE Spec 생성
+		FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(CostGameplayEffectClass, GetAbilityLevel(), ContextHandle);
+		if (SpecHandle.IsValid())
+		{
+			// Data.Cost 태그로 비용 값 전달 (SetByCaller)
+			static FGameplayTag DataCostTag = FGameplayTag::RequestGameplayTag(FName("Data.Cost"));
+			SpecHandle.Data.Get()->SetSetByCallerMagnitude(DataCostTag, AbilityCostAmount);
+			
+			ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
+	}
 }
