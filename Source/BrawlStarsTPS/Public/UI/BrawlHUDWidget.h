@@ -9,6 +9,10 @@
 
 class UTextBlock;
 class UProgressBar;
+class UBrawlSkillWidget;
+class UBrawlGadgetWidget;
+class UBrawlSuperWidget;
+class UBrawlHyperWidget;
 
 // 값이 변경되었을 때 블루프린트로 쏴줄 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAttributeChangedSignature, float, NewValue);
@@ -29,6 +33,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void BindAttributeCallbacks(class UAbilitySystemComponent* ASC);
 
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+
 protected:
 	// 속성 변경 시 호출될 콜백들
 	void OnHealthChanged(const FOnAttributeChangeData& Data);
@@ -43,16 +49,23 @@ protected:
 public:
 	// 블루프린트에서 바인딩할 UI 요소들
 	UPROPERTY(meta=(BindWidget))
-	UProgressBar* HealthBar;
+	TObjectPtr<UProgressBar> HealthBar;
 	
 	UPROPERTY(meta=(BindWidget))
-	UTextBlock* HealthText;
+	TObjectPtr<UTextBlock> HealthText;
+
+	// 스킬 위젯들 (WBP_BrawlHUD에서 이름이 일치해야 함)
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UBrawlGadgetWidget> Gadget1Widget;
 	
-	// UPROPERTY(meta=(BindWidget))
-	// UProgressBar* SuperGauge;
-	//
-	// UPROPERTY(meta=(BindWidget))
-	// UProgressBar* HyperGauge;
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UBrawlGadgetWidget> Gadget2Widget;
+	
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UBrawlSuperWidget> SuperWidget;
+
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UBrawlHyperWidget> HyperWidget;
 	
 	// 블루프린트에서 바인딩할 이벤트들
 	UPROPERTY(BlueprintAssignable, Category = "Brawl|UI|Attributes")
@@ -78,4 +91,7 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Brawl|UI|Attributes")
 	FOnAttributeChangedSignature OnMaxHyperChargeChangedDelegate;
+
+protected:
+	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 };
