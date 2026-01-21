@@ -9,14 +9,9 @@ void UBrawlHyperWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	// Active 이미지의 다이내믹 머티리얼 생성
 	if (ImageHyperActive)
 	{
 		ImageHyperActive->SetVisibility(ESlateVisibility::Hidden);
-		if (ImageHyperActive->GetBrush().GetResourceObject())
-		{
-			ActiveMaterialDynamic = ImageHyperActive->GetDynamicMaterial();
-		}
 	}
 
 	if (ImageHyperReady)
@@ -62,28 +57,21 @@ void UBrawlHyperWidget::SetIsActive(bool bNewIsActive)
 	{
 		// 발동 상태: Ready와 일반 Progress 숨기고 Active 표시
 		if (ImageHyperReady) ImageHyperReady->SetVisibility(ESlateVisibility::Hidden);
-		if (ImageProgress) ImageProgress->SetVisibility(ESlateVisibility::Hidden); // 필요하다면 숨김
 		if (ImageHyperActive) ImageHyperActive->SetVisibility(ESlateVisibility::HitTestInvisible);
-		
-		// 아이콘도 숨길지 여부는 디자인에 따라 결정 (여기선 덮어씌우는 컨셉이므로 유지)
 	}
 	else
 	{
 		// 발동 해제: 다시 Ready 상태나 일반 상태로 복귀
 		if (ImageHyperActive) ImageHyperActive->SetVisibility(ESlateVisibility::Hidden);
 		
-		// 원래 상태 복원
-		if (ImageProgress) ImageProgress->SetVisibility(ESlateVisibility::HitTestInvisible);
+		// 원래 상태 복원]
 		SetIsReady(bIsReady); // bIsReady 값에 따라 Ready 이미지 가시성 재설정
 	}
 }
 
 void UBrawlHyperWidget::SetActivePercent(float InPercent)
 {
-	if (ActiveMaterialDynamic)
-	{
-		ActiveMaterialDynamic->SetScalarParameterValue(MaterialPercentParameterName, InPercent);
-	}
+	SetPercent(InPercent);
 }
 
 void UBrawlHyperWidget::OnChargeIncreased()

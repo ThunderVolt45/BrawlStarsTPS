@@ -34,4 +34,16 @@ protected:
 	// 쿨다운 시간을 표시할 텍스트 블록 (BP에서 이름이 일치해야 함)
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> TextCooldown;
+	
+	// 가젯 쿨다운 마스크 텍스쳐
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|UI")
+	TObjectPtr<UTexture2D> TextureCooldownMask;
+	
+	// 가젯 쿨다운 마스크 다이내믹 머티리얼
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> ActiveMaterialDynamic;
+	
+	// 머티리얼의 Percent 파라미터 이름 (기본값: "Percent")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|UI")
+	FName MaterialMaskTextureParameterName = FName("MaskTexture");
 };

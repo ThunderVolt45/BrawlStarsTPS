@@ -54,6 +54,12 @@ public:
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UTextBlock> HealthText;
 
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UProgressBar> AmmoBar;
+
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UTextBlock> AmmoText;
+
 	// 스킬 위젯들 (WBP_BrawlHUD에서 이름이 일치해야 함)
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UBrawlGadgetWidget> Gadget1Widget;
@@ -66,6 +72,10 @@ public:
 
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UBrawlHyperWidget> HyperWidget;
+
+	// 게임 남은 시간 (분:초)
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UTextBlock> MatchTimerText;
 	
 	// 블루프린트에서 바인딩할 이벤트들
 	UPROPERTY(BlueprintAssignable, Category = "Brawl|UI|Attributes")

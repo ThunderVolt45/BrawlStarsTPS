@@ -9,6 +9,9 @@
 #include "UI/BrawlSuperWidget.h"
 #include "UI/BrawlHyperWidget.h"
 #include "GameplayTagContainer.h"
+#include "Components/ProgressBar.h"
+#include "Components/TextBlock.h"
+#include "GameFramework/GameStateBase.h"
 
 void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 {
@@ -32,16 +35,17 @@ void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 	ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetHyperChargeAttribute()).AddUObject(this, &UBrawlHUDWidget::OnHyperChargeChanged);
 	ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetMaxHyperChargeAttribute()).AddUObject(this, &UBrawlHUDWidget::OnMaxHyperChargeChanged);
 
-	// 초기 값 한 번 보내주기 (위젯 생성 시점)
-	const float Health = ASC->GetNumericAttribute(UBrawlAttributeSet::GetHealthAttribute());
-	const float MaxHealth = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxHealthAttribute());
-	const float Ammo = ASC->GetNumericAttribute(UBrawlAttributeSet::GetAmmoAttribute());
-	const float MaxAmmo = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxAmmoAttribute());
-	const float SuperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetSuperChargeAttribute());
-	const float MaxSuperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxSuperChargeAttribute());
-	const float HyperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetHyperChargeAttribute());
-	const float MaxHyperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxHyperChargeAttribute());
+	// 초기 값 업데이트
+	float Health = ASC->GetNumericAttribute(UBrawlAttributeSet::GetHealthAttribute());
+	float MaxHealth = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxHealthAttribute());
+	float Ammo = ASC->GetNumericAttribute(UBrawlAttributeSet::GetAmmoAttribute());
+	float MaxAmmo = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxAmmoAttribute());
+	float SuperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetSuperChargeAttribute());
+	float MaxSuperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxSuperChargeAttribute());
+	float HyperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetHyperChargeAttribute());
+	float MaxHyperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxHyperChargeAttribute());
 
+	// 델리게이트 브로드캐스트 (BP용)
 	OnHealthChangedDelegate.Broadcast(Health);
 	OnMaxHealthChangedDelegate.Broadcast(MaxHealth);
 	OnAmmoChangedDelegate.Broadcast(Ammo);
@@ -51,7 +55,16 @@ void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 	OnHyperChargeChangedDelegate.Broadcast(HyperCharge);
 	OnMaxHyperChargeChangedDelegate.Broadcast(MaxHyperCharge);
 
-	// 초기 위젯 상태 업데이트
+	// 위젯 초기화
+	if (HealthBar && MaxHealth > 0.f) HealthBar->SetPercent(Health / MaxHealth);
+	if (HealthText) HealthText->SetText(FText::AsNumber((int32)Health));
+	
+	if (AmmoBar && MaxAmmo > 0.f) AmmoBar->SetPercent(Ammo / MaxAmmo);
+	if (AmmoText) AmmoText->SetText(FText::Format(
+			NSLOCTEXT("BrawlHUD", "AmmoTextFormat", "{0} / {1}"), 
+			FText::AsNumber((int32)Ammo), FText::AsNumber((int32)MaxAmmo)));
+
+	// 스킬 위젯 업데이트
 	if (SuperWidget && MaxSuperCharge > 0.f)
 	{
 		SuperWidget->SetPercent(SuperCharge / MaxSuperCharge);
@@ -68,6 +81,25 @@ void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 void UBrawlHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	// 0. 게임 시간 표시 (GameMode가 있다고 가정)
+	// 쇼다운 등의 모드에서는 카운트다운일 수 있음. 여기서는 단순히 서버 시간(초)을 분:초로 표시
+	if (MatchTimerText)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			// GameState에서 실제 매치 시간을 가져오는 게 좋음.
+			// 일단은 게임 실행 후 경과 시간 표시
+			float TimeSeconds = World->GetTimeSeconds();
+			
+			// 카운트다운 방식이라면: MaxTime - TimeSeconds
+			// 여기서는 경과 시간 (0:00 -> 0:01 ...)
+			int32 Minutes = FMath::FloorToInt(TimeSeconds / 60.f);
+			int32 Seconds = FMath::FloorToInt(TimeSeconds) % 60;
+			
+			MatchTimerText->SetText(FText::FromString(FString::Printf(TEXT("%d:%02d"), Minutes, Seconds)));
+		}
+	}
 
 	if (!AbilitySystemComponent.IsValid()) return;
 
@@ -117,7 +149,8 @@ void UBrawlHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		{
 			FGameplayEffectQuery HyperQuery;
 			HyperQuery.CustomMatchDelegate.BindLambda([&](const FActiveGameplayEffect& Effect) {
-				return Effect.Spec.Def->GetAssetTags().HasTag(HyperTag);
+				return Effect.Spec.Def->GetAssetTags().HasTag(HyperTag) || 
+					   Effect.Spec.Def->GetGrantedTags().HasTag(HyperTag);
 			});
 			
 			TArray<FActiveGameplayEffectHandle> ActiveEffects = AbilitySystemComponent->GetActiveEffects(HyperQuery);
@@ -129,6 +162,9 @@ void UBrawlHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 					float Duration = ActiveGE->GetDuration();
 					float Remaining = ActiveGE->GetTimeRemaining(GetWorld()->GetTimeSeconds());
 					
+					// 종료 임박 시 0으로 보정
+					if (Remaining <= 0.1f) Remaining = 0.0f;
+
 					if (Duration > 0.f)
 					{
 						HyperWidget->SetActivePercent(Remaining / Duration);
@@ -139,25 +175,71 @@ void UBrawlHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	}
 }
 
-
 void UBrawlHUDWidget::OnHealthChanged(const FOnAttributeChangeData& Data)
 {
 	OnHealthChangedDelegate.Broadcast(Data.NewValue);
+
+	if (AbilitySystemComponent.IsValid())
+	{
+		float MaxVal = AbilitySystemComponent->GetNumericAttribute(UBrawlAttributeSet::GetMaxHealthAttribute());
+		if (MaxVal > 0.f)
+		{
+			if (HealthBar) HealthBar->SetPercent(Data.NewValue / MaxVal);
+		}
+		if (HealthText) HealthText->SetText(FText::AsNumber((int32)Data.NewValue));
+	}
 }
 
 void UBrawlHUDWidget::OnMaxHealthChanged(const FOnAttributeChangeData& Data)
 {
 	OnMaxHealthChangedDelegate.Broadcast(Data.NewValue);
+
+	if (AbilitySystemComponent.IsValid())
+	{
+		float CurVal = AbilitySystemComponent->GetNumericAttribute(UBrawlAttributeSet::GetHealthAttribute());
+		if (Data.NewValue > 0.f)
+		{
+			if (HealthBar) HealthBar->SetPercent(CurVal / Data.NewValue);
+		}
+	}
 }
 
 void UBrawlHUDWidget::OnAmmoChanged(const FOnAttributeChangeData& Data)
 {
 	OnAmmoChangedDelegate.Broadcast(Data.NewValue);
+
+	if (AbilitySystemComponent.IsValid())
+	{
+		float MaxVal = AbilitySystemComponent->GetNumericAttribute(UBrawlAttributeSet::GetMaxAmmoAttribute());
+		
+		if (MaxVal > 0.f)
+		{
+			if (AmmoBar) AmmoBar->SetPercent(Data.NewValue / MaxVal);
+		}
+		
+		if (AmmoText) AmmoText->SetText(FText::Format(
+			NSLOCTEXT("BrawlHUD", "AmmoTextFormat", "{0} / {1}"), 
+			FText::AsNumber((int32)Data.NewValue), FText::AsNumber((int32)MaxVal)));
+	}
 }
 
 void UBrawlHUDWidget::OnMaxAmmoChanged(const FOnAttributeChangeData& Data)
 {
 	OnMaxAmmoChangedDelegate.Broadcast(Data.NewValue);
+
+	if (AbilitySystemComponent.IsValid())
+	{
+		float CurVal = AbilitySystemComponent->GetNumericAttribute(UBrawlAttributeSet::GetAmmoAttribute());
+		
+		if (Data.NewValue > 0.f)
+		{
+			if (AmmoBar) AmmoBar->SetPercent(CurVal / Data.NewValue);
+		}
+		
+		if (AmmoText) AmmoText->SetText(FText::Format(
+			NSLOCTEXT("BrawlHUD", "AmmoTextFormat", "{0} / {1}"), 
+			FText::AsNumber((int32)CurVal), FText::AsNumber((int32)Data.NewValue)));
+	}
 }
 
 void UBrawlHUDWidget::OnSuperChargeChanged(const FOnAttributeChangeData& Data)
@@ -179,7 +261,6 @@ void UBrawlHUDWidget::OnMaxSuperChargeChanged(const FOnAttributeChangeData& Data
 {
 	OnMaxSuperChargeChangedDelegate.Broadcast(Data.NewValue);
 	
-	// Max값이 바뀌어도 퍼센트는 다시 계산해야 함
 	if (SuperWidget && AbilitySystemComponent.IsValid())
 	{
 		float CurVal = AbilitySystemComponent->GetNumericAttribute(UBrawlAttributeSet::GetSuperChargeAttribute());

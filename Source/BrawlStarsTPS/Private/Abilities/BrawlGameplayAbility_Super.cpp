@@ -35,12 +35,11 @@ void UBrawlGameplayAbility_Super::ApplyCost(const FGameplayAbilitySpecHandle Han
 	// 궁극기 게이지 소모
 	if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
 	{
-		// 게이지를 0으로 만들거나 SuperCostAmount만큼 차감
-		// 여기서는 0으로 초기화 (Add 옵셋을 사용하여 현재 값만큼 뺌)
+		// 게이지를 0으로 덮어씌운다
 		bool bFound = false;
 		float CurrentSuperCharge = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetSuperChargeAttribute(), bFound);
 		
-		ASC->ApplyModToAttributeUnsafe(UBrawlAttributeSet::GetSuperChargeAttribute(), EGameplayModOp::Additive, -CurrentSuperCharge);
+		ASC->ApplyModToAttributeUnsafe(UBrawlAttributeSet::GetSuperChargeAttribute(), EGameplayModOp::Override, 0);
 		
 		if (GEngine)
 		{
