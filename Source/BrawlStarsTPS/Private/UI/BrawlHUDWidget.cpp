@@ -69,69 +69,76 @@ void UBrawlHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
-	if (HyperWidget && AbilitySystemComponent.IsValid())
+	if (!AbilitySystemComponent.IsValid()) return;
+
+	// 1. 가젯 쿨다운 처리
+	if (Gadget1Widget)
 	{
-		// 하이퍼차지 상태 태그 확인
-		static FGameplayTag HyperTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
+		static FGameplayTag GadgetCooldownTag = FGameplayTag::RequestGameplayTag(FName("State.CooldownGadget"));
 		
+		FGameplayEffectQuery CooldownQuery;
+		CooldownQuery.CustomMatchDelegate.BindLambda([&](const FActiveGameplayEffect& Effect) {
+			return Effect.Spec.Def->GetGrantedTags().HasTag(GadgetCooldownTag) || 
+				   Effect.Spec.Def->GetAssetTags().HasTag(GadgetCooldownTag);
+		});
+
+		TArray<FActiveGameplayEffectHandle> CooldownEffects = AbilitySystemComponent->GetActiveEffects(CooldownQuery);
+		if (CooldownEffects.Num() > 0)
+		{
+			const FActiveGameplayEffect* Effect = AbilitySystemComponent->GetActiveGameplayEffect(CooldownEffects[0]);
+			if (Effect)
+			{
+				float Remaining = Effect->GetTimeRemaining(GetWorld()->GetTimeSeconds());
+				float Duration = Effect->GetDuration();
+				
+				Gadget1Widget->SetRemainingCooldown(Remaining);
+				if (Duration > 0.f)
+				{
+					Gadget1Widget->SetPercent(Remaining / Duration);
+				}
+			}
+		}
+		else
+		{
+			Gadget1Widget->SetRemainingCooldown(0.f);
+			Gadget1Widget->SetPercent(0.f);
+		}
+	}
+
+	// 2. 하이퍼차지 상태 및 지속 시간 처리
+	if (HyperWidget)
+	{
+		static FGameplayTag HyperTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
 		bool bIsHyper = AbilitySystemComponent->HasMatchingGameplayTag(HyperTag);
 		
-		// 이전 상태와 비교 로직이 없으므로 매 틱 호출 (최적화 가능)
-		// SetIsActive 내부에서 상태 변화 시에만 처리하면 됨
 		HyperWidget->SetIsActive(bIsHyper);
 
 		if (bIsHyper)
 		{
-			// 남은 지속 시간 계산
-			// 해당 태그를 부여한 GE를 찾아야 함
-			// QueryOptions: TagFilter로 HyperTag를 포함하는 GE 검색
-			// 하지만 GetActiveEffectsWithAllTags는 Handle을 반환하지 않고 QueryResult를 반환하므로 조금 복잡함.
-			// 간단하게: ASC를 통해 태그에 해당하는 GE의 남은 시간을 가져오는 헬퍼 함수가 있다면 좋음.
-			// 여기서는 모든 활성 GE를 순회. (개수가 적으므로 괜찮음)
-			
-			float Remaining = 0.f;
-			float Duration = 0.f;
-
-			// 이 부분은 최적화를 위해 캐싱하거나 다른 방식을 고려할 수 있음
-			// 현재는 단순 구현
-			FGameplayEffectQuery Query;
-			Query.CustomMatchDelegate.BindLambda([&](const FActiveGameplayEffect& Effect) {
-				const FGameplayTagContainer& AssetTags = Effect.Spec.Def->GetAssetTags();
-				return AssetTags.HasTag(HyperTag);
+			FGameplayEffectQuery HyperQuery;
+			HyperQuery.CustomMatchDelegate.BindLambda([&](const FActiveGameplayEffect& Effect) {
+				return Effect.Spec.Def->GetAssetTags().HasTag(HyperTag);
 			});
 			
-			// 혹은 그냥 GetGameplayEffectRemainingDuration 사용 (만약 태그가 아니라 GE 클래스/핸들을 안다면)
-			// 여기서는 태그로 검색
-			
-			TArray<FActiveGameplayEffectHandle> ActiveEffects = AbilitySystemComponent->GetActiveEffects(Query);
+			TArray<FActiveGameplayEffectHandle> ActiveEffects = AbilitySystemComponent->GetActiveEffects(HyperQuery);
 			if (ActiveEffects.Num() > 0)
 			{
-				// 가장 긴 시간을 가진 것 선택 (중첩 불가라면 하나뿐)
-				FActiveGameplayEffectHandle Handle = ActiveEffects[0];
-				
-				// Remaining과 Duration 얻기
-				// ASC의 GetActiveGameplayEffectRemainingDuration 등은 public이 아닐 수 있음.
-				// 하지만 FActiveGameplayEffect 객체에서 직접 계산 가능
-				
-				const FActiveGameplayEffect* ActiveGE = AbilitySystemComponent->GetActiveGameplayEffect(Handle);
+				const FActiveGameplayEffect* ActiveGE = AbilitySystemComponent->GetActiveGameplayEffect(ActiveEffects[0]);
 				if (ActiveGE)
 				{
-					Duration = ActiveGE->GetDuration();
-					Remaining = ActiveGE->GetTimeRemaining(AbilitySystemComponent->GetWorld()->GetTimeSeconds());
+					float Duration = ActiveGE->GetDuration();
+					float Remaining = ActiveGE->GetTimeRemaining(GetWorld()->GetTimeSeconds());
+					
+					if (Duration > 0.f)
+					{
+						HyperWidget->SetActivePercent(Remaining / Duration);
+					}
 				}
-			}
-
-			if (Duration > 0.f)
-			{
-				HyperWidget->SetActivePercent(Remaining / Duration);
-			}
-			else
-			{
-				HyperWidget->SetActivePercent(0.f);
 			}
 		}
 	}
 }
+
 
 void UBrawlHUDWidget::OnHealthChanged(const FOnAttributeChangeData& Data)
 {
