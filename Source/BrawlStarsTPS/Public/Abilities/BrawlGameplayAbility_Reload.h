@@ -41,10 +41,6 @@ protected:
 	virtual void OnFireTagChanged(const FGameplayTag Tag, int32 NewCount);
 
 protected:
-	// 재장전 1회당 걸리는 시간 (초) - 어트리뷰트에서 가져올 수도 있지만 기본값 설정
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reload")
-	float ReloadDuration = 1.0f;
-
 	// 한 번에 충전할 탄환 수
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reload")
 	float ReloadAmount = 1.0f;

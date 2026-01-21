@@ -23,6 +23,10 @@ void UBrawlAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute,
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxAmmo());
 	}
+	else if (Attribute == GetReloadSpeedAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f);
+	}
 	else if (Attribute == GetSuperChargeAttribute())
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxSuperCharge());
@@ -118,6 +122,11 @@ void UBrawlAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 	else if (Data.EvaluatedData.Attribute == GetAmmoAttribute())
 	{
 		SetAmmo(FMath::Clamp(GetAmmo(), 0.0f, GetMaxAmmo()));
+	}
+	// 재장전 시간 처리
+	else if (Data.EvaluatedData.Attribute == GetReloadSpeedAttribute())
+	{
+		SetReloadSpeed(GetReloadSpeed());
 	}
 	// 궁극기 충전 처리
 	else if (Data.EvaluatedData.Attribute == GetSuperChargeAttribute())

@@ -101,10 +101,14 @@ void UBrawlGameplayAbility_Reload::TryReloadToken()
 
 	bool bFoundAmmo = false;
 	bool bFoundMaxAmmo = false;
+	bool bFoundReloadSpeed = false;
 	float CurrentAmmo = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetAmmoAttribute(), bFoundAmmo);
 	float MaxAmmo = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetMaxAmmoAttribute(), bFoundMaxAmmo);
-
-	if (bFoundAmmo && bFoundMaxAmmo)
+	float ReloadSpeed = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetReloadSpeedAttribute(), bFoundReloadSpeed);
+	
+	if (ReloadSpeed <= 0.0f) ReloadSpeed = 1.0f;
+	
+	if (bFoundAmmo && bFoundMaxAmmo && bFoundReloadSpeed)
 	{
 		if (CurrentAmmo < MaxAmmo)
 		{
@@ -115,7 +119,8 @@ void UBrawlGameplayAbility_Reload::TryReloadToken()
 				// 타이머가 활성화되지 않았고, 일시정지 상태도 아닐 때만 새로 시작
 				if (!TM.IsTimerActive(ReloadTimerHandle) && !TM.IsTimerPaused(ReloadTimerHandle))
 				{
-					TM.SetTimer(ReloadTimerHandle, this, &UBrawlGameplayAbility_Reload::CommitReload, ReloadDuration, false);
+					TM.SetTimer(ReloadTimerHandle, this, 
+						&UBrawlGameplayAbility_Reload::CommitReload, ReloadSpeed, false);
 				}
 			}
 		}
@@ -127,6 +132,11 @@ void UBrawlGameplayAbility_Reload::TryReloadToken()
 				GetWorld()->GetTimerManager().ClearTimer(ReloadTimerHandle);
 			}
 		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("??????? bFoundAmmo: %s bFoundMaxAmmo: %s bFoundReloadSpeed: %s"), 
+			bFoundAmmo ? TEXT("true") : TEXT("false"), bFoundMaxAmmo ? TEXT("true") : TEXT("false"), bFoundReloadSpeed ? TEXT("true") : TEXT("false"));
 	}
 }
 

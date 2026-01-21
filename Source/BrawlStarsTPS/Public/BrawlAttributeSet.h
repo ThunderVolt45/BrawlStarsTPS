@@ -47,6 +47,11 @@ public:
 	FGameplayAttributeData MaxAmmo;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, MaxAmmo);
 	
+	// 재장전 속도
+	UPROPERTY(BlueprintReadOnly, Category= "Attributes")
+	FGameplayAttributeData ReloadSpeed;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, ReloadSpeed);
+	
 	// 기본 공격 데미지
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
 	FGameplayAttributeData AttackDamage;
