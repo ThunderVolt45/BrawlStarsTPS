@@ -8,6 +8,7 @@
 
 class UInputMappingContext;
 class UUserWidget;
+class UBrawlHUDWidget;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -19,6 +20,13 @@ class ABrawlStarsTPSPlayerController : public APlayerController
 	GENERATED_BODY()
 	
 protected:
+	/** Main HUD Widget Class */
+	UPROPERTY(EditAnywhere, Category="UI")
+	TSubclassOf<UBrawlHUDWidget> BrawlHUDClass;
+
+	/** Pointer to the HUD widget */
+	UPROPERTY()
+	TObjectPtr<UBrawlHUDWidget> BrawlHUDWidget;
 
 	/** Input Mapping Contexts */
 	UPROPERTY(EditAnywhere, Category ="Input|Input Mappings")
@@ -42,6 +50,9 @@ protected:
 
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
+	
+	virtual void OnPossess(APawn* InPawn) override;
+	virtual void AcknowledgePossession(APawn* P) override;
 
 	/** Input mapping context setup */
 	virtual void SetupInputComponent() override;

@@ -55,13 +55,13 @@ public:
 	TObjectPtr<UTextBlock> HealthText;
 
 	// 스킬 위젯들 (WBP_BrawlHUD에서 이름이 일치해야 함)
-	UPROPERTY(meta=(BindWidgetOptional))
+	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UBrawlGadgetWidget> Gadget1Widget;
 	
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UBrawlGadgetWidget> Gadget2Widget;
 	
-	UPROPERTY(meta=(BindWidgetOptional))
+	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UBrawlSuperWidget> SuperWidget;
 
 	UPROPERTY(meta=(BindWidgetOptional))
