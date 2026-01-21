@@ -231,8 +231,8 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 					// 못 찾았으면 기본값(DamageAmount) 사용
 					if (!bFound) AttackDamage = DamageAmount;
 
-					// 음수로 변환하여 데미지로 적용
-					float FinalDamage = -1.0f * FMath::Abs(AttackDamage);
+					// 데미지 적용
+					float FinalDamage = FMath::Abs(AttackDamage);
 
 					static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
 					SpecHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, FinalDamage);

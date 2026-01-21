@@ -47,6 +47,11 @@ public:
 	FGameplayAttributeData MaxAmmo;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, MaxAmmo);
 	
+	// 재장전 속도
+	UPROPERTY(BlueprintReadOnly, Category= "Attributes")
+	FGameplayAttributeData ReloadSpeed;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, ReloadSpeed);
+	
 	// 기본 공격 데미지
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
 	FGameplayAttributeData AttackDamage;
@@ -87,20 +92,35 @@ public:
 	FGameplayAttributeData SuperChargePerHit;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, SuperChargePerHit);
 
-	// 하이퍼차지 게이지 (HyperCharge)
-	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	// 하이퍼차지 게이지 (공격 적중 시 충전)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Hyper")
 	FGameplayAttributeData HyperCharge;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, HyperCharge);
 
 	// 최대 하이퍼차지 게이지
-	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Hyper")
 	FGameplayAttributeData MaxHyperCharge;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, MaxHyperCharge);
 
-	// 평타 1회 명중 시 하이퍼차지 충전량
-	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	// 공격 적중 시 하이퍼차지 충전량 (Table에서 가져옴)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Hyper")
 	FGameplayAttributeData HyperChargePerHit;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, HyperChargePerHit);
+
+	// 이동 속도 (Movement Speed)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Stats")
+	FGameplayAttributeData MovementSpeed;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, MovementSpeed);
+
+	// 데미지 감소율 (Damage Reduction) - 0.0 ~ 1.0 (예: 0.3 = 30% 감소)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Stats")
+	FGameplayAttributeData DamageReduction;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, DamageReduction);
+
+	// 메타 속성: 데미지 처리를 위한 임시 값 (서버에서만 유효)
+	UPROPERTY(BlueprintReadOnly, Category = "Meta Attributes")
+	FGameplayAttributeData IncomingDamage;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, IncomingDamage);
 
 	//~UAttributeSet interface
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;

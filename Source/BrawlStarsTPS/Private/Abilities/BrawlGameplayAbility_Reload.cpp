@@ -5,11 +5,12 @@
 #include "AbilitySystemComponent.h"
 #include "BrawlAttributeSet.h"
 #include "TimerManager.h"
+#include "GameplayTagContainer.h"
 
 UBrawlGameplayAbility_Reload::UBrawlGameplayAbility_Reload()
 {
 	// 재장전은 서버/클라이언트 모두 예측 가능하게 동작하거나, 서버 권한으로 동작해야 함
-	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly; // 안전하게 서버에서만 탄환 관리
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 }
 
@@ -23,6 +24,9 @@ void UBrawlGameplayAbility_Reload::ActivateAbility(const FGameplayAbilitySpecHan
 		ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetAmmoAttribute()).AddUObject(this, &UBrawlGameplayAbility_Reload::OnAmmoAttributeChanged);
 		
 		// 시작 시점에 재장전이 필요한지 체크
+		FGameplayTag FireTag = FGameplayTag::RequestGameplayTag(FName("Event.Weapon.Fire"));
+		FireTagDelegateHandle = ASC->RegisterGameplayTagEvent(FireTag, EGameplayTagEventType::NewOrRemoved).AddUObject(this, &UBrawlGameplayAbility_Reload::OnFireTagChanged);
+
 		TryReloadToken();
 	}
 	else
@@ -33,12 +37,16 @@ void UBrawlGameplayAbility_Reload::ActivateAbility(const FGameplayAbilitySpecHan
 
 void UBrawlGameplayAbility_Reload::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	// 델리게이트 해제 및 타이머 정리
+	// 델리게이트 해제
 	if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
 	{
 		ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetAmmoAttribute()).RemoveAll(this);
+		
+		FGameplayTag FireTag = FGameplayTag::RequestGameplayTag(FName("Event.Weapon.Fire"));
+		ASC->RegisterGameplayTagEvent(FireTag, EGameplayTagEventType::NewOrRemoved).Remove(FireTagDelegateHandle);
 	}
 	
+	// 타이머 정리
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(ReloadTimerHandle);
@@ -49,41 +57,86 @@ void UBrawlGameplayAbility_Reload::EndAbility(const FGameplayAbilitySpecHandle H
 
 void UBrawlGameplayAbility_Reload::OnAmmoAttributeChanged(const FOnAttributeChangeData& Data)
 {
-	// 탄환이 변할 때마다 재장전 루프를 시작할지 말지 결정
 	TryReloadToken();
+}
+
+void UBrawlGameplayAbility_Reload::OnFireTagChanged(const FGameplayTag Tag, int32 NewCount)
+{
+	if (!GetWorld()) return;
+	FTimerManager& TM = GetWorld()->GetTimerManager();
+
+	if (NewCount > 0)
+	{
+		// 발사 시작 -> 타이머 일시 정지
+		if (TM.IsTimerActive(ReloadTimerHandle))
+		{
+			TM.PauseTimer(ReloadTimerHandle);
+		}
+	}
+	else
+	{
+		// 발사 종료 -> 타이머 재개
+		if (TM.IsTimerPaused(ReloadTimerHandle))
+		{
+			TM.UnPauseTimer(ReloadTimerHandle);
+		}
+		else
+		{
+			// 타이머가 아예 없었다면 새로 시작 체크
+			TryReloadToken();
+		}
+	}
 }
 
 void UBrawlGameplayAbility_Reload::TryReloadToken()
 {
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
 	if (!ASC) return;
+	
+	// 발사 중이면 시작 안 함 (일시정지 상태면 놔둠)
+	if (ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("Event.Weapon.Fire"))))
+	{
+		return;
+	}
 
 	bool bFoundAmmo = false;
 	bool bFoundMaxAmmo = false;
+	bool bFoundReloadSpeed = false;
 	float CurrentAmmo = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetAmmoAttribute(), bFoundAmmo);
 	float MaxAmmo = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetMaxAmmoAttribute(), bFoundMaxAmmo);
-
-	UE_LOG(LogTemp, Log, TEXT("ReloadAbility Checking: Ammo %f / %f"), CurrentAmmo, MaxAmmo);
-
-	if (bFoundAmmo && bFoundMaxAmmo)
+	float ReloadSpeed = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetReloadSpeedAttribute(), bFoundReloadSpeed);
+	
+	if (ReloadSpeed <= 0.0f) ReloadSpeed = 1.0f;
+	
+	if (bFoundAmmo && bFoundMaxAmmo && bFoundReloadSpeed)
 	{
-		// 탄환이 부족하면 재장전 타이머 시작
 		if (CurrentAmmo < MaxAmmo)
 		{
-			// 이미 타이머가 돌고 있다면 놔둠
-			if (GetWorld() && !GetWorld()->GetTimerManager().IsTimerActive(ReloadTimerHandle))
+			if (GetWorld())
 			{
-				GetWorld()->GetTimerManager().SetTimer(ReloadTimerHandle, this, &UBrawlGameplayAbility_Reload::CommitReload, ReloadDuration, false);
+				FTimerManager& TM = GetWorld()->GetTimerManager();
+				
+				// 타이머가 활성화되지 않았고, 일시정지 상태도 아닐 때만 새로 시작
+				if (!TM.IsTimerActive(ReloadTimerHandle) && !TM.IsTimerPaused(ReloadTimerHandle))
+				{
+					TM.SetTimer(ReloadTimerHandle, this, 
+						&UBrawlGameplayAbility_Reload::CommitReload, ReloadSpeed, false);
+				}
 			}
 		}
 		else
 		{
-			// 꽉 찼으면 타이머 중지
+			// 꽉 찼으면 타이머 해제
 			if (GetWorld())
 			{
 				GetWorld()->GetTimerManager().ClearTimer(ReloadTimerHandle);
 			}
 		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("??????? bFoundAmmo: %s bFoundMaxAmmo: %s bFoundReloadSpeed: %s"), 
+			bFoundAmmo ? TEXT("true") : TEXT("false"), bFoundMaxAmmo ? TEXT("true") : TEXT("false"), bFoundReloadSpeed ? TEXT("true") : TEXT("false"));
 	}
 }
 
@@ -92,28 +145,20 @@ void UBrawlGameplayAbility_Reload::CommitReload()
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
 	if (!ASC) return;
 
-	// 실제로 탄환 증가 (GE를 통하지 않고 직접 적용하여 에러 방지)
-	// GAS 표준을 위해 GE를 쓰는 것이 좋지만, 지금은 기능 동작이 우선이므로 직접 수정
-	// 추후 GE_RestoreAmmo를 제대로 설정하여 ApplyGameplayEffectToSelf를 호출하도록 변경 가능
-	
+	// 발사 중이면 무효 (혹시 모를 안전장치)
+	if (ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("Event.Weapon.Fire"))))
+	{
+		// 이 경우 타이머가 돌았다는 건 Pause가 안 먹혔다는 뜻이므로
+		// 다시 Pause 시키거나 다음 기회를 노림
+		return;
+	}
+
 	ASC->ApplyModToAttributeUnsafe(UBrawlAttributeSet::GetAmmoAttribute(), EGameplayModOp::Additive, ReloadAmount);
 
-	// 로그 및 화면 출력
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Reloaded! +%.0f"), ReloadAmount));
-	}
-	
-	UE_LOG(LogTemp, Log, TEXT("Reload Complete. Added %f Ammo."), ReloadAmount);
-
-	// 중요: 타이머 콜백 내부에서 다시 타이머를 설정하려면, 
-	// 기존 핸들이 아직 'Active'로 간주될 수 있으므로 명시적으로 초기화해야 함.
 	if (GetWorld())
 	{
 		GetWorld()->GetTimerManager().ClearTimer(ReloadTimerHandle);
 	}
 
-	// 재장전 후에도 탄환이 부족하면 다시 타이머 시작
-	// 델리게이트에만 의존하지 않고 명시적으로 호출하여 루프 보장
 	TryReloadToken();
 }

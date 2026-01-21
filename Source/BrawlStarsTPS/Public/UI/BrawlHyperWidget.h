@@ -42,15 +42,15 @@ protected:
 protected:
 	// 충전 완료 시 표시할 이미지 (Ready)
 	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UImage> Image_HyperReady;
+	TObjectPtr<UImage> ImageHyperReady;
 
 	// 발동 중일 때 표시할 이미지 (Active) - 원형 게이지 머티리얼 사용 권장
 	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UImage> Image_HyperActive;
+	TObjectPtr<UImage> ImageHyperActive;
 
 	// 충전 시 재생할 애니메이션
 	UPROPERTY(Transient, meta = (BindWidgetAnimOptional))
-	TObjectPtr<UWidgetAnimation> Anim_Flash;
+	TObjectPtr<UWidgetAnimation> AnimFlash;
 
 	// 발동 중 게이지 제어를 위한 다이내믹 머티리얼
 	UPROPERTY()

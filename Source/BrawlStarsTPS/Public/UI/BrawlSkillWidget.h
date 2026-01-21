@@ -39,16 +39,16 @@ protected:
 protected:
 	// 원형 게이지를 표시할 이미지 위젯 (BP에서 바인딩 필요)
 	// 머티리얼을 사용하여 Circular Progress를 표현합니다.
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UImage> Image_Progress;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> ImageProgress;
 
 	// 스킬 아이콘을 표시할 이미지 위젯 (BP에서 바인딩 필요)
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UImage> Image_Icon;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> ImageIcon;
 
 	// 준비 완료 상태일 때 표시할 오버레이 이미지 등 (선택 사항)
 	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UImage> Image_ReadyOverlay;
+	TObjectPtr<UImage> ImageReadyOverlay;
 
 	// 원형 게이지 제어를 위한 다이내믹 머티리얼 인스턴스
 	UPROPERTY()

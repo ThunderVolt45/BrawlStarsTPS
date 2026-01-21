@@ -37,15 +37,17 @@ protected:
 	// 탄환이 변경되었을 때 호출 (재장전 필요 여부 재확인)
 	void OnAmmoAttributeChanged(const FOnAttributeChangeData& Data);
 
-protected:
-	// 재장전 1회당 걸리는 시간 (초) - 어트리뷰트에서 가져올 수도 있지만 기본값 설정
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reload")
-	float ReloadDuration = 1.0f;
+	// 발사 태그 변경 감지
+	virtual void OnFireTagChanged(const FGameplayTag Tag, int32 NewCount);
 
+protected:
 	// 한 번에 충전할 탄환 수
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reload")
 	float ReloadAmount = 1.0f;
 
 	// 타이머 핸들
 	FTimerHandle ReloadTimerHandle;
+
+	// 태그 델리게이트 핸들
+	FDelegateHandle FireTagDelegateHandle;
 };

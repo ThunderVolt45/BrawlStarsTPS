@@ -8,10 +8,38 @@
 #include "Blueprint/UserWidget.h"
 #include "BrawlStarsTPS.h"
 #include "Widgets/Input/SVirtualJoystick.h"
+#include "UI/BrawlHUDWidget.h"
+#include "AbilitySystemInterface.h"
+#include "AbilitySystemComponent.h"
 
 void ABrawlStarsTPSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (IsLocalPlayerController() && BrawlHUDClass)
+	{
+		// 위젯이 이미 있다면 생성하지 않음
+		if (!BrawlHUDWidget)
+		{
+			BrawlHUDWidget = CreateWidget<UBrawlHUDWidget>(this, BrawlHUDClass);
+			if (BrawlHUDWidget)
+			{
+				BrawlHUDWidget->AddToViewport();
+			}
+		}
+		
+		// Pawn이 있다면 연결 (이미 BeginPlay 시점에 Pawn이 있을 수 있음)
+		if (GetPawn())
+		{
+			if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(GetPawn()))
+			{
+				if (BrawlHUDWidget)
+				{
+					BrawlHUDWidget->BindAttributeCallbacks(ASI->GetAbilitySystemComponent());
+				}
+			}
+		}
+	}
 
 	// only spawn touch controls on local player controllers
 	if (ShouldUseTouchControls() && IsLocalPlayerController())
@@ -30,6 +58,26 @@ void ABrawlStarsTPSPlayerController::BeginPlay()
 
 		}
 
+	}
+}
+
+void ABrawlStarsTPSPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+	// 서버 로직: 필요한 경우 여기서 처리 (UI는 클라이언트 소관이므로 주로 여기선 스킵)
+}
+
+void ABrawlStarsTPSPlayerController::AcknowledgePossession(APawn* P)
+{
+	Super::AcknowledgePossession(P);
+
+	// 클라이언트 로직: 로컬 플레이어가 Pawn을 빙의했을 때 호출됨
+	if (IsLocalPlayerController() && BrawlHUDWidget)
+	{
+		if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(P))
+		{
+			BrawlHUDWidget->BindAttributeCallbacks(ASI->GetAbilitySystemComponent());
+		}
 	}
 }
 
