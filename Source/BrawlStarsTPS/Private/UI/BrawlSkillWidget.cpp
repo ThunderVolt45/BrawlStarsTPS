@@ -9,12 +9,12 @@ void UBrawlSkillWidget::NativeConstruct()
 	Super::NativeConstruct();
 
 	// 프로그레스 바 이미지에 다이내믹 머티리얼이 할당되어 있지 않다면 생성 시도
-	if (Image_Progress)
+	if (ImageProgress)
 	{
 		// 이미 할당된 머티리얼을 기반으로 다이내믹 인스턴스 생성
-		if (Image_Progress->GetBrush().GetResourceObject())
+		if (ImageProgress->GetBrush().GetResourceObject())
 		{
-			ProgressMaterialDynamic = Image_Progress->GetDynamicMaterial();
+			ProgressMaterialDynamic = ImageProgress->GetDynamicMaterial();
 		}
 	}
 
@@ -41,22 +41,22 @@ void UBrawlSkillWidget::SetIsReady(bool bNewIsReady)
 	// 준비 상태에 따른 비주얼 처리
 	// 예: 아이콘의 색조(Tint) 변경, 오버레이 표시 등
 
-	if (Image_Icon)
+	if (ImageIcon)
 	{
 		// 쿨다운 중(준비 안됨)이면 약간 어둡게, 준비되면 밝게
 		if (bIsReady)
 		{
-			Image_Icon->SetColorAndOpacity(FLinearColor::White);
+			ImageIcon->SetColorAndOpacity(FLinearColor::White);
 		}
 		else
 		{
-			Image_Icon->SetColorAndOpacity(FLinearColor(0.5f, 0.5f, 0.5f, 1.0f));
+			ImageIcon->SetColorAndOpacity(FLinearColor(0.5f, 0.5f, 0.5f, 1.0f));
 		}
 	}
 
-	if (Image_ReadyOverlay)
+	if (ImageReadyOverlay)
 	{
-		Image_ReadyOverlay->SetVisibility(bIsReady ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+		ImageReadyOverlay->SetVisibility(bIsReady ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
 	}
 	
 	// 준비 완료 시 프로그레스 바를 꽉 채우거나 숨기는 로직은 디자인에 따라 다름
@@ -66,8 +66,8 @@ void UBrawlSkillWidget::SetIsReady(bool bNewIsReady)
 
 void UBrawlSkillWidget::SetSkillIcon(UTexture2D* InIcon)
 {
-	if (Image_Icon && InIcon)
+	if (ImageIcon && InIcon)
 	{
-		Image_Icon->SetBrushFromTexture(InIcon);
+		ImageIcon->SetBrushFromTexture(InIcon);
 	}
 }

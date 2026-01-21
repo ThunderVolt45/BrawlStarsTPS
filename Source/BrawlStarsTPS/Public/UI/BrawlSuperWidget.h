@@ -33,12 +33,12 @@ protected:
 
 protected:
 	// 활성화(충전 완료) 시 나타날 이미지 (기존 아이콘/게이지 위를 덮음)
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UImage> Image_SuperReady;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> ImageSuperReady;
 
 	// 게이지가 찰 때 재생할 애니메이션 (깜빡임/빛남)
 	UPROPERTY(Transient, meta = (BindWidgetAnimOptional))
-	TObjectPtr<UWidgetAnimation> Anim_Flash;
+	TObjectPtr<UWidgetAnimation> AnimFlash;
 
 private:
 	float LastPercent = 0.0f;

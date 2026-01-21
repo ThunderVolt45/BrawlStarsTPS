@@ -32,6 +32,6 @@ protected:
 
 protected:
 	// 쿨다운 시간을 표시할 텍스트 블록 (BP에서 이름이 일치해야 함)
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UTextBlock> Text_Cooldown;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> TextCooldown;
 };

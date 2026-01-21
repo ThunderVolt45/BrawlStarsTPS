@@ -10,9 +10,9 @@ void UBrawlSuperWidget::NativeConstruct()
 	Super::NativeConstruct();
 
 	// 초기화
-	if (Image_SuperReady)
+	if (ImageSuperReady)
 	{
-		Image_SuperReady->SetVisibility(ESlateVisibility::Hidden);
+		ImageSuperReady->SetVisibility(ESlateVisibility::Hidden);
 	}
 	
 	LastPercent = 0.0f;
@@ -38,9 +38,9 @@ void UBrawlSuperWidget::SetIsReady(bool bNewIsReady)
 	Super::SetIsReady(bNewIsReady);
 
 	// 준비 완료 시 '충전 완료' 이미지 표시
-	if (Image_SuperReady)
+	if (ImageSuperReady)
 	{
-		Image_SuperReady->SetVisibility(bNewIsReady ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+		ImageSuperReady->SetVisibility(bNewIsReady ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
 	}
 
 	// 준비 완료 상태가 되면 프로그레스 바나 기본 아이콘을 숨길지 여부는 기획에 따름
@@ -51,13 +51,13 @@ void UBrawlSuperWidget::SetIsReady(bool bNewIsReady)
 
 void UBrawlSuperWidget::OnChargeIncreased()
 {
-	if (Anim_Flash)
+	if (AnimFlash)
 	{
 		// 애니메이션이 이미 재생 중이면 다시 처음부터 재생
-		if (IsAnimationPlaying(Anim_Flash))
+		if (IsAnimationPlaying(AnimFlash))
 		{
-			StopAnimation(Anim_Flash);
+			StopAnimation(AnimFlash);
 		}
-		PlayAnimation(Anim_Flash);
+		PlayAnimation(AnimFlash);
 	}
 }

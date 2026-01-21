@@ -10,18 +10,18 @@ void UBrawlHyperWidget::NativeConstruct()
 	Super::NativeConstruct();
 
 	// Active 이미지의 다이내믹 머티리얼 생성
-	if (Image_HyperActive)
+	if (ImageHyperActive)
 	{
-		Image_HyperActive->SetVisibility(ESlateVisibility::Hidden);
-		if (Image_HyperActive->GetBrush().GetResourceObject())
+		ImageHyperActive->SetVisibility(ESlateVisibility::Hidden);
+		if (ImageHyperActive->GetBrush().GetResourceObject())
 		{
-			ActiveMaterialDynamic = Image_HyperActive->GetDynamicMaterial();
+			ActiveMaterialDynamic = ImageHyperActive->GetDynamicMaterial();
 		}
 	}
 
-	if (Image_HyperReady)
+	if (ImageHyperReady)
 	{
-		Image_HyperReady->SetVisibility(ESlateVisibility::Hidden);
+		ImageHyperReady->SetVisibility(ESlateVisibility::Hidden);
 	}
 
 	LastPercent = 0.0f;
@@ -47,9 +47,9 @@ void UBrawlHyperWidget::SetIsReady(bool bNewIsReady)
 	// Active 상태가 아닐 때만 Ready 이미지 표시 제어
 	if (!bIsActive)
 	{
-		if (Image_HyperReady)
+		if (ImageHyperReady)
 		{
-			Image_HyperReady->SetVisibility(bNewIsReady ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+			ImageHyperReady->SetVisibility(bNewIsReady ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
 		}
 	}
 }
@@ -61,19 +61,19 @@ void UBrawlHyperWidget::SetIsActive(bool bNewIsActive)
 	if (bIsActive)
 	{
 		// 발동 상태: Ready와 일반 Progress 숨기고 Active 표시
-		if (Image_HyperReady) Image_HyperReady->SetVisibility(ESlateVisibility::Hidden);
-		if (Image_Progress) Image_Progress->SetVisibility(ESlateVisibility::Hidden); // 필요하다면 숨김
-		if (Image_HyperActive) Image_HyperActive->SetVisibility(ESlateVisibility::HitTestInvisible);
+		if (ImageHyperReady) ImageHyperReady->SetVisibility(ESlateVisibility::Hidden);
+		if (ImageProgress) ImageProgress->SetVisibility(ESlateVisibility::Hidden); // 필요하다면 숨김
+		if (ImageHyperActive) ImageHyperActive->SetVisibility(ESlateVisibility::HitTestInvisible);
 		
 		// 아이콘도 숨길지 여부는 디자인에 따라 결정 (여기선 덮어씌우는 컨셉이므로 유지)
 	}
 	else
 	{
 		// 발동 해제: 다시 Ready 상태나 일반 상태로 복귀
-		if (Image_HyperActive) Image_HyperActive->SetVisibility(ESlateVisibility::Hidden);
+		if (ImageHyperActive) ImageHyperActive->SetVisibility(ESlateVisibility::Hidden);
 		
 		// 원래 상태 복원
-		if (Image_Progress) Image_Progress->SetVisibility(ESlateVisibility::HitTestInvisible);
+		if (ImageProgress) ImageProgress->SetVisibility(ESlateVisibility::HitTestInvisible);
 		SetIsReady(bIsReady); // bIsReady 값에 따라 Ready 이미지 가시성 재설정
 	}
 }
@@ -88,12 +88,12 @@ void UBrawlHyperWidget::SetActivePercent(float InPercent)
 
 void UBrawlHyperWidget::OnChargeIncreased()
 {
-	if (Anim_Flash)
+	if (AnimFlash)
 	{
-		if (IsAnimationPlaying(Anim_Flash))
+		if (IsAnimationPlaying(AnimFlash))
 		{
-			StopAnimation(Anim_Flash);
+			StopAnimation(AnimFlash);
 		}
-		PlayAnimation(Anim_Flash);
+		PlayAnimation(AnimFlash);
 	}
 }
