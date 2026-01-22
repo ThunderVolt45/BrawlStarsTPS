@@ -164,7 +164,10 @@ void ABrawlCharacter::InitializeAttributes()
 		// 가젯 쿨다운
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetGadgetCooldownAttribute(), Row->Gadget1Cooldown);
 		
-		// 게이지 초기화
+		// 궁극기 공격력
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperDamageAttribute(), Row->SuperDamage);
+		
+		// 궁극기, 하이퍼차지 초기화
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxSuperChargeAttribute(), Row->MaxSuperCharge);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargeAttribute(), 0.0f);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperCostAttribute(), Row->SuperCost);
