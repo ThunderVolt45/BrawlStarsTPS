@@ -87,6 +87,19 @@ void ABrawlCharacter::InitAbilityActorInfo()
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+		// 이동 속도 변화 감지 바인딩
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetMovementSpeedAttribute()).AddUObject(this, &ABrawlCharacter::OnMovementSpeedChanged);
+	}
+}
+
+void ABrawlCharacter::OnMovementSpeedChanged(const FOnAttributeChangeData& Data)
+{
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->MaxWalkSpeed = Data.NewValue;
+		
+		UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::OnMovementSpeedChanged - Speed Updated: %.2f"), Data.NewValue);
 	}
 }
 
@@ -120,8 +133,8 @@ void ABrawlCharacter::InitializeAttributes()
 	
 	if (Row)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::InitializeAttributes - Loaded Data for [%s]. MaxHealth: %f, MaxAmmo: %f"), 
-			*CharacterID.ToString(), Row->MaxHealth, Row->MaxAmmo);
+		UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::InitializeAttributes - Loaded Data for [%s]. MaxHealth: %f, MaxAmmo: %f, MovementSpeed: %f"), 
+			*CharacterID.ToString(), Row->MaxHealth, Row->MaxAmmo, Row->MoveSpeed);
 
 		// GE를 사용하지 않고 직접 Base Value 설정 (안전하고 확실함)
 		// 체력
@@ -137,6 +150,10 @@ void ABrawlCharacter::InitializeAttributes()
 		
 		// 이동 속도
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMovementSpeedAttribute(), Row->MoveSpeed);
+		if (GetCharacterMovement())
+		{
+			GetCharacterMovement()->MaxWalkSpeed = Row->MoveSpeed;
+		}
 
 		// 공격력
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetAttackDamageAttribute(), Row->AttackDamage);

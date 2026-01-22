@@ -8,6 +8,9 @@
 #include "GameplayTagContainer.h"
 #include "BrawlCharacter.generated.h"
 
+struct FOnAttributeChangeData;
+class UGameplayEffect;
+class UCameraComponent;
 class USpringArmComponent;
 class UBrawlAbilitySystemComponent;
 class UBrawlAttributeSet;
@@ -56,11 +59,11 @@ protected:
 
 	// 능력치 데이터 테이블
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
-	TObjectPtr<class UDataTable> CharacterDataTable;
+	TObjectPtr<UDataTable> CharacterDataTable;
 
 	// 초기화용 Gameplay Effect 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
-	TSubclassOf<class UGameplayEffect> InitStatsEffectClass;
+	TSubclassOf<UGameplayEffect> InitStatsEffectClass;
 
 protected:
 	// 어빌리티 시스템 컴포넌트
@@ -85,7 +88,7 @@ protected:
 	
 	// 카메라
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Camera")
-	TObjectPtr<class UCameraComponent> FollowCamera;
+	TObjectPtr<UCameraComponent> FollowCamera;
 
 public:	
 	FORCEINLINE USpringArmComponent* GetCameraBoom() { return CameraBoom; }
@@ -93,6 +96,10 @@ public:
 	
 	virtual void Tick(float DeltaTime) override;
 
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+
+private:
+	// 이동 속도 속성 변경 시 호출될 콜백
+	void OnMovementSpeedChanged(const FOnAttributeChangeData& Data);
 
 };

@@ -20,8 +20,4 @@ void UBrawlGameplayAbility_Gadget::ApplyCost(const FGameplayAbilitySpecHandle Ha
 {
 	// 가젯은 탄환을 소모하지 않음
 	// 아무것도 하지 않음 (Base 클래스의 ApplyCost 호출 차단)
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Cyan, TEXT("Gadget Used! (No Ammo Cost)"));
-	}
 }

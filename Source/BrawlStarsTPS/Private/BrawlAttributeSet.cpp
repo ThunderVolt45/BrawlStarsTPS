@@ -141,13 +141,6 @@ void UBrawlAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 	// 이동 속도 처리
 	else if (Data.EvaluatedData.Attribute == GetMovementSpeedAttribute())
 	{
-		// 이동 속도 변경 시 캐릭터 무브먼트 컴포넌트 업데이트
-		if (ACharacter* Character = Cast<ACharacter>(GetOwningActor()))
-		{
-			if (UCharacterMovementComponent* CMC = Character->GetCharacterMovement())
-			{
-				CMC->MaxWalkSpeed = GetMovementSpeed();
-			}
-		}
+		SetMovementSpeed(FMath::Max(0.0f, GetMovementSpeed()));
 	}
 }
