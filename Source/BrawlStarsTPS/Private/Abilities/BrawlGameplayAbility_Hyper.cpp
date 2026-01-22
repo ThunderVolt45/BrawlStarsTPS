@@ -37,15 +37,7 @@ void UBrawlGameplayAbility_Hyper::ApplyCost(const FGameplayAbilitySpecHandle Han
 	if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
 	{
 		// 하이퍼차지 게이지 완전 소모
-		bool bFound = false;
-		float CurrentHyper = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetHyperChargeAttribute(), bFound);
-		
-		ASC->ApplyModToAttributeUnsafe(UBrawlAttributeSet::GetHyperChargeAttribute(), EGameplayModOp::Additive, -CurrentHyper);
-		
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Magenta, TEXT("HYPERCHARGE ACTIVATED!"));
-		}
+		ASC->ApplyModToAttributeUnsafe(UBrawlAttributeSet::GetHyperChargeAttribute(), EGameplayModOp::Override, 0.0f);
 	}
 }
 
