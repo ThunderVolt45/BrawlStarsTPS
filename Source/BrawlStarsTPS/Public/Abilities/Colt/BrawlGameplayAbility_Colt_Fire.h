@@ -53,6 +53,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UAnimMontage> FireMontage;
 
+	// 하이퍼차지 상태일 때 사용할 몽타주
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UAnimMontage> FireMontage_Hyper;
+
 	// 발사체를 생성할 게임플레이 이벤트 이름
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
 	FGameplayTag FireEventTagLeft = FGameplayTag::RequestGameplayTag(FName("Event.Weapon.Fire_L"));

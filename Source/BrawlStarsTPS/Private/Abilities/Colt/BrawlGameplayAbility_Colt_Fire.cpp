@@ -60,7 +60,21 @@ void UBrawlGameplayAbility_Colt_Fire::ActivateAbility(const FGameplayAbilitySpec
 
 	// 3. 몽타주 재생
 	// PlayMontageAndWait를 쓰면 몽타주 종료 시점까지 어빌리티를 유지할 수 있음
-	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, FireMontage);
+	UAnimMontage* MontageToPlay = FireMontage;
+	
+	if (const UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		static FGameplayTag HyperStateTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
+		if (ASC->HasMatchingGameplayTag(HyperStateTag))
+		{
+			if (FireMontage_Hyper)
+			{
+				MontageToPlay = FireMontage_Hyper;
+			}
+		}
+	}
+
+	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, MontageToPlay);
 	if (MontageTask)
 	{
 		MontageTask->OnCompleted.AddDynamic(this, &UBrawlGameplayAbility_Colt_Fire::OnMontageEnded);
