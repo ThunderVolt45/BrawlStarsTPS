@@ -161,15 +161,15 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 				FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageEffectClass, GetAbilityLevel(), ContextHandle);
 				if (SpecHandle.IsValid())
 				{
-					// 데미지 양 설정 (AttributeSet에서 가져옴)
+					// 데미지 양 설정 (GetDamageAttribute에서 가져옴)
 					bool bFound = false;
-					float AttackDamage = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetAttackDamageAttribute(), bFound);
+					float DamageValue = ASC->GetGameplayAttributeValue(GetDamageAttribute(), bFound);
 					
 					// 못 찾았으면 기본값(DamageAmount) 사용
-					if (!bFound) AttackDamage = DamageAmount;
+					if (!bFound) DamageValue = DamageAmount;
 
 					// 데미지 적용
-					float FinalDamage = FMath::Abs(AttackDamage);
+					float FinalDamage = FMath::Abs(DamageValue);
 
 					static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
 					SpecHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, FinalDamage);
@@ -180,6 +180,11 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 			}
 		}
 	}
+}
+
+FGameplayAttribute UBrawlGameplayAbility_Fire::GetDamageAttribute() const
+{
+	return UBrawlAttributeSet::GetAttackDamageAttribute();
 }
 
 void UBrawlGameplayAbility_Fire::OnMontageEnded()

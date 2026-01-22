@@ -34,7 +34,17 @@ void UBrawlGadgetWidget::SetRemainingCooldown(float RemainingTime)
 {
 	if (TextCooldown)
 	{
-		if (RemainingTime > 0.f)
+		if (RemainingTime > 1)
+		{
+			// 정수 부분만 표시 (예: 1.5 -> 1)
+			TextCooldown->SetText(FText::AsNumber(FMath::CeilToFloat(RemainingTime)));
+			
+			if (bIsReady)
+			{
+				SetIsReady(false);
+			}
+		}
+		else if (RemainingTime > 0.f)
 		{
 			// 소수점 첫째 자리까지 표시 (예: 1.5)
 			TextCooldown->SetText(FText::AsNumber(FMath::CeilToFloat(RemainingTime * 10.f) / 10.f));

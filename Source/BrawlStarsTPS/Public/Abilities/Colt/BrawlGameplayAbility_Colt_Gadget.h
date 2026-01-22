@@ -25,4 +25,6 @@ protected:
 	// 가젯 효과 발동 (Blueprint에서 오버라이드하여 시각적 효과 등 구현)
 	UFUNCTION(BlueprintImplementableEvent, Category = "Brawl|Gadget")
 	void OnGadgetActivated();
+
+	virtual FGameplayAttribute GetDamageAttribute() const override;
 };

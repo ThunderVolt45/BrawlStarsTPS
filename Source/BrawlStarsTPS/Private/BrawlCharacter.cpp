@@ -154,9 +154,15 @@ void ABrawlCharacter::InitializeAttributes()
 		{
 			GetCharacterMovement()->MaxWalkSpeed = Row->MoveSpeed;
 		}
-
+		
 		// 공격력
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetAttackDamageAttribute(), Row->AttackDamage);
+		
+		// 가젯 공격력
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetGadgetDamageAttribute(), Row->Gadget1Damage);
+		
+		// 가젯 쿨다운
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetGadgetCooldownAttribute(), Row->Gadget1Cooldown);
 		
 		// 게이지 초기화
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxSuperChargeAttribute(), Row->MaxSuperCharge);

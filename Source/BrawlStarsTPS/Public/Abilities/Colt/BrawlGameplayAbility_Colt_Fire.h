@@ -31,11 +31,14 @@ protected:
 
 	// 발사체 스폰 로직 (AttachParentSocketName: 무기가 붙어있는 부모 소켓 이름, 예: hand_l)
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
-	void SpawnProjectile(FName AttachParentSocketName = NAME_None);  
+	virtual void SpawnProjectile(FName AttachParentSocketName = NAME_None);  
 
 	// 몽타주 종료 콜백
 	UFUNCTION()
 	void OnMontageEnded();
+
+	// 적용할 데미지 어트리뷰트를 반환 (기본값: AttackDamage)
+	virtual FGameplayAttribute GetDamageAttribute() const;
 
 protected:
 	// 발사할 발사체 클래스
