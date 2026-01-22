@@ -34,6 +34,9 @@ protected:
 	UFUNCTION()
 	void OnMontageEnded();
 
+	// 적용할 데미지 어트리뷰트를 반환 (기본값: AttackDamage)
+	virtual FGameplayAttribute GetDamageAttribute() const;
+
 protected:
 	// 기본 발사체 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")

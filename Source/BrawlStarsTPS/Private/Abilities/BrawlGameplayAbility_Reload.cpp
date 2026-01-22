@@ -18,14 +18,15 @@ void UBrawlGameplayAbility_Reload::ActivateAbility(const FGameplayAbilitySpecHan
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
+	UE_LOG(LogTemp, Warning, TEXT("ReloadAbility::ActivateAbility Called!"));
+
 	if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
 	{
 		// 탄환 변화 감지 델리게이트 등록
 		ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetAmmoAttribute()).AddUObject(this, &UBrawlGameplayAbility_Reload::OnAmmoAttributeChanged);
 		
 		// 시작 시점에 재장전이 필요한지 체크
-		FGameplayTag FireTag = FGameplayTag::RequestGameplayTag(FName("Event.Weapon.Fire"));
-		FireTagDelegateHandle = ASC->RegisterGameplayTagEvent(FireTag, EGameplayTagEventType::NewOrRemoved).AddUObject(this, &UBrawlGameplayAbility_Reload::OnFireTagChanged);
+		FireTagDelegateHandle = ASC->RegisterGameplayTagEvent(FireStateTag, EGameplayTagEventType::NewOrRemoved).AddUObject(this, &UBrawlGameplayAbility_Reload::OnFireTagChanged);
 
 		TryReloadToken();
 	}
@@ -41,9 +42,7 @@ void UBrawlGameplayAbility_Reload::EndAbility(const FGameplayAbilitySpecHandle H
 	if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
 	{
 		ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetAmmoAttribute()).RemoveAll(this);
-		
-		FGameplayTag FireTag = FGameplayTag::RequestGameplayTag(FName("Event.Weapon.Fire"));
-		ASC->RegisterGameplayTagEvent(FireTag, EGameplayTagEventType::NewOrRemoved).Remove(FireTagDelegateHandle);
+		ASC->RegisterGameplayTagEvent(FireStateTag, EGameplayTagEventType::NewOrRemoved).Remove(FireTagDelegateHandle);
 	}
 	
 	// 타이머 정리
@@ -64,6 +63,8 @@ void UBrawlGameplayAbility_Reload::OnFireTagChanged(const FGameplayTag Tag, int3
 {
 	if (!GetWorld()) return;
 	FTimerManager& TM = GetWorld()->GetTimerManager();
+	
+	UE_LOG(LogTemp, Warning, TEXT("ReloadAbility::OnFireTagChanged - Count: %d"), NewCount);
 
 	if (NewCount > 0)
 	{
@@ -75,14 +76,19 @@ void UBrawlGameplayAbility_Reload::OnFireTagChanged(const FGameplayTag Tag, int3
 	}
 	else
 	{
-		// 발사 종료 -> 타이머 재개
+		UE_LOG(LogTemp, Warning, TEXT("ReloadAbility::OnFireTagChanged - Fire End. Resume Timer."));
+		
+		// 발사 종료 -> 타이머 재개 시도
 		if (TM.IsTimerPaused(ReloadTimerHandle))
 		{
 			TM.UnPauseTimer(ReloadTimerHandle);
+			UE_LOG(LogTemp, Warning, TEXT("ReloadAbility - Timer UnPaused."));
 		}
-		else
+		
+		// 타이머가 활성화되지 않았다면(Pause 상태가 아니었거나 UnPause 후 종료됨 등) 새로 시작 체크
+		if (!TM.IsTimerActive(ReloadTimerHandle))
 		{
-			// 타이머가 아예 없었다면 새로 시작 체크
+			UE_LOG(LogTemp, Warning, TEXT("ReloadAbility - Timer Not Active, Forcing Logic..."));
 			TryReloadToken();
 		}
 	}
@@ -94,8 +100,9 @@ void UBrawlGameplayAbility_Reload::TryReloadToken()
 	if (!ASC) return;
 	
 	// 발사 중이면 시작 안 함 (일시정지 상태면 놔둠)
-	if (ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("Event.Weapon.Fire"))))
+	if (ASC->HasMatchingGameplayTag(FireStateTag))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("ReloadAbility::TryReloadToken - Blocked by Fire Tag"));
 		return;
 	}
 
@@ -133,11 +140,6 @@ void UBrawlGameplayAbility_Reload::TryReloadToken()
 			}
 		}
 	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("??????? bFoundAmmo: %s bFoundMaxAmmo: %s bFoundReloadSpeed: %s"), 
-			bFoundAmmo ? TEXT("true") : TEXT("false"), bFoundMaxAmmo ? TEXT("true") : TEXT("false"), bFoundReloadSpeed ? TEXT("true") : TEXT("false"));
-	}
 }
 
 void UBrawlGameplayAbility_Reload::CommitReload()
@@ -146,7 +148,7 @@ void UBrawlGameplayAbility_Reload::CommitReload()
 	if (!ASC) return;
 
 	// 발사 중이면 무효 (혹시 모를 안전장치)
-	if (ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(FName("Event.Weapon.Fire"))))
+	if (ASC->HasMatchingGameplayTag(FireStateTag))
 	{
 		// 이 경우 타이머가 돌았다는 건 Pause가 안 먹혔다는 뜻이므로
 		// 다시 Pause 시키거나 다음 기회를 노림

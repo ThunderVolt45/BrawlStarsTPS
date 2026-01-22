@@ -21,6 +21,8 @@ public:
 	// 발사체 초기화 (어빌리티에서 호출)
 	void InitializeProjectile(const FGameplayEffectSpecHandle& InDamageSpecHandle);
 
+	virtual void Tick(float DeltaTime) override;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -33,7 +35,7 @@ protected:
 	virtual void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	// 공통 처리 로직
-	void ProcessHit(AActor* OtherActor, const FVector& HitLocation);
+	virtual void ProcessHit(AActor* OtherActor, const FVector& HitLocation);
 
 protected:
 	// 총알의 수명 (초)
@@ -41,7 +43,7 @@ protected:
 	float LifeTime = 2.0f;
 	
 	// 총알의 속도
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	float ProjectileSpeed = 3000.0f;
 	
 	// 충돌 컴포넌트
@@ -58,4 +60,21 @@ protected:
 
 	// 적용할 데미지 Spec (GAS)
 	FGameplayEffectSpecHandle DamageSpecHandle;
+
+protected:
+	// 관통 여부 (true면 적을 뚫고 지나감, false면 맞으면 사라짐)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Options")
+	bool bCanPierce = false;
+
+	// 장애물 파괴 여부 (true면 벽 파괴 가능)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Options")
+	bool bDestroyObstacles = false;
+
+private:
+	// 이미 피격된 액터 목록 (관통 시 다단히트 방지)
+	UPROPERTY()
+	TArray<TObjectPtr<AActor>> HitActors;
+
+	// 레이캐스트(Sweep)를 위한 이전 프레임 위치
+	FVector PreviousLocation;
 };

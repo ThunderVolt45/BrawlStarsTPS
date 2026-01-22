@@ -44,6 +44,10 @@ protected:
 	// 한 번에 충전할 탄환 수
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reload")
 	float ReloadAmount = 1.0f;
+	
+	// 발사 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reload")
+	FGameplayTag FireStateTag = FGameplayTag::RequestGameplayTag("State.Firing");
 
 	// 타이머 핸들
 	FTimerHandle ReloadTimerHandle;

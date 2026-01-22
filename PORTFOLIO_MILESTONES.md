@@ -23,20 +23,21 @@
     - [x] **Movement Tuning:** Basic setup for snappy movement in `CharacterMovementComponent`.
     - [x] **Jump Logic:** Implement jump functionality using the new Input System.
 
-## Phase 2: Combat System (GAS) (Completed)
+## Phase 2: Combat System (GAS) (Completed & Refined)
 - [x] **Ability System Core:**
-    - [x] `UBrawlAttributeSet`: Health, Ammo, SuperCharge, HyperCharge.
-    - [x] **Data-Driven Initialization:** Initialize attributes from `DT_BrawlerStats`.
+    - [x] `UBrawlAttributeSet`: Health, Ammo, SuperCharge, HyperCharge, **MovementSpeed**, **DamageReduction**.
+    - [x] **Data-Driven Initialization:** Initialize attributes from `DT_BrawlerData` (including ReloadSpeed, MoveSpeed).
 - [x] **Combat Assets & Logic:**
     - [x] **Projectile System:** `ABrawlProjectile` with GAS integration and hybrid collision.
-    - [x] **Damage Logic:** Negative attribute application via GE.
+    - [x] **Damage Logic:** `IncomingDamage` meta-attribute with Defense (`DamageReduction`) calculation.
     - [x] **Charge Logic:** Super/Hyper accumulation on hit based on Data Table per-hit values.
 - [x] **Ability Implementation (C++):**
-    - [x] **Primary Fire:** `UBrawlGameplayAbility_Fire` & `Colt_Fire` (Dual wield support).
-    - [x] **Reload:** `UBrawlGameplayAbility_Reload` (Auto-replenish loop).
+    - [x] **Primary Fire:** `UBrawlGameplayAbility_Fire` (Tag-based interaction with Reload).
+    - [x] **Reload:** `UBrawlGameplayAbility_Reload` (Auto-replenish loop with **Pause/Resume** logic during fire).
+        - [ ] **TODO:** 사격 중 재장전 중단(Pause) 로직 버그 수정 (태그 감지 타이밍 이슈).
     - [x] **Super:** `UBrawlGameplayAbility_Super` (Gauge check & consume).
     - [x] **Gadget:** `UBrawlGameplayAbility_Gadget` (Cooldown based).
-    - [x] **Hypercharge:** `UBrawlGameplayAbility_Hyper` (Buff & projectile modification).
+    - [x] **Hypercharge:** `UBrawlGameplayAbility_Hyper` (Buff duration & gauge reset logic).
 
 ## Phase 3: Brawler Content (Colt)
 - [ ] **Colt Integration:**
@@ -44,13 +45,14 @@
     - [ ] **Visuals:** Mesh, AnimBP setup (Refinement needed).
     - [ ] **Feedback:** Recoil, VFX, SFX via Gameplay Cues.
 
-## Phase 4: Game Modes & UI (Current Focus)
-- [ ] **UI Implementation:**
+## Phase 4: Game Modes & UI (Significantly Progressed)
+- [x] **UI Implementation:**
     - [x] **C++ Foundation:** `UBrawlUserWidget` & `UBrawlHUDWidget` with attribute delegates.
-    - [ ] **HUD Design (WBP):** Create `WBP_BrawlHUD` with Health, Ammo, Super, Hyper bars. (Next Step)
-    - [ ] **HUD Integration:** Initialize HUD in PlayerController.
+    - [x] **Skill Widgets:** Specialized widgets for Gadget (Cooldown), Super (Flash/Ready), Hyper (Duration/Active).
+    - [x] **HUD Integration:** `WBP_BrawlHUD` with Health, Ammo, Skill Widgets, and **Match Timer**.
+    - [x] **Controller Setup:** Automated HUD creation & GAS binding in `PlayerController`.
     - [ ] **Crosshair:** Dynamic ammo display on crosshair.
-- [ ] **AI System (Critical):**
+- [ ] **AI System (Critical - Next Step):**
     - [ ] **AI Controller:** `ABrawlAIController` with perception.
     - [ ] **Bot Logic:** Behavior Trees / State Trees to mimic player tactics (cover, attack, retreat, collect gems).
 - [ ] **Game Modes:**

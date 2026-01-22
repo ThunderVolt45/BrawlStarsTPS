@@ -10,7 +10,6 @@
 ## Current Context
 - **Status:** Phase 1 (Foundation & Architecture Setup)
 - **Key Files:** 
-  - `Source/BrawlStarsTPS/BrawlStarsTPSCharacter.cpp` (Base Character)
   - `BrawlStarsTPS.uproject` (Config & Plugins)
 - **Plugins Detected:** StateTree, GameplayStateTree, GameplayAbilities (Required), EnhancedInput (Required)
 
@@ -33,3 +32,4 @@
 - [Key File Paths](./KEY_FILE_PATHS.md)
 - [Brawler Template](./Docs/DESIGN_TEMPLATE_BRAWLER.md)
 - [Animation Template](./Docs/DESIGN_TEMPLATE_ANIMATION.md)
+- [Work Log Template](./Docs/WORK_LOG_TEMPLATE.md)

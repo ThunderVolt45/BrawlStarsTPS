@@ -87,6 +87,19 @@ void ABrawlCharacter::InitAbilityActorInfo()
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+		// 이동 속도 변화 감지 바인딩
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetMovementSpeedAttribute()).AddUObject(this, &ABrawlCharacter::OnMovementSpeedChanged);
+	}
+}
+
+void ABrawlCharacter::OnMovementSpeedChanged(const FOnAttributeChangeData& Data)
+{
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->MaxWalkSpeed = Data.NewValue;
+		
+		UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::OnMovementSpeedChanged - Speed Updated: %.2f"), Data.NewValue);
 	}
 }
 
@@ -120,8 +133,8 @@ void ABrawlCharacter::InitializeAttributes()
 	
 	if (Row)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::InitializeAttributes - Loaded Data for [%s]. MaxHealth: %f, MaxAmmo: %f"), 
-			*CharacterID.ToString(), Row->MaxHealth, Row->MaxAmmo);
+		UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::InitializeAttributes - Loaded Data for [%s]. MaxHealth: %f, MaxAmmo: %f, MovementSpeed: %f"), 
+			*CharacterID.ToString(), Row->MaxHealth, Row->MaxAmmo, Row->MoveSpeed);
 
 		// GE를 사용하지 않고 직접 Base Value 설정 (안전하고 확실함)
 		// 체력
@@ -137,11 +150,24 @@ void ABrawlCharacter::InitializeAttributes()
 		
 		// 이동 속도
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMovementSpeedAttribute(), Row->MoveSpeed);
-
+		if (GetCharacterMovement())
+		{
+			GetCharacterMovement()->MaxWalkSpeed = Row->MoveSpeed;
+		}
+		
 		// 공격력
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetAttackDamageAttribute(), Row->AttackDamage);
 		
-		// 게이지 초기화
+		// 가젯 공격력
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetGadgetDamageAttribute(), Row->Gadget1Damage);
+		
+		// 가젯 쿨다운
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetGadgetCooldownAttribute(), Row->Gadget1Cooldown);
+		
+		// 궁극기 공격력
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperDamageAttribute(), Row->SuperDamage);
+		
+		// 궁극기, 하이퍼차지 초기화
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxSuperChargeAttribute(), Row->MaxSuperCharge);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargeAttribute(), 0.0f);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperCostAttribute(), Row->SuperCost);

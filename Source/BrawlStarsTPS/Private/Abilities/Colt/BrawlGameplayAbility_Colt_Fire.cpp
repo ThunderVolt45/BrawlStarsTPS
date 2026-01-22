@@ -60,7 +60,21 @@ void UBrawlGameplayAbility_Colt_Fire::ActivateAbility(const FGameplayAbilitySpec
 
 	// 3. 몽타주 재생
 	// PlayMontageAndWait를 쓰면 몽타주 종료 시점까지 어빌리티를 유지할 수 있음
-	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, FireMontage);
+	UAnimMontage* MontageToPlay = FireMontage;
+	
+	if (const UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		static FGameplayTag HyperStateTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
+		if (ASC->HasMatchingGameplayTag(HyperStateTag))
+		{
+			if (FireMontage_Hyper)
+			{
+				MontageToPlay = FireMontage_Hyper;
+			}
+		}
+	}
+
+	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, MontageToPlay);
 	if (MontageTask)
 	{
 		MontageTask->OnCompleted.AddDynamic(this, &UBrawlGameplayAbility_Colt_Fire::OnMontageEnded);
@@ -224,15 +238,15 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 				FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageEffectClass, GetAbilityLevel(), ContextHandle);
 				if (SpecHandle.IsValid())
 				{
-					// 데미지 양 설정 (AttributeSet에서 가져옴)
+					// 데미지 양 설정 (GetDamageAttribute에서 가져옴)
 					bool bFound = false;
-					float AttackDamage = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetAttackDamageAttribute(), bFound);
+					float DamageValue = ASC->GetGameplayAttributeValue(GetDamageAttribute(), bFound);
 					
 					// 못 찾았으면 기본값(DamageAmount) 사용
-					if (!bFound) AttackDamage = DamageAmount;
+					if (!bFound) DamageValue = DamageAmount;
 
 					// 데미지 적용
-					float FinalDamage = FMath::Abs(AttackDamage);
+					float FinalDamage = FMath::Abs(DamageValue);
 
 					static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
 					SpecHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, FinalDamage);
@@ -243,6 +257,11 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 			}
 		}
 	}
+}
+
+FGameplayAttribute UBrawlGameplayAbility_Colt_Fire::GetDamageAttribute() const
+{
+	return UBrawlAttributeSet::GetAttackDamageAttribute();
 }
 
 void UBrawlGameplayAbility_Colt_Fire::OnMontageEnded()

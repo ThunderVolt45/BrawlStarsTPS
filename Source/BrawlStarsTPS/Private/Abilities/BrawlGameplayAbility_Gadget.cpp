@@ -3,6 +3,7 @@
 
 #include "Abilities/BrawlGameplayAbility_Gadget.h"
 #include "AbilitySystemComponent.h"
+#include "BrawlAttributeSet.h"
 
 UBrawlGameplayAbility_Gadget::UBrawlGameplayAbility_Gadget()
 {
@@ -19,9 +20,9 @@ bool UBrawlGameplayAbility_Gadget::CheckCost(const FGameplayAbilitySpecHandle Ha
 void UBrawlGameplayAbility_Gadget::ApplyCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
 {
 	// 가젯은 탄환을 소모하지 않음
-	// 아무것도 하지 않음 (Base 클래스의 ApplyCost 호출 차단)
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Cyan, TEXT("Gadget Used! (No Ammo Cost)"));
-	}
+}
+
+FGameplayAttribute UBrawlGameplayAbility_Gadget::GetDamageAttribute() const
+{
+	return UBrawlAttributeSet::GetGadgetDamageAttribute();
 }
