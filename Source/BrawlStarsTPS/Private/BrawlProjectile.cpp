@@ -22,6 +22,9 @@ ABrawlProjectile::ABrawlProjectile()
 	SphereComponent->SetCollisionObjectType(ECC_WorldDynamic);
 	SphereComponent->SetCollisionResponseToAllChannels(ECR_Block);
 	
+	// 발사체(WorldDynamic)끼리는 부딪히지 않고 겹치도록 설정
+	SphereComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
+	
 	// 겹침 이벤트도 일단 켜둠
 	SphereComponent->SetGenerateOverlapEvents(true);
 	
@@ -62,12 +65,23 @@ void ABrawlProjectile::BeginPlay()
 		SphereComponent->IgnoreActorWhenMoving(MyInstigator, true);
 	}
 
+	// 발사체끼리(WorldDynamic)는 충돌하지 않고 통과하도록 강제 설정
+	// (블루프린트 설정이 Block으로 되어 있어도 여기서 덮어씀)
+	if (SphereComponent)
+	{
+		SphereComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
+	}
+
 	SetLifeSpan(1.5f);
 }
 
 void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (!OtherActor || OtherActor == GetOwner() || OtherActor == this) return;
+	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator()
+		|| OtherActor == this || OtherActor->IsA(ABrawlProjectile::StaticClass()))
+	{
+		return;
+	}
 
 	UE_LOG(LogTemp, Warning, TEXT("Projectile HIT Block: %s"), *OtherActor->GetName());
 	ProcessHit(OtherActor, Hit.ImpactPoint);
@@ -76,7 +90,11 @@ void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherAct
 
 void ABrawlProjectile::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (!OtherActor || OtherActor == GetOwner() || OtherActor == this) return;
+	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator()
+		|| OtherActor == this || OtherActor->IsA(ABrawlProjectile::StaticClass()))
+	{
+		return;
+	}
 
 	UE_LOG(LogTemp, Warning, TEXT("Projectile HIT Overlap: %s"), *OtherActor->GetName());
 	ProcessHit(OtherActor, GetActorLocation());

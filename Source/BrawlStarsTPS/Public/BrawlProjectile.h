@@ -33,7 +33,7 @@ protected:
 	virtual void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	// 공통 처리 로직
-	void ProcessHit(AActor* OtherActor, const FVector& HitLocation);
+	virtual void ProcessHit(AActor* OtherActor, const FVector& HitLocation);
 
 protected:
 	// 총알의 수명 (초)
