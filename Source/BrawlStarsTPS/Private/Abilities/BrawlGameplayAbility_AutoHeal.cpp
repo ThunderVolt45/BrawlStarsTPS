@@ -12,10 +12,7 @@ UBrawlGameplayAbility_AutoHeal::UBrawlGameplayAbility_AutoHeal()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 
 	// 감지할 태그 설정 (해당 어빌리티들이 활성화될 때 Owner에게 부여하는 태그여야 함)
-	CombatTriggerTags.AddTag(FGameplayTag::RequestGameplayTag(FName("InputTag.Ability.Fire")));
-	CombatTriggerTags.AddTag(FGameplayTag::RequestGameplayTag(FName("InputTag.Ability.Super")));
-	CombatTriggerTags.AddTag(FGameplayTag::RequestGameplayTag(FName("InputTag.Ability.Gadget")));
-	CombatTriggerTags.AddTag(FGameplayTag::RequestGameplayTag(FName("InputTag.Ability.Hyper")));
+	CombatTriggerTags.AddTag(FGameplayTag::RequestGameplayTag(FName("State.Combat")));
 }
 
 void UBrawlGameplayAbility_AutoHeal::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
@@ -107,6 +104,8 @@ void UBrawlGameplayAbility_AutoHeal::EnterCombatState()
 {
 	UWorld* World = GetWorld();
 	check(World);
+	
+	UE_LOG(LogTemp, Warning, TEXT("AutoHeal: Actor %s EnterCombatState! Auto Heal Halted!"), *GetAvatarActorFromActorInfo()->GetName());
 
 	// 회복 중단
 	World->GetTimerManager().ClearTimer(TimerHandle_TickHeal);
@@ -119,6 +118,8 @@ void UBrawlGameplayAbility_AutoHeal::StartHealing()
 {
 	UWorld* World = GetWorld();
 	check(World);
+	
+	UE_LOG(LogTemp, Warning, TEXT("AutoHeal: Actor %s ExitCombatState! Auto Heal Started!"), *GetAvatarActorFromActorInfo()->GetName());
 
 	// 회복 틱 시작
 	World->GetTimerManager().SetTimer(TimerHandle_TickHeal, this, &UBrawlGameplayAbility_AutoHeal::TickHealing, HealInterval, true);
