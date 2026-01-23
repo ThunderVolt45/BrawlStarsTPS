@@ -25,6 +25,7 @@ ABrawlCharacter::ABrawlCharacter()
 	
 	// 캐릭터가 이동 방향으로 자동으로 회전하지 않도록 한다
 	GetCharacterMovement()->bOrientRotationToMovement = false;
+	GetCharacterMovement()->JumpZVelocity = 500.0f;
 	
 	// 스프링 암 설정
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
