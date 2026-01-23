@@ -60,6 +60,13 @@
     - [x] **HUD Integration:** `WBP_BrawlHUD` with Health, Ammo, Skill Widgets, and **Match Timer**.
     - [x] **Controller Setup:** Automated HUD creation & GAS binding in `PlayerController`.
     - [ ] **Crosshair:** Dynamic ammo display on crosshair.
+- [ ] **Map Elements (Obstacles):**
+    - [ ] **Destructible Walls:**
+        - [ ] Block Movement & Sight (AI Visibility).
+        - [ ] Destruction logic via specific Projectiles (Super/Gadget).
+    - [ ] **Bushes (Grass):**
+        - [ ] Allow Movement but Block Sight (Stealth mechanic).
+        - [ ] AI Perception handling for Hiding.
 - [ ] **AI System (Critical - Next Step):**
     - [ ] **AI Controller:** `ABrawlAIController` with perception.
     - [ ] **Bot Logic:** Behavior Trees / State Trees to mimic player tactics (cover, attack, retreat, collect gems).
