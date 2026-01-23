@@ -17,7 +17,11 @@
     *   **Hypercharge:** `Source/BrawlStarsTPS/Public/Abilities/BrawlGameplayAbility_Hyper.h` (.cpp)
     *   **Gadget:** `Source/BrawlStarsTPS/Public/Abilities/BrawlGameplayAbility_Gadget.h` (.cpp)
     *   **Colt Specific:** `Source/BrawlStarsTPS/Public/Abilities/Colt/BrawlGameplayAbility_Colt_Fire.h` (.cpp)
-*   **Projectile:** `Source/BrawlStarsTPS/Public/BrawlProjectile.h` (.cpp)
+    *   **Spread Fire (Shelly):** `Source/BrawlStarsTPS/Public/Abilities/BrawlGameplayAbility_Spread_Fire.h` (.cpp)
+    *   **Auto Heal (Passive):** `Source/BrawlStarsTPS/Public/Abilities/BrawlGameplayAbility_AutoHeal.h` (.cpp)
+*   **Projectile:** 
+    *   `Source/BrawlStarsTPS/Public/BrawlProjectile.h` (.cpp)
+    *   `Source/BrawlStarsTPS/Public/Projectiles/BrawlProjectile_Explosive.h` (.cpp)
 
 ## 3. Components & Input
 *   **Hero Component (Input/Camera):** `Source/BrawlStarsTPS/Public/Components/BrawlHeroComponent.h` (.cpp)
@@ -27,6 +31,7 @@
 
 ## 4. User Interface (UI)
 *   **HUD Widget:** `Source/BrawlStarsTPS/Public/UI/BrawlHUDWidget.h` (.cpp)
+*   **Health Bar (Overhead):** `Source/BrawlStarsTPS/Public/UI/BrawlHealthWidget.h` (.cpp)
 *   **User Widget Base:** `Source/BrawlStarsTPS/Public/UI/BrawlUserWidget.h` (.cpp)
 *   **Skill Widgets:**
     *   `Source/BrawlStarsTPS/Public/UI/BrawlSkillWidget.h` (.cpp)
