@@ -120,8 +120,8 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		FRotator CameraRot;
 		PC->GetPlayerViewPoint(CameraLoc, CameraRot);
 
-		// 카메라 앞쪽으로 레이캐스트 (최소 사거리 offset 추가)
-		FVector TraceStart = CameraLoc + (CameraRot.Vector() * AimMinRange);
+		// 카메라 위치에서 레이캐스트 시작
+		FVector TraceStart = CameraLoc;
 		FVector TraceEnd = CameraLoc + (CameraRot.Vector() * AimMaxRange);
 
 		FHitResult HitResult;
@@ -131,7 +131,19 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, 
 			ECC_Visibility, QueryParams))
 		{
-			TargetLocation = HitResult.ImpactPoint;
+			// 충돌 지점까지의 거리 계산
+			float DistanceToHit = (HitResult.ImpactPoint - CameraLoc).Size();
+
+			// 최소 사거리보다 가까우면 보정 (거리가 0에 가까울수록 TraceEnd(허공)를 바라봄)
+			if (DistanceToHit < AimMinRange)
+			{
+				float Alpha = FMath::Clamp(DistanceToHit / AimMinRange, 0.0f, 1.0f);
+				TargetLocation = FMath::Lerp(TraceEnd, HitResult.ImpactPoint, Alpha);
+			}
+			else
+			{
+				TargetLocation = HitResult.ImpactPoint;
+			}
 		}
 		else
 		{

@@ -39,11 +39,19 @@
     - [x] **Gadget:** `UBrawlGameplayAbility_Gadget` (Cooldown based).
     - [x] **Hypercharge:** `UBrawlGameplayAbility_Hyper` (Buff duration & gauge reset logic).
 
-## Phase 3: Brawler Content (Colt)
+## Phase 3: Brawler Content (Colt, Shelly, Spike)
 - [ ] **Colt Integration:**
     - [x] **Specific Abilities:** Dual pistols fire (C++ logic done).
     - [ ] **Visuals:** Mesh, AnimBP setup (Refinement needed).
     - [ ] **Feedback:** Recoil, VFX, SFX via Gameplay Cues.
+- [ ] **Shelly Integration:**
+    - [ ] **Specific Abilities:** Shotgun Spread Fire (Multiple projectiles).
+    - [ ] **Super:** Super Shell (Terrain destruction, Knockback).
+    - [ ] **Visuals:** Mesh, AnimBP setup.
+- [ ] **Spike Integration:**
+    - [ ] **Specific Abilities:** Needle Grenade (Split on impact/max range).
+    - [ ] **Super:** Stick Around (Slow field + Damage).
+    - [ ] **Visuals:** Mesh, AnimBP setup.
 
 ## Phase 4: Game Modes & UI (Significantly Progressed)
 - [x] **UI Implementation:**
