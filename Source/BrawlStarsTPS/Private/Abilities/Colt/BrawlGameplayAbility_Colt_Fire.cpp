@@ -197,9 +197,9 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 		FRotator CameraRot;
 		PC->GetPlayerViewPoint(CameraLoc, CameraRot);
 
-		// 카메라 앞쪽으로 레이캐스트
-		FVector TraceStart = CameraLoc;
-		FVector TraceEnd = CameraLoc + (CameraRot.Vector() * 5000.0f); // 50미터
+		// 카메라 앞쪽으로 레이캐스트 (최소 사거리 offset 추가)
+		FVector TraceStart = CameraLoc + (CameraRot.Vector() * AimMinRange);
+		FVector TraceEnd = CameraLoc + (CameraRot.Vector() * AimMaxRange);
 
 		FHitResult HitResult;
 		FCollisionQueryParams QueryParams;

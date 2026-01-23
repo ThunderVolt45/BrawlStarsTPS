@@ -62,6 +62,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
 	float DamageAmount = 100.0f;
 
+	// 에임 레이캐스트 최소 사거리 (너무 가까운 곳에 에임이 잡히는 것 방지)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	float AimMinRange = 600.0f;
+
+	// 에임 레이캐스트 최대 사거리
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	float AimMaxRange = 5000.0f;
+
 	// 발사체에 적용할 데미지 GE 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
 	TSubclassOf<class UGameplayEffect> DamageEffectClass;
