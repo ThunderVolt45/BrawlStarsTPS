@@ -10,6 +10,9 @@
 #include "Components/BrawlHeroComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Components/WidgetComponent.h"
+#include "UI/BrawlHealthWidget.h"
+#include "Kismet/GameplayStatics.h"
 
 ABrawlCharacter::ABrawlCharacter()
 {
@@ -34,6 +37,15 @@ ABrawlCharacter::ABrawlCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false; // 카메라는 스프링 암의 회전만 따라가면 됨
+
+	// 체력바 위젯 컴포넌트
+	HealthBarComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarComponent"));
+	HealthBarComponent->SetupAttachment(RootComponent);
+	HealthBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f)); // 머리 위 높이
+	HealthBarComponent->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+	HealthBarComponent->SetWidgetSpace(EWidgetSpace::World);
+	HealthBarComponent->SetDrawSize(FVector2D(200.0f, 50.0f));
+	HealthBarComponent->SetOwnerNoSee(true); // 본인에게는 보이지 않도록 설정
 
 	// GAS 컴포넌트 생성
 	AbilitySystemComponent = CreateDefaultSubobject<UBrawlAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -90,6 +102,15 @@ void ABrawlCharacter::InitAbilityActorInfo()
 
 		// 이동 속도 변화 감지 바인딩
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetMovementSpeedAttribute()).AddUObject(this, &ABrawlCharacter::OnMovementSpeedChanged);
+
+		// 머리 위 위젯 초기화
+		if (HealthBarComponent)
+		{
+			if (UBrawlHealthWidget* HealthWidget = Cast<UBrawlHealthWidget>(HealthBarComponent->GetUserWidgetObject()))
+			{
+				HealthWidget->InitializeWithAbilitySystem(AbilitySystemComponent);
+			}
+		}
 	}
 }
 
@@ -106,6 +127,20 @@ void ABrawlCharacter::OnMovementSpeedChanged(const FOnAttributeChangeData& Data)
 void ABrawlCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 체력바 빌보드 처리 (카메라 방향을 보게 함)
+	if (HealthBarComponent && HealthBarComponent->GetWidgetSpace() == EWidgetSpace::World)
+	{
+		if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+		{
+			FVector CameraLocation;
+			FRotator CameraRotation;
+			PC->GetPlayerViewPoint(CameraLocation, CameraRotation);
+
+			// 위젯이 카메라를 정면으로 응시하도록 회전
+			HealthBarComponent->SetWorldRotation(CameraRotation);
+		}
+	}
 }
 
 void ABrawlCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

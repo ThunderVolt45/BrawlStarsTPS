@@ -81,7 +81,7 @@ protected:
 
 	// 에임 레이캐스트 최소 사거리 (너무 가까운 곳에 에임이 잡히는 것 방지)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
-	float AimMinRange = 800.0f;
+	float AimMinRange = 700.0f;
 
 	// 에임 레이캐스트 최대 사거리
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
