@@ -136,9 +136,13 @@ void ABrawlCharacter::Tick(float DeltaTime)
 			FVector CameraLocation;
 			FRotator CameraRotation;
 			PC->GetPlayerViewPoint(CameraLocation, CameraRotation);
-
-			// 위젯이 카메라를 정면으로 응시하도록 회전
-			HealthBarComponent->SetWorldRotation(CameraRotation);
+			
+			// 카메라의 전방 벡터를 가져와 반대로 뒤집는다
+			FVector CameraForward = CameraRotation.Vector() * -1.0f;
+			FRotator CameraRotator = CameraForward.Rotation();
+			
+			// UI가 기울어지지 않고 카메라와 마주볼 수 있다
+			HealthBarComponent->SetWorldRotation(CameraRotator);
 		}
 	}
 }
