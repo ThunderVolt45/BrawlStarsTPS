@@ -28,7 +28,7 @@ protected:
 
 	// 발사체 스폰 로직 (Blueprint에서 호출 가능하도록)                                                                      │
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
-	void SpawnProjectile();  
+	virtual void SpawnProjectile();  
 
 	// 몽타주 종료 콜백
 	UFUNCTION()

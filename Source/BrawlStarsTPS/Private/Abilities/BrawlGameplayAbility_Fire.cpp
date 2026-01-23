@@ -154,7 +154,7 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 	// 4. 발사 방향 회전 (Muzzle -> Target)
 	FRotator ProjectileRotation = UKismetMathLibrary::FindLookAtRotation(MuzzleLocation, TargetLocation);
 
-	// 4. 발사체 스폰
+	// 5. 발사체 스폰
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = Character;
 	SpawnParams.Instigator = Character;
