@@ -64,5 +64,5 @@ private:
 	FTimerHandle TimerHandle_TickHeal;
 
 	FDelegateHandle OnEffectAppliedDelegateHandle;
-	TArray<FDelegateHandle> TagDelegateHandles;
+	TMap<FGameplayTag, FDelegateHandle> TagDelegateHandles;
 };

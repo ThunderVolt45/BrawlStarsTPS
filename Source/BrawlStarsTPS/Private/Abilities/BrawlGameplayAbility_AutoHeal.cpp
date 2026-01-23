@@ -11,7 +11,7 @@ UBrawlGameplayAbility_AutoHeal::UBrawlGameplayAbility_AutoHeal()
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 
-	// 기본 감지 태그 설정
+	// 감지할 태그 설정 (해당 어빌리티들이 활성화될 때 Owner에게 부여하는 태그여야 함)
 	CombatTriggerTags.AddTag(FGameplayTag::RequestGameplayTag(FName("InputTag.Ability.Fire")));
 	CombatTriggerTags.AddTag(FGameplayTag::RequestGameplayTag(FName("InputTag.Ability.Super")));
 	CombatTriggerTags.AddTag(FGameplayTag::RequestGameplayTag(FName("InputTag.Ability.Gadget")));
@@ -26,12 +26,16 @@ void UBrawlGameplayAbility_AutoHeal::ActivateAbility(const FGameplayAbilitySpecH
 
 	if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
 	{
-		// 1. 전투 상태 태그 감지
+		// 1. 전투 상태 태그 감지 (공격 등)
 		for (const FGameplayTag& Tag : CombatTriggerTags)
 		{
-			FDelegateHandle DelHandle = ASC->RegisterGameplayTagEvent(
-				Tag, EGameplayTagEventType::NewOrRemoved).AddUObject(this, &UBrawlGameplayAbility_AutoHeal::OnCombatTagChanged);
-			TagDelegateHandles.Add(DelHandle);
+			// 이미 등록된 태그인지 확인 (중복 방지)
+			if (!TagDelegateHandles.Contains(Tag))
+			{
+				FDelegateHandle DelHandle = ASC->RegisterGameplayTagEvent(
+					Tag, EGameplayTagEventType::NewOrRemoved).AddUObject(this, &UBrawlGameplayAbility_AutoHeal::OnCombatTagChanged);
+				TagDelegateHandles.Add(Tag, DelHandle);
+			}
 		}
 
 		// 2. 피격 감지 (GE 적용 시)
@@ -55,12 +59,13 @@ void UBrawlGameplayAbility_AutoHeal::EndAbility(const FGameplayAbilitySpecHandle
 	{
 		ASC->OnGameplayEffectAppliedDelegateToSelf.Remove(OnEffectAppliedDelegateHandle);
 		
-		// 태그 델리게이트 해제 로직이 복잡하므로 (TagDelegateHandles가 태그와 1:1 매핑되지 않음, 단순 배열)
-		// RegisterGameplayTagEvent는 removeAll을 지원하지 않으므로, 핸들을 저장했다가 지워야 함.
-		// 여기서는 생략된 매핑 로직 대신, 태그별로 remove 해야 함.
-		// 하지만 편의상 ASC가 파괴될 때 자동 정리되길 기대하거나, 루프를 돌며 해제해야 함.
-		// 정확한 해제를 위해선 Tag와 Handle을 Pair로 저장했어야 함.
-		// 현재 구조상 생략 (심각한 누수는 아님, 캐릭터 사망 시 ASC 소멸)
+		// 맵에 저장된 모든 핸들 해제
+		for (const TPair<FGameplayTag, FDelegateHandle>& Pair : TagDelegateHandles)
+		{
+			ASC->RegisterGameplayTagEvent(Pair.Key, EGameplayTagEventType::NewOrRemoved).Remove(Pair.Value);
+		}
+		
+		TagDelegateHandles.Empty();
 	}
 
 	if (UWorld* World = GetWorld())
@@ -85,7 +90,6 @@ void UBrawlGameplayAbility_AutoHeal::OnGameplayEffectApplied(UAbilitySystemCompo
 	const FGameplayEffectSpec& Spec, FActiveGameplayEffectHandle ActiveHandle)
 {
 	// 데미지 태그가 있거나, IncomingDamage 속성을 건드리는지 확인
-	// 여기서는 간단히 'Data.Damage' 태그가 SetByCaller로 설정되어 있는지 확인
 	static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
 	
 	if (Spec.SetByCallerTagMagnitudes.Contains(DamageTag))
@@ -126,7 +130,11 @@ void UBrawlGameplayAbility_AutoHeal::StartHealing()
 void UBrawlGameplayAbility_AutoHeal::TickHealing()
 {
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
-	if (!ASC) return;
+	if (!ASC)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Ability System Component is NULL! This should not happen!"));
+		return;
+	}
 
 	bool bFoundMax = false;
 	float MaxHealth = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetMaxHealthAttribute(), bFoundMax);
