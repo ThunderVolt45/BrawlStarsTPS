@@ -40,12 +40,14 @@ ABrawlCharacter::ABrawlCharacter()
 
 	// 체력바 위젯 컴포넌트
 	HealthBarComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarComponent"));
-	HealthBarComponent->SetupAttachment(RootComponent);
+	HealthBarComponent->SetupAttachment(GetMesh());
 	HealthBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f)); // 머리 위 높이
-	HealthBarComponent->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+	HealthBarComponent->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 	HealthBarComponent->SetWidgetSpace(EWidgetSpace::World);
 	HealthBarComponent->SetDrawSize(FVector2D(200.0f, 50.0f));
 	HealthBarComponent->SetOwnerNoSee(true); // 본인에게는 보이지 않도록 설정
+	HealthBarComponent->SetCastShadow(false); // 그림자 생성 안 함
+	HealthBarComponent->SetReceivesDecals(false); // 데칼 영향 안 함
 
 	// GAS 컴포넌트 생성
 	AbilitySystemComponent = CreateDefaultSubobject<UBrawlAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -106,9 +108,24 @@ void ABrawlCharacter::InitAbilityActorInfo()
 		// 머리 위 위젯 초기화
 		if (HealthBarComponent)
 		{
-			if (UBrawlHealthWidget* HealthWidget = Cast<UBrawlHealthWidget>(HealthBarComponent->GetUserWidgetObject()))
+			HealthBarComponent->InitWidget(); // 위젯 인스턴스 확인 및 생성
+			
+			if (UUserWidget* WidgetObj = HealthBarComponent->GetUserWidgetObject())
 			{
-				HealthWidget->InitializeWithAbilitySystem(AbilitySystemComponent);
+				if (UBrawlHealthWidget* HealthWidget = Cast<UBrawlHealthWidget>(WidgetObj))
+				{
+					UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::InitAbilityActorInfo - Initializing HealthWidget..."));
+					HealthWidget->InitializeWithAbilitySystem(AbilitySystemComponent);
+				}
+				else
+				{
+					UE_LOG(LogTemp, Error, TEXT("BrawlCharacter::InitAbilityActorInfo - Widget Class is NOT UBrawlHealthWidget! Class: %s"), *WidgetObj->GetClass()->GetName());
+				}
+			}
+			else
+			{
+				// 아직 위젯이 생성되지 않았을 수 있음 (비동기 등) -> 보통 InitWidget 후에는 있어야 함
+				UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::InitAbilityActorInfo - GetUserWidgetObject returned NULL."));
 			}
 		}
 	}

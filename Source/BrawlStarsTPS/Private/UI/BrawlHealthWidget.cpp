@@ -9,7 +9,13 @@
 
 void UBrawlHealthWidget::InitializeWithAbilitySystem(UAbilitySystemComponent* ASC)
 {
-	if (!ASC) return;
+	if (!ASC)
+	{
+		UE_LOG(LogTemp, Error, TEXT("BrawlHealthWidget::Initialize - ASC is NULL!"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("BrawlHealthWidget::Initialize - ASC Found. Binding Delegates..."));
 
 	// 1. 초기값 설정
 	bool bFoundHealth = false;
@@ -17,6 +23,8 @@ void UBrawlHealthWidget::InitializeWithAbilitySystem(UAbilitySystemComponent* AS
 	
 	bool bFoundMaxHealth = false;
 	CurrentMaxHealth = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetMaxHealthAttribute(), bFoundMaxHealth);
+
+	UE_LOG(LogTemp, Warning, TEXT("BrawlHealthWidget::Initialize - Init Health: %.1f / %.1f"), CurrentHealth, CurrentMaxHealth);
 
 	// 초기 UI 업데이트 호출
 	OnHealthChanged(CurrentHealth, CurrentMaxHealth);
@@ -37,23 +45,36 @@ void UBrawlHealthWidget::InitializeWithAbilitySystem(UAbilitySystemComponent* AS
 
 void UBrawlHealthWidget::OnHealthChanged(float NewValue, float MaxValue)
 {
-	HealthBar->SetPercent(NewValue / MaxValue);
-	HealthText->SetText(FText::AsNumber(NewValue));
+	if (HealthBar)
+	{
+		float Percent = (MaxValue > 0.0f) ? (NewValue / MaxValue) : 0.0f;
+		HealthBar->SetPercent(Percent);
+	}
+	
+	if (HealthText)
+	{
+		HealthText->SetText(FText::AsNumber((int32)NewValue));
+	}
 }
 
 void UBrawlHealthWidget::OnTeamColorChanged(bool bIsEnemy)
 {
-	HealthBar->SetFillColorAndOpacity(bIsEnemy ? EnemyHealthBarColor : HealthBarColor);
+	if (HealthBar)
+	{
+		HealthBar->SetFillColorAndOpacity(bIsEnemy ? EnemyHealthBarColor : HealthBarColor);
+	}
 }
 
 void UBrawlHealthWidget::HealthChanged(const FOnAttributeChangeData& Data)
 {
+	UE_LOG(LogTemp, Log, TEXT("BrawlHealthWidget::HealthChanged - New: %.1f"), Data.NewValue);
 	CurrentHealth = Data.NewValue;
 	OnHealthChanged(CurrentHealth, CurrentMaxHealth);
 }
 
 void UBrawlHealthWidget::MaxHealthChanged(const FOnAttributeChangeData& Data)
 {
+	UE_LOG(LogTemp, Log, TEXT("BrawlHealthWidget::MaxHealthChanged - New: %.1f"), Data.NewValue);
 	CurrentMaxHealth = Data.NewValue;
 	OnHealthChanged(CurrentHealth, CurrentMaxHealth);
 }

@@ -28,9 +28,11 @@ public:
 
 protected:
 	// 체력 변경 시 호출될 이벤트
+	UFUNCTION()
 	void OnHealthChanged(float NewValue, float MaxValue);
 
 	// 팀 색상 등을 변경하기 위한 이벤트
+	UFUNCTION()
 	void OnTeamColorChanged(bool bIsEnemy);
 
 private:
