@@ -10,6 +10,9 @@
 #include "Components/BrawlHeroComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Components/WidgetComponent.h"
+#include "UI/BrawlHealthWidget.h"
+#include "Kismet/GameplayStatics.h"
 
 ABrawlCharacter::ABrawlCharacter()
 {
@@ -22,6 +25,7 @@ ABrawlCharacter::ABrawlCharacter()
 	
 	// 캐릭터가 이동 방향으로 자동으로 회전하지 않도록 한다
 	GetCharacterMovement()->bOrientRotationToMovement = false;
+	GetCharacterMovement()->JumpZVelocity = 500.0f;
 	
 	// 스프링 암 설정
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -34,6 +38,17 @@ ABrawlCharacter::ABrawlCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false; // 카메라는 스프링 암의 회전만 따라가면 됨
+
+	// 체력바 위젯 컴포넌트
+	HealthBarComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarComponent"));
+	HealthBarComponent->SetupAttachment(GetMesh());
+	HealthBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f)); // 머리 위 높이
+	HealthBarComponent->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
+	HealthBarComponent->SetWidgetSpace(EWidgetSpace::World);
+	HealthBarComponent->SetDrawSize(FVector2D(200.0f, 50.0f));
+	HealthBarComponent->SetOwnerNoSee(true); // 본인에게는 보이지 않도록 설정
+	HealthBarComponent->SetCastShadow(false); // 그림자 생성 안 함
+	HealthBarComponent->SetReceivesDecals(false); // 데칼 영향 안 함
 
 	// GAS 컴포넌트 생성
 	AbilitySystemComponent = CreateDefaultSubobject<UBrawlAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -90,6 +105,30 @@ void ABrawlCharacter::InitAbilityActorInfo()
 
 		// 이동 속도 변화 감지 바인딩
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetMovementSpeedAttribute()).AddUObject(this, &ABrawlCharacter::OnMovementSpeedChanged);
+
+		// 머리 위 위젯 초기화
+		if (HealthBarComponent)
+		{
+			HealthBarComponent->InitWidget(); // 위젯 인스턴스 확인 및 생성
+			
+			if (UUserWidget* WidgetObj = HealthBarComponent->GetUserWidgetObject())
+			{
+				if (UBrawlHealthWidget* HealthWidget = Cast<UBrawlHealthWidget>(WidgetObj))
+				{
+					UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::InitAbilityActorInfo - Initializing HealthWidget..."));
+					HealthWidget->InitializeWithAbilitySystem(AbilitySystemComponent);
+				}
+				else
+				{
+					UE_LOG(LogTemp, Error, TEXT("BrawlCharacter::InitAbilityActorInfo - Widget Class is NOT UBrawlHealthWidget! Class: %s"), *WidgetObj->GetClass()->GetName());
+				}
+			}
+			else
+			{
+				// 아직 위젯이 생성되지 않았을 수 있음 (비동기 등) -> 보통 InitWidget 후에는 있어야 함
+				UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::InitAbilityActorInfo - GetUserWidgetObject returned NULL."));
+			}
+		}
 	}
 }
 
@@ -106,6 +145,24 @@ void ABrawlCharacter::OnMovementSpeedChanged(const FOnAttributeChangeData& Data)
 void ABrawlCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 체력바 빌보드 처리 (카메라 방향을 보게 함)
+	if (HealthBarComponent && HealthBarComponent->GetWidgetSpace() == EWidgetSpace::World)
+	{
+		if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+		{
+			FVector CameraLocation;
+			FRotator CameraRotation;
+			PC->GetPlayerViewPoint(CameraLocation, CameraRotation);
+			
+			// 카메라의 전방 벡터를 가져와 반대로 뒤집는다
+			FVector CameraForward = CameraRotation.Vector() * -1.0f;
+			FRotator CameraRotator = CameraForward.Rotation();
+			
+			// UI가 기울어지지 않고 카메라와 마주볼 수 있다
+			HealthBarComponent->SetWorldRotation(CameraRotator);
+		}
+	}
 }
 
 void ABrawlCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

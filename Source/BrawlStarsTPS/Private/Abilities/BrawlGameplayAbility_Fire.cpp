@@ -120,9 +120,9 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		FRotator CameraRot;
 		PC->GetPlayerViewPoint(CameraLoc, CameraRot);
 
-		// 카메라 앞쪽으로 레이캐스트
+		// 카메라 위치에서 레이캐스트 시작
 		FVector TraceStart = CameraLoc;
-		FVector TraceEnd = CameraLoc + (CameraRot.Vector() * 5000.0f); // 50미터
+		FVector TraceEnd = CameraLoc + (CameraRot.Vector() * AimMaxRange);
 
 		FHitResult HitResult;
 		FCollisionQueryParams QueryParams;
@@ -131,7 +131,19 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, 
 			ECC_Visibility, QueryParams))
 		{
-			TargetLocation = HitResult.ImpactPoint;
+			// 충돌 지점까지의 거리 계산
+			float DistanceToHit = (HitResult.ImpactPoint - CameraLoc).Size();
+
+			// 최소 사거리보다 가까우면 보정 (거리가 0에 가까울수록 TraceEnd(허공)를 바라봄)
+			if (DistanceToHit < AimMinRange)
+			{
+				float Alpha = FMath::Clamp(DistanceToHit / AimMinRange, 0.0f, 1.0f);
+				TargetLocation = FMath::Lerp(TraceEnd, HitResult.ImpactPoint, Alpha);
+			}
+			else
+			{
+				TargetLocation = HitResult.ImpactPoint;
+			}
 		}
 		else
 		{
@@ -142,7 +154,7 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 	// 4. 발사 방향 회전 (Muzzle -> Target)
 	FRotator ProjectileRotation = UKismetMathLibrary::FindLookAtRotation(MuzzleLocation, TargetLocation);
 
-	// 4. 발사체 스폰
+	// 5. 발사체 스폰
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = Character;
 	SpawnParams.Instigator = Character;

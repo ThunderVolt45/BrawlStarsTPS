@@ -16,6 +16,7 @@ class UBrawlAbilitySystemComponent;
 class UBrawlAttributeSet;
 class UBrawlHeroComponent;
 class UBrawlGameplayAbility;
+class UWidgetComponent;
 
 /**
  * ABrawlCharacter
@@ -53,6 +54,10 @@ protected:
 	void InitializeAttributes();
 
 protected:
+	/** 머리 위 체력바 위젯 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|UI")
+	TObjectPtr<UWidgetComponent> HealthBarComponent;
+
 	// 캐릭터 ID (데이터 테이블의 Row Name과 일치해야 함)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
 	FName CharacterID = FName("Colt");

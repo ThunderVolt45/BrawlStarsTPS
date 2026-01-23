@@ -34,16 +34,24 @@
 - [x] **Ability Implementation (C++):**
     - [x] **Primary Fire:** `UBrawlGameplayAbility_Fire` (Tag-based interaction with Reload).
     - [x] **Reload:** `UBrawlGameplayAbility_Reload` (Auto-replenish loop with **Pause/Resume** logic during fire).
-        - [ ] **TODO:** 사격 중 재장전 중단(Pause) 로직 버그 수정 (태그 감지 타이밍 이슈).
+        - [x] **TODO:** 사격 중 재장전 중단(Pause) 로직 버그 수정 (태그 감지 타이밍 이슈).
     - [x] **Super:** `UBrawlGameplayAbility_Super` (Gauge check & consume).
     - [x] **Gadget:** `UBrawlGameplayAbility_Gadget` (Cooldown based).
     - [x] **Hypercharge:** `UBrawlGameplayAbility_Hyper` (Buff duration & gauge reset logic).
 
-## Phase 3: Brawler Content (Colt)
+## Phase 3: Brawler Content (Colt, Shelly, Spike)
 - [ ] **Colt Integration:**
     - [x] **Specific Abilities:** Dual pistols fire (C++ logic done).
     - [ ] **Visuals:** Mesh, AnimBP setup (Refinement needed).
     - [ ] **Feedback:** Recoil, VFX, SFX via Gameplay Cues.
+- [ ] **Shelly Integration:**
+    - [ ] **Specific Abilities:** Shotgun Spread Fire (Multiple projectiles).
+    - [ ] **Super:** Super Shell (Terrain destruction, Knockback).
+    - [ ] **Visuals:** Mesh, AnimBP setup.
+- [ ] **Spike Integration:**
+    - [ ] **Specific Abilities:** Needle Grenade (Split on impact/max range).
+    - [ ] **Super:** Stick Around (Slow field + Damage).
+    - [ ] **Visuals:** Mesh, AnimBP setup.
 
 ## Phase 4: Game Modes & UI (Significantly Progressed)
 - [x] **UI Implementation:**
@@ -52,6 +60,13 @@
     - [x] **HUD Integration:** `WBP_BrawlHUD` with Health, Ammo, Skill Widgets, and **Match Timer**.
     - [x] **Controller Setup:** Automated HUD creation & GAS binding in `PlayerController`.
     - [ ] **Crosshair:** Dynamic ammo display on crosshair.
+- [ ] **Map Elements (Obstacles):**
+    - [ ] **Destructible Walls:**
+        - [ ] Block Movement & Sight (AI Visibility).
+        - [ ] Destruction logic via specific Projectiles (Super/Gadget).
+    - [ ] **Bushes (Grass):**
+        - [ ] Allow Movement but Block Sight (Stealth mechanic).
+        - [ ] AI Perception handling for Hiding.
 - [ ] **AI System (Critical - Next Step):**
     - [ ] **AI Controller:** `ABrawlAIController` with perception.
     - [ ] **Bot Logic:** Behavior Trees / State Trees to mimic player tactics (cover, attack, retreat, collect gems).
