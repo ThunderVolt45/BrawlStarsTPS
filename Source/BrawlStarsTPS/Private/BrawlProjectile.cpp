@@ -169,6 +169,7 @@ void ABrawlProjectile::Tick(float DeltaTime)
 
 void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
+	// 발사자(Instigator)는 무시
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator() 
 		|| OtherActor == this || OtherActor->IsA(ABrawlProjectile::StaticClass())) return;
 
@@ -192,6 +193,7 @@ void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherAct
 
 void ABrawlProjectile::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	// 발사자(Instigator)는 무시
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator()
 		|| OtherActor == this || OtherActor->IsA(ABrawlProjectile::StaticClass()))
 	{

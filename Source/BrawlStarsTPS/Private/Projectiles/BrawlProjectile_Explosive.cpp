@@ -11,10 +11,14 @@ void ABrawlProjectile_Explosive::OnHit(UPrimitiveComponent* HitComponent, AActor
 {
 	// 이미 폭발했으면 무시
 	if (bHasExploded) return;
+	
+	// 발사자(Instigator)는 무시
+	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator() 
+		|| OtherActor == this || OtherActor->IsA(ABrawlProjectile::StaticClass())) return;
 
 	// 부모의 OnHit 실행 (데미지 처리 등)
 	Super::OnHit(HitComponent, OtherActor, OtherComp, NormalImpulse, Hit);
-
+	
 	// 폭발 처리
 	Explode(Hit);
 	
