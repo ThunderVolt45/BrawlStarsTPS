@@ -70,6 +70,12 @@ void ABrawlProjectile::BeginPlay()
 		SphereComponent->IgnoreActorWhenMoving(MyInstigator, true);
 	}
 
+	// 주인(Owner)도 무시 (보통 Instigator와 같지만 다를 수 있음)
+	if (AActor* MyOwner = GetOwner())
+	{
+		SphereComponent->IgnoreActorWhenMoving(MyOwner, true);
+	}
+
 	if (SphereComponent)
 	{
 		// 충돌 활성화 강제 (QueryOnly: 물리 시뮬레이션 없이 오버랩/히트 감지)
