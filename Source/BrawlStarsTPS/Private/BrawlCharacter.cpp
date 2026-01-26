@@ -42,13 +42,13 @@ ABrawlCharacter::ABrawlCharacter()
 	// 체력바 위젯 컴포넌트
 	HealthBarComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarComponent"));
 	HealthBarComponent->SetupAttachment(GetMesh());
-	HealthBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f)); // 머리 위 높이
-	HealthBarComponent->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
+	HealthBarComponent->SetWorldLocation(FVector(0.0f, 0.0f, 100.0f)); // 머리 위 높이
+	HealthBarComponent->SetWorldScale3D(FVector(0.5f, 0.5f, 0.5f));
 	HealthBarComponent->SetWidgetSpace(EWidgetSpace::World);
 	HealthBarComponent->SetDrawSize(FVector2D(200.0f, 50.0f));
 	HealthBarComponent->SetOwnerNoSee(true); // 본인에게는 보이지 않도록 설정
 	HealthBarComponent->SetCastShadow(false); // 그림자 생성 안 함
-	HealthBarComponent->SetReceivesDecals(false); // 데칼 영향 안 함
+	HealthBarComponent->SetReceivesDecals(false); // 데칼 무시
 
 	// GAS 컴포넌트 생성
 	AbilitySystemComponent = CreateDefaultSubobject<UBrawlAbilitySystemComponent>(TEXT("AbilitySystemComponent"));

@@ -54,8 +54,8 @@ protected:
 	void InitializeAttributes();
 
 protected:
-	/** 머리 위 체력바 위젯 컴포넌트 */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|UI")
+	// 머리 위 체력바 위젯 컴포넌트
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|UI")
 	TObjectPtr<UWidgetComponent> HealthBarComponent;
 
 	// 캐릭터 ID (데이터 테이블의 Row Name과 일치해야 함)
