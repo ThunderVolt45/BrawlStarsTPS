@@ -70,6 +70,12 @@ void ABrawlProjectile::BeginPlay()
 		SphereComponent->IgnoreActorWhenMoving(MyInstigator, true);
 	}
 
+	// 주인(Owner)도 무시 (보통 Instigator와 같지만 다를 수 있음)
+	if (AActor* MyOwner = GetOwner())
+	{
+		SphereComponent->IgnoreActorWhenMoving(MyOwner, true);
+	}
+
 	if (SphereComponent)
 	{
 		// 충돌 활성화 강제 (QueryOnly: 물리 시뮬레이션 없이 오버랩/히트 감지)
@@ -169,6 +175,7 @@ void ABrawlProjectile::Tick(float DeltaTime)
 
 void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
+	// 발사자(Instigator)는 무시
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator() 
 		|| OtherActor == this || OtherActor->IsA(ABrawlProjectile::StaticClass())) return;
 
@@ -192,6 +199,7 @@ void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherAct
 
 void ABrawlProjectile::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	// 발사자(Instigator)는 무시
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator()
 		|| OtherActor == this || OtherActor->IsA(ABrawlProjectile::StaticClass()))
 	{

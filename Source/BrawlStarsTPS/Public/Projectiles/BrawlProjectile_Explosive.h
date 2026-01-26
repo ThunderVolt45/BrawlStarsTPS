@@ -26,6 +26,9 @@ protected:
 
 	// 폭발 및 파편 생성 로직 실행
 	virtual void Explode(const FHitResult& HitResult);
+	
+	// 고폭 피해 처리
+	virtual void ExplodeDamage(const FVector& Location);
 
 	// 파편 생성
 	void SpawnSplinters(const FVector& Location, const FVector& Normal);
@@ -53,8 +56,10 @@ protected:
 	bool bRadialSpread = true;
 
 	// 폭발 시 주변에 줄 데미지 (직격 데미지와 별도, 0이면 적용 안 함)
-	// GAS를 통해 적용하려면 복잡해지므로, 일단은 파편 생성에 집중하거나 
-	// GameplayEffectClass를 사용하여 Radial Damage를 줄 수 있음.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Explosive")
-	float ExplosionRadius = 0.0f; // 0.0f = 폭발 데미지 없음
+	float ExplosionRadialDamage = 0.0f; // 0.0f = 폭발 데미지 없음
+
+	// 폭발 데미지 범위
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Explosive")
+	float ExplosionRadius = 250.0f;
 };
