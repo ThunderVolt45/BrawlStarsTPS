@@ -34,7 +34,7 @@ void UBrawlGameplayAbility_Fire::ActivateAbility(const FGameplayAbilitySpecHandl
 	}
 	
 	// 강제 코스트 적용 (GE 설정이 없어도 탄환 깎음)
-	ApplyCost(Handle, ActorInfo, ActivationInfo);
+	// ApplyCost(Handle, ActorInfo, ActivationInfo); // CommitAbility 내부에서 호출되므로 중복 호출 제거
 
 	// 2. Gameplay Event 대기 (Event.Weapon.Fire)
 	// 몽타주에서 노티파이로 이벤트를 보내면 OnFireEventReceived가 호출됨
