@@ -53,11 +53,74 @@ void ABrawlProjectile_Explosive::Explode(const FHitResult& HitResult)
 	// 이미 폭발한 경우 종료
 	if (bHasExploded) return;
 	bHasExploded = true;
-
-	// 폭발 효과 (VFX/SFX) - 필요 시 여기에 추가 (GameplayCue 권장)
+	
+	// 폭발 범위 데미지 처리
+	ExplodeDamage(HitResult.Location);
 
 	// 파편 생성
 	SpawnSplinters(HitResult.Location, HitResult.Normal);
+}
+
+void ABrawlProjectile_Explosive::ExplodeDamage(const FVector& Location)
+{
+	if (ExplosionRadius <= 0.0f || ExplosionRadialDamage <= 0.0f)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ExplodeDamage Failed: ExplosionRadius/ExplosionRadialDamage <= 0"));
+		return;
+	}
+	
+	FVector ExplosionLocation = Location;
+	TArray<FHitResult> OverlapResults;
+	FCollisionShape SphereShape = FCollisionShape::MakeSphere(ExplosionRadius);
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+	QueryParams.AddIgnoredActor(GetOwner());
+	if (GetInstigator()) QueryParams.AddIgnoredActor(GetInstigator());
+
+	// 범위 내의 모든 대상 감지
+	bool bHasOverlap = GetWorld()->SweepMultiByChannel(
+		OverlapResults,
+		ExplosionLocation,
+		ExplosionLocation + FVector(0, 0, 1), // 아주 미세한 이동으로 스윕 유도
+		FQuat::Identity,
+		ECC_Pawn, // 캐릭터 위주로 감지
+		SphereShape,
+		QueryParams
+	);
+	
+	if (bHasOverlap)
+	{
+		TArray<AActor*> DamagedActors;
+		for (const FHitResult& Overlap : OverlapResults)
+		{
+			AActor* Victim = Overlap.GetActor();
+			if (Victim && !DamagedActors.Contains(Victim))
+			{
+				DamagedActors.Add(Victim);
+					
+				// GAS 데미지 적용
+				UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Victim);
+				if (TargetASC && DamageSpecHandle.IsValid())
+				{
+					// 원본 데미지 핸들 복사 (각 대상에게 개별 적용)
+					FGameplayEffectSpec* OriginalSpec = DamageSpecHandle.Data.Get();
+					FGameplayEffectSpec* RadialSpec = new FGameplayEffectSpec(*OriginalSpec);
+						
+					// 만약 ExplosionRadialDamage가 설정되어 있다면 그 값으로 덮어쓰기
+					if (ExplosionRadialDamage > 0.0f)
+					{
+						static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
+						RadialSpec->SetSetByCallerMagnitude(DamageTag, ExplosionRadialDamage);
+					}
+
+					TargetASC->ApplyGameplayEffectSpecToSelf(*RadialSpec);
+				}
+			}
+		}
+	}
+
+	// 디버그 시각화 (개발용)
+	DrawDebugSphere(GetWorld(), ExplosionLocation, ExplosionRadius, 12, FColor::Orange, false, 2.0f);
 }
 
 void ABrawlProjectile_Explosive::SpawnSplinters(const FVector& Location, const FVector& Normal)
