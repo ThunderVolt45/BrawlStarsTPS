@@ -40,6 +40,13 @@ void ABrawlProjectile_Explosive::Destroyed()
 
 void ABrawlProjectile_Explosive::Explode(const FHitResult& HitResult)
 {
+	// 월드가 유효한지 검사
+	if (!GetWorld()) return;
+	
+	// 현재 월드가 "게임 월드" 가 아니라면 (즉, 에디터 프리뷰라면) 종료
+	if (!GetWorld()->IsGameWorld()) return;
+	
+	// 이미 폭발한 경우 종료
 	if (bHasExploded) return;
 	bHasExploded = true;
 
