@@ -34,7 +34,6 @@
 - [x] **Ability Implementation (C++):**
     - [x] **Primary Fire:** `UBrawlGameplayAbility_Fire` (Tag-based interaction with Reload).
     - [x] **Reload:** `UBrawlGameplayAbility_Reload` (Auto-replenish loop with **Pause/Resume** logic during fire).
-        - [x] **TODO:** 사격 중 재장전 중단(Pause) 로직 버그 수정 (태그 감지 타이밍 이슈).
     - [x] **Super:** `UBrawlGameplayAbility_Super` (Gauge check & consume).
     - [x] **Gadget:** `UBrawlGameplayAbility_Gadget` (Cooldown based).
     - [x] **Hypercharge:** `UBrawlGameplayAbility_Hyper` (Buff duration & gauge reset logic).
