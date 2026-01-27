@@ -8,6 +8,7 @@
 #include "AbilitySystemComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
+#include "Environment/BrawlDestructibleInterface.h"
 
 ABrawlProjectile::ABrawlProjectile()
 {
@@ -161,7 +162,7 @@ void ABrawlProjectile::Tick(float DeltaTime)
 
 				if (bDestroyObstacles)
 				{
-					// TODO: 파괴 로직
+					DestroyObstacle(HitActor);
 				}
 			}
 		}
@@ -186,7 +187,7 @@ void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherAct
 
 	if (bDestroyObstacles)
 	{
-		// TODO: 장애물 파괴 로직
+		DestroyObstacle(OtherActor);
 	}
 
 	if (!bCanPierce)
@@ -213,7 +214,7 @@ void ABrawlProjectile::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, 
 
 	if (bDestroyObstacles)
 	{
-		// TODO: 장애물 파괴 로직
+		DestroyObstacle(OtherActor);
 	}
 
 	if (!bCanPierce)
@@ -247,5 +248,23 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("ProcessHit: DamageSpecHandle is INVALID! Cannot apply damage."));
+	}
+
+	// 장애물 파괴 로직 (bDestroyObstacles가 true일 경우)
+	if (bDestroyObstacles)
+	{
+		DestroyObstacle(OtherActor);
+	}
+}
+
+void ABrawlProjectile::DestroyObstacle(AActor* OtherActor)
+{
+	// 인터페이스 캐스팅 시도
+	if (IBrawlDestructibleInterface* Destructible = Cast<IBrawlDestructibleInterface>(OtherActor))
+	{
+		if (Destructible->IsDestructible())
+		{
+			Destructible->OnDestruction(GetInstigator());
+		}
 	}
 }

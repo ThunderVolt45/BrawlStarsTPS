@@ -36,6 +36,9 @@ protected:
 
 	// 공통 처리 로직
 	virtual void ProcessHit(AActor* OtherActor, const FVector& HitLocation);
+	
+	// 장애물 파괴 로직
+	virtual void DestroyObstacle(AActor* OtherActor);
 
 protected:
 	// 총알의 수명 (초)
