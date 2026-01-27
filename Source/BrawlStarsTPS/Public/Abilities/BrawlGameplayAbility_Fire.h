@@ -73,4 +73,16 @@ protected:
 	// 발사체에 적용할 데미지 GE 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
 	TSubclassOf<class UGameplayEffect> DamageEffectClass;
+
+	// 한 번 발사에 생성할 발사체 개수 (기본값: 1)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	int32 ProjectileCount = 1;
+
+	// 탄퍼짐 각도 (도 단위, Horizontal Spread, 기본값: 0.0f)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	float SpreadAngle = 0.0f;
+
+	// 각 펠릿(Pellet)당 데미지 비율 (기본값: 1.0f, 산탄총의 경우 1보다 작을 수 있음)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	float DamagePerPelletScale = 1.0f;
 };

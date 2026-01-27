@@ -29,10 +29,13 @@
     - [x] **Data-Driven Initialization:** Initialize attributes from `DT_BrawlerData` (including ReloadSpeed, MoveSpeed).
 - [x] **Combat Assets & Logic:**
     - [x] **Projectile System:** `ABrawlProjectile` with GAS integration and hybrid collision.
+        - [x] **Self-Collision Fix:** Implemented `MoveIgnoreActors` to prevent characters from being pushed by their own projectiles.
+        - [x] **Area Damage:** Added `ExplosionRadius` logic to `BrawlProjectile_Explosive` for immediate radial damage.
     - [x] **Damage Logic:** `IncomingDamage` meta-attribute with Defense (`DamageReduction`) calculation.
     - [x] **Charge Logic:** Super/Hyper accumulation on hit based on Data Table per-hit values.
 - [x] **Ability Implementation (C++):**
     - [x] **Primary Fire:** `UBrawlGameplayAbility_Fire` (Tag-based interaction with Reload).
+        - [x] **Bug Fix:** Resolved double ammo consumption issue by removing redundant `ApplyCost` calls.
     - [x] **Reload:** `UBrawlGameplayAbility_Reload` (Auto-replenish loop with **Pause/Resume** logic during fire).
     - [x] **Super:** `UBrawlGameplayAbility_Super` (Gauge check & consume).
     - [x] **Gadget:** `UBrawlGameplayAbility_Gadget` (Cooldown based).
@@ -48,9 +51,9 @@
     - [ ] **Super:** Super Shell (Terrain destruction, Knockback).
     - [ ] **Visuals:** Mesh, AnimBP setup.
 - [ ] **Spike Integration:**
-    - [ ] **Specific Abilities:** Needle Grenade (Split on impact/max range).
-    - [ ] **Super:** Stick Around (Slow field + Damage).
-    - [ ] **Visuals:** Mesh, AnimBP setup.
+    - [x] **Specific Abilities:** Needle Grenade (Split on impact/max range, Radial Damage implemented).
+    - [x] **Super:** Stick Around (Implemented as `BrawlProjectile_Explosive` with heavy slow & damage).
+    - [x] **Visuals:** Mesh, AnimBP setup (Upper body blend logic fixed).
 
 ## Phase 4: Game Modes & UI (Significantly Progressed)
 - [x] **UI Implementation:**
