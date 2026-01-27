@@ -10,6 +10,7 @@
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/GameplayStatics.h"
 
 UBrawlGameplayAbility_Fire::UBrawlGameplayAbility_Fire()
 {
@@ -173,40 +174,53 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		FRotator FinalRotation = LaunchDir.Rotation();
 
 		// 발사체 소유자 설정
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.Owner = Character;
-		SpawnParams.Instigator = Character;
+		// 충돌 전 초기화를 위해 Deferred Spawn 사용
+		FTransform SpawnTransform(FinalRotation, MuzzleLocation);
 		
-		AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(ClassToSpawn, MuzzleLocation, FinalRotation, SpawnParams);
+		AActor* SpawnedActor = GetWorld()->SpawnActorDeferred<AActor>(
+			ClassToSpawn, 
+			SpawnTransform, 
+			Character, 
+			Character, 
+			ESpawnActorCollisionHandlingMethod::AlwaysSpawn
+		);
+		
 		ABrawlProjectile* Projectile = Cast<ABrawlProjectile>(SpawnedActor);
 		UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
 		
-		if (!Projectile || !ASC) return;
-		
-		FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
-		ContextHandle.AddSourceObject(this);
-
-		if (DamageEffectClass)
+		if (Projectile && ASC)
 		{
-			FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageEffectClass, GetAbilityLevel(), ContextHandle);
-			if (SpecHandle.IsValid())
+			FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+			ContextHandle.AddSourceObject(this);
+
+			if (DamageEffectClass)
 			{
-				// 데미지 양 설정 (GetDamageAttribute에서 가져옴)
-				bool bFound = false;
-				float DamageValue = ASC->GetGameplayAttributeValue(GetDamageAttribute(), bFound);
-						
-				// 못 찾았으면 기본값(DamageAmount) 사용
-				if (!bFound) DamageValue = DamageAmount;
+				FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageEffectClass, GetAbilityLevel(), ContextHandle);
+				if (SpecHandle.IsValid())
+				{
+					// 데미지 양 설정 (GetDamageAttribute에서 가져옴)
+					bool bFound = false;
+					float DamageValue = ASC->GetGameplayAttributeValue(GetDamageAttribute(), bFound);
+							
+					// 못 찾았으면 기본값(DamageAmount) 사용
+					if (!bFound) DamageValue = DamageAmount;
 
-				// 데미지 적용 (펠릿 스케일 적용)
-				float FinalDamage = FMath::Abs(DamageValue) * DamagePerPelletScale;
+					// 데미지 적용 (펠릿 스케일 적용)
+					float FinalDamage = FMath::Abs(DamageValue) * DamagePerPelletScale;
 
-				static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
-				SpecHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, FinalDamage);
-						
-				// 발사체에 Spec 주입
-				Projectile->InitializeProjectile(SpecHandle);
+					static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
+					SpecHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, FinalDamage);
+							
+					// 발사체에 Spec 주입 (FinishSpawning 전에 해야 함)
+					Projectile->InitializeProjectile(SpecHandle);
+				}
 			}
+		}
+
+		// 최종 스폰 완료 (이때 물리/충돌 시작)
+		if (SpawnedActor)
+		{
+			UGameplayStatics::FinishSpawningActor(SpawnedActor, SpawnTransform);
 		}
 	}
 }
