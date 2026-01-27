@@ -41,19 +41,23 @@
     - [x] **Gadget:** `UBrawlGameplayAbility_Gadget` (Cooldown based).
     - [x] **Hypercharge:** `UBrawlGameplayAbility_Hyper` (Buff duration & gauge reset logic).
 
-## Phase 3: Brawler Content (Colt, Shelly, Spike)
-- [ ] **Colt Integration:**
+## Phase 3: Brawler Content (Colt, Shelly, Spike) - (Completed)
+- [x] **Colt Integration:**
     - [x] **Specific Abilities:** Dual pistols fire (C++ logic done).
+    - [x] **Super & Hypercharge:** Implemented and integrated.
     - [ ] **Visuals:** Mesh, AnimBP setup (Refinement needed).
-    - [ ] **Feedback:** Recoil, VFX, SFX via Gameplay Cues.
-- [ ] **Shelly Integration:**
-    - [ ] **Specific Abilities:** Shotgun Spread Fire (Multiple projectiles).
-    - [ ] **Super:** Super Shell (Terrain destruction, Knockback).
-    - [ ] **Visuals:** Mesh, AnimBP setup.
-- [ ] **Spike Integration:**
-    - [x] **Specific Abilities:** Needle Grenade (Split on impact/max range, Radial Damage implemented).
-    - [x] **Super:** Stick Around (Implemented as `BrawlProjectile_Explosive` with heavy slow & damage).
-    - [x] **Visuals:** Mesh, AnimBP setup (Upper body blend logic fixed).
+- [x] **Shelly Integration:**
+    - [x] **Specific Abilities:** Shotgun Spread Fire (Integrated into base `Fire` ability).
+    - [x] **Gadget:** Dash ability with optional ammo reload (SetByCaller).
+    - [x] **Super & Hypercharge:** Implemented (Super Shell logic).
+    - [x] **Visuals:** Mesh, AnimBP setup.
+- [x] **Spike Integration:**
+    - [x] **Specific Abilities:** Needle Grenade (Split logic & splinter damage fixed).
+    - [x] **Super & Hypercharge:** Implemented (Area slow & damage).
+    - [x] **Visuals:** Mesh, AnimBP setup.
+- [ ] **Polishing & Feedback (Future Work):**
+    - [ ] **VFX:** Muzzle flash, Projectile trails, Impact effects, Super/Hypercharge auras.
+    - [ ] **SFX:** Fire sounds, Hit sounds, Voice lines, Footsteps.
 
 ## Phase 4: Game Modes & UI (Significantly Progressed)
 - [x] **UI Implementation:**
@@ -62,10 +66,11 @@
     - [x] **HUD Integration:** `WBP_BrawlHUD` with Health, Ammo, Skill Widgets, and **Match Timer**.
     - [x] **Controller Setup:** Automated HUD creation & GAS binding in `PlayerController`.
     - [ ] **Crosshair:** Dynamic ammo display on crosshair.
-- [ ] **Map Elements (Obstacles):**
+- [ ] **Map Elements (Obstacles) - (In Progress):**
     - [ ] **Destructible Walls:**
-        - [ ] Block Movement & Sight (AI Visibility).
-        - [ ] Destruction logic via specific Projectiles (Super/Gadget).
+        - [ ] Class setup (`ABrawlObstacle`) with Gameplay Tags.
+        - [ ] Interaction with `bDestroyObstacles` projectiles.
+        - [ ] Dynamic Navigation Mesh update on destruction.
     - [ ] **Bushes (Grass):**
         - [ ] Allow Movement but Block Sight (Stealth mechanic).
         - [ ] AI Perception handling for Hiding.
