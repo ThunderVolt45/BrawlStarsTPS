@@ -18,17 +18,15 @@ ABrawlProjectile::ABrawlProjectile()
 	SphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComponent"));
 	SetRootComponent(SphereComponent);
 	
+	// 1-1. 충돌 범위 설정
 	SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	SphereComponent->SetCollisionObjectType(ECC_WorldDynamic);
-	SphereComponent->SetCollisionResponseToAllChannels(ECR_Block);
-	
-	// 발사체끼리(WorldDynamic)는 부딪히지 않고 겹치도록 설정
-	SphereComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
-	
-	// 겹침 이벤트도 켜둠
+	SphereComponent->SetCollisionResponseToAllChannels(ECR_Overlap);
+	SphereComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+	SphereComponent->SetCollisionResponseToChannel(ECC_Destructible, ECR_Block);
 	SphereComponent->SetGenerateOverlapEvents(true);
 	
-	// 이벤트 바인딩
+	// 1-2. 충돌 이벤트 바인딩
 	SphereComponent->OnComponentHit.AddDynamic(this, &ABrawlProjectile::OnHit);
 	SphereComponent->OnComponentBeginOverlap.AddDynamic(this, &ABrawlProjectile::OnBeginOverlap);
 
@@ -75,7 +73,7 @@ void ABrawlProjectile::BeginPlay()
 	{
 		SphereComponent->IgnoreActorWhenMoving(MyOwner, true);
 	}
-
+	
 	if (SphereComponent)
 	{
 		// 충돌 활성화 강제 (QueryOnly: 물리 시뮬레이션 없이 오버랩/히트 감지)
