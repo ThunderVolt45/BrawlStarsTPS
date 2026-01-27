@@ -7,7 +7,7 @@ UBrawlGameplayAbility_Colt_Gadget::UBrawlGameplayAbility_Colt_Gadget()
 }
 
 bool UBrawlGameplayAbility_Colt_Gadget::CheckCost(const FGameplayAbilitySpecHandle Handle,
-                                                  const FGameplayAbilityActorInfo* ActorInfo, FGameplayTagContainer* OptionalRelevantTags) const
+	const FGameplayAbilityActorInfo* ActorInfo, FGameplayTagContainer* OptionalRelevantTags) const
 {
 	// 가젯은 탄환(Ammo)을 체크하지 않음
 	return true;

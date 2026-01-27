@@ -102,25 +102,39 @@ void ABrawlProjectile_Explosive::ExplodeDamage(const FVector& Location)
 				UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Victim);
 				if (TargetASC && DamageSpecHandle.IsValid())
 				{
-					// 원본 데미지 핸들 복사 (각 대상에게 개별 적용)
 					FGameplayEffectSpec* OriginalSpec = DamageSpecHandle.Data.Get();
-					FGameplayEffectSpec* RadialSpec = new FGameplayEffectSpec(*OriginalSpec);
-						
-					// 만약 ExplosionRadialDamage가 설정되어 있다면 그 값으로 덮어쓰기
-					if (ExplosionRadialDamage > 0.0f)
-					{
-						static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
-						RadialSpec->SetSetByCallerMagnitude(DamageTag, ExplosionRadialDamage);
-					}
+					// Instigator(공격자)의 ASC가 필요함 (Spec 생성 주체)
+					UAbilitySystemComponent* InstigatorASC = OriginalSpec->GetContext().GetInstigatorAbilitySystemComponent();
+					if (!InstigatorASC) InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner());
 
-					TargetASC->ApplyGameplayEffectSpecToSelf(*RadialSpec);
+					if (InstigatorASC && OriginalSpec->Def)
+					{
+						// 새 Spec 생성 (Attack Damage)
+						FGameplayEffectContextHandle Context = OriginalSpec->GetContext();
+						FGameplayEffectSpecHandle RadialHandle = InstigatorASC->MakeOutgoingSpec(
+							OriginalSpec->Def->GetClass(), OriginalSpec->GetLevel(), Context);
+
+						if (RadialHandle.IsValid())
+						{
+							// 만약 ExplosionRadialDamage가 설정되어 있다면 그 값으로 덮어쓰기
+							if (ExplosionRadialDamage > 0.0f)
+							{
+								static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
+								RadialHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, ExplosionRadialDamage);
+							}
+							
+							// 타겟에게 적용
+							TargetASC->ApplyGameplayEffectSpecToSelf(*RadialHandle.Data.Get());
+						}
+					}
 				}
 			}
 		}
 	}
 
 	// 디버그 시각화 (개발용)
-	DrawDebugSphere(GetWorld(), ExplosionLocation, ExplosionRadius, 12, FColor::Orange, false, 2.0f);
+	DrawDebugSphere(GetWorld(), ExplosionLocation, ExplosionRadius, 12, 
+		FColor::Orange, false, 2.0f);
 }
 
 void ABrawlProjectile_Explosive::SpawnSplinters(const FVector& Location, const FVector& Normal)
@@ -152,31 +166,55 @@ void ABrawlProjectile_Explosive::SpawnSplinters(const FVector& Location, const F
 		SpawnParams.Instigator = GetInstigator();
 		
 		// 충돌 방지를 위해 약간 띄움
-		FVector SpawnLocation = Location + (FVector::UpVector * 20.0f); 
+		FVector SpawnLocation = Location + (FVector::UpVector * 10.0f);
+		FTransform SpawnTransform(SplinterRot, SpawnLocation);
 
-		AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(SplinterClass, SpawnLocation, SplinterRot, SpawnParams);
+		AActor* SpawnedActor = GetWorld()->SpawnActorDeferred<AActor>(
+			SplinterClass, 
+			SpawnTransform, 
+			GetOwner(), 
+			GetInstigator(), 
+			ESpawnActorCollisionHandlingMethod::AlwaysSpawn
+		);
+
 		if (ABrawlProjectile* Splinter = Cast<ABrawlProjectile>(SpawnedActor))
 		{
 			// 데미지 Spec 복제 및 수정
 			if (DamageSpecHandle.IsValid())
 			{
-				// 기존 Spec 복사
 				FGameplayEffectSpec* OriginalSpec = DamageSpecHandle.Data.Get();
-				FGameplayEffectSpec* NewSpec = new FGameplayEffectSpec(*OriginalSpec);
 				
-				// 데미지 스케일 적용
-				static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
-				float OriginalDamage = NewSpec->GetSetByCallerMagnitude(DamageTag, false, -1.0f);
-				
-				if (OriginalDamage > 0.0f)
-				{
-					NewSpec->SetSetByCallerMagnitude(DamageTag, OriginalDamage * SplinterDamageScale);
-				}
+				// 공격자(Instigator) ASC 가져오기
+				UAbilitySystemComponent* InstigatorASC = OriginalSpec->GetContext().GetInstigatorAbilitySystemComponent();
+				if (!InstigatorASC) InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner());
 
-				// 새 핸들로 포장
-				FGameplayEffectSpecHandle NewHandle(NewSpec);
-				Splinter->InitializeProjectile(NewHandle);
+				if (InstigatorASC && OriginalSpec->Def)
+				{
+					// 새 SpecHandle 생성
+					FGameplayEffectContextHandle Context = OriginalSpec->GetContext();
+					FGameplayEffectSpecHandle NewHandle = InstigatorASC->MakeOutgoingSpec(
+						OriginalSpec->Def->GetClass(), OriginalSpec->GetLevel(), Context);
+
+					if (NewHandle.IsValid())
+					{
+						// 원본 데미지 값 조회
+						static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
+						float OriginalDamage = OriginalSpec->GetSetByCallerMagnitude(DamageTag, false, -1.0f);
+						
+						// 스케일 적용하여 설정
+						if (OriginalDamage > 0.0f)
+						{
+							NewHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, OriginalDamage * SplinterDamageScale);
+						}
+						
+						// 자탄에 주입 (FinishSpawning 전)
+						Splinter->InitializeProjectile(NewHandle);
+					}
+				}
 			}
+
+			// 최종 스폰 완료 (물리 시작)
+			UGameplayStatics::FinishSpawningActor(SpawnedActor, SpawnTransform);
 		}
 	}
 }

@@ -8,6 +8,7 @@
 #include "AbilitySystemComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
+#include "Environment/BrawlDestructibleInterface.h"
 
 ABrawlProjectile::ABrawlProjectile()
 {
@@ -18,17 +19,15 @@ ABrawlProjectile::ABrawlProjectile()
 	SphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComponent"));
 	SetRootComponent(SphereComponent);
 	
+	// 1-1. 충돌 범위 설정
 	SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	SphereComponent->SetCollisionObjectType(ECC_WorldDynamic);
-	SphereComponent->SetCollisionResponseToAllChannels(ECR_Block);
-	
-	// 발사체끼리(WorldDynamic)는 부딪히지 않고 겹치도록 설정
-	SphereComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
-	
-	// 겹침 이벤트도 켜둠
+	SphereComponent->SetCollisionResponseToAllChannels(ECR_Overlap);
+	SphereComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+	SphereComponent->SetCollisionResponseToChannel(ECC_Destructible, ECR_Block);
 	SphereComponent->SetGenerateOverlapEvents(true);
 	
-	// 이벤트 바인딩
+	// 1-2. 충돌 이벤트 바인딩
 	SphereComponent->OnComponentHit.AddDynamic(this, &ABrawlProjectile::OnHit);
 	SphereComponent->OnComponentBeginOverlap.AddDynamic(this, &ABrawlProjectile::OnBeginOverlap);
 
@@ -75,7 +74,7 @@ void ABrawlProjectile::BeginPlay()
 	{
 		SphereComponent->IgnoreActorWhenMoving(MyOwner, true);
 	}
-
+	
 	if (SphereComponent)
 	{
 		// 충돌 활성화 강제 (QueryOnly: 물리 시뮬레이션 없이 오버랩/히트 감지)
@@ -153,18 +152,14 @@ void ABrawlProjectile::Tick(float DeltaTime)
 			if (HitActor && !HitActors.Contains(HitActor))
 			{
 				// 발사체끼리는 무시
-				if (HitActor->IsA(ABrawlProjectile::StaticClass())) continue;
-
-				UE_LOG(LogTemp, Warning, TEXT("Projectile Sweep Hit: %s"), *HitActor->GetName());
-
+				if (HitActor->IsA(StaticClass())) continue;
+				
 				// 처리 등록
 				HitActors.Add(HitActor);
+				
+				// 충돌 처리
+				UE_LOG(LogTemp, Warning, TEXT("Projectile Sweep Hit: %s"), *HitActor->GetName());
 				ProcessHit(HitActor, Result.ImpactPoint);
-
-				if (bDestroyObstacles)
-				{
-					// TODO: 파괴 로직
-				}
 			}
 		}
 	}
@@ -177,51 +172,32 @@ void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherAct
 {
 	// 발사자(Instigator)는 무시
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator() 
-		|| OtherActor == this || OtherActor->IsA(ABrawlProjectile::StaticClass())) return;
+		|| OtherActor == this || OtherActor->IsA(StaticClass())) 
+		return;
 
 	// 이미 처리된 액터면 무시 (관통 시 중복 방지)
 	if (HitActors.Contains(OtherActor)) return;
 	HitActors.Add(OtherActor);
-
+	
+	// 충돌 처리
 	UE_LOG(LogTemp, Warning, TEXT("Projectile HIT Block: %s"), *OtherActor->GetName());
 	ProcessHit(OtherActor, Hit.ImpactPoint);
-
-	if (bDestroyObstacles)
-	{
-		// TODO: 장애물 파괴 로직
-	}
-
-	if (!bCanPierce)
-	{
-		Destroy();
-	}
 }
 
 void ABrawlProjectile::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	// 발사자(Instigator)는 무시
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator()
-		|| OtherActor == this || OtherActor->IsA(ABrawlProjectile::StaticClass()))
-	{
+		|| OtherActor == this || OtherActor->IsA(StaticClass()))
 		return;
-	}
 
 	// 이미 처리된 액터면 무시
 	if (HitActors.Contains(OtherActor)) return;
 	HitActors.Add(OtherActor);
-
+	
+	// 충돌 처리
 	UE_LOG(LogTemp, Warning, TEXT("Projectile HIT Overlap: %s"), *OtherActor->GetName());
 	ProcessHit(OtherActor, GetActorLocation());
-
-	if (bDestroyObstacles)
-	{
-		// TODO: 장애물 파괴 로직
-	}
-
-	if (!bCanPierce)
-	{
-		Destroy();
-	}
 }
 
 void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation)
@@ -234,20 +210,76 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 		DrawDebugSphere(GetWorld(), HitLocation, 10.0f, 12, FColor::Red, false, 2.0f);
 	}
 
-	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor);
-	
-	if (!TargetASC)
+	// 데미지를 입힐 수 있는 액터라면 데미지를 입힌다
+	if (UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ProcessHit: Target [%s] has NO AbilitySystemComponent!"), *OtherActor->GetName());
-		return;
-	}
-
-	if (DamageSpecHandle.IsValid())
-	{
-		FActiveGameplayEffectHandle ActiveGE = TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpecHandle.Data.Get());
+		if (DamageSpecHandle.IsValid())
+		{
+			FActiveGameplayEffectHandle ActiveGE = TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpecHandle.Data.Get());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("ProcessHit: DamageSpecHandle is INVALID! Cannot apply damage."));
+		}
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("ProcessHit: DamageSpecHandle is INVALID! Cannot apply damage."));
+		UE_LOG(LogTemp, Warning, TEXT("ProcessHit: Target [%s] has No AbilitySystemComponent!"), *OtherActor->GetName());
+	}
+	
+	// 맞은 액터가 파괴 가능한 장애물인지 확인
+	bool bIsDestructibleObstacle = false;
+	if (bDestroyObstacles)
+	{
+		if (IBrawlDestructibleInterface* Destructible = Cast<IBrawlDestructibleInterface>(OtherActor))
+		{
+			if (Destructible->IsDestructible())
+			{
+				bIsDestructibleObstacle = true;
+			}
+		}
+	}
+	
+	// 장애물 파괴 로직
+	if (bIsDestructibleObstacle && bDestroyObstacles)
+	{
+		DestroyObstacle(OtherActor);
+		
+		// 장애물 관통 능력이 없다면 파괴
+		if (!bCanPierceHardObstacle)
+		{
+			Destroy();
+			return;
+		}
+		
+		// 파괴 가능한 벽을 뚫을 수 있는 발사체가 파괴 가능한 벽과 충돌했다면 벽을 무시하고 계속 진행
+		if (SphereComponent)
+		{
+			SphereComponent->IgnoreActorWhenMoving(OtherActor, true);
+		}
+
+		// 충돌로 잃은 속도 복구
+		if (ProjectileMovement)
+		{
+			ProjectileMovement->Velocity = ProjectileMovement->Velocity.GetSafeNormal() * ProjectileSpeed;
+		}
+	}
+	
+	// 관통 능력이 없다면 파괴
+	if (!bCanPierce)
+	{
+		Destroy();
+	}
+}
+
+void ABrawlProjectile::DestroyObstacle(AActor* OtherActor)
+{
+	// 인터페이스 캐스팅 시도
+	if (IBrawlDestructibleInterface* Destructible = Cast<IBrawlDestructibleInterface>(OtherActor))
+	{
+		if (Destructible->IsDestructible())
+		{
+			Destructible->OnDestruction(GetInstigator());
+		}
 	}
 }

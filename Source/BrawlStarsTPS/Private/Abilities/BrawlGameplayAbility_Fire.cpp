@@ -10,6 +10,7 @@
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/GameplayStatics.h"
 
 UBrawlGameplayAbility_Fire::UBrawlGameplayAbility_Fire()
 {
@@ -151,19 +152,43 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		}
 	}
 
-	// 4. 발사 방향 회전 (Muzzle -> Target)
-	FRotator ProjectileRotation = UKismetMathLibrary::FindLookAtRotation(MuzzleLocation, TargetLocation);
+	// 4. 발사 방향 계산 (Muzzle -> Target)
+	FRotator BaseRotation = UKismetMathLibrary::FindLookAtRotation(MuzzleLocation, TargetLocation);
+	FVector BaseDirection = BaseRotation.Vector();
 
 	// 5. 발사체 스폰
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = Character;
-	SpawnParams.Instigator = Character;
+	int32 RealCount = FMath::Max(1, ProjectileCount);
 	
-	AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(ClassToSpawn, MuzzleLocation, ProjectileRotation, SpawnParams);
-	if (ABrawlProjectile* Projectile = Cast<ABrawlProjectile>(SpawnedActor))
+	// SpreadAngle은 도(Degree) 단위이므로 라디안으로 변환 (VRandCone은 라디안 사용)
+	float ConeHalfAngleRad = FMath::DegreesToRadians(SpreadAngle);
+	
+	// 시드 랜덤 스트림
+	FRandomStream WeaponRandomStream(FMath::Rand());
+
+	for (int32 i = 0; i < RealCount; i++)
 	{
-		// GAS 데미지 Spec 생성 및 주입
-		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		// 원뿔 내 무작위 방향 벡터 생성
+		FVector LaunchDir = ConeHalfAngleRad > UE_SMALL_NUMBER ? 
+			WeaponRandomStream.VRandCone(BaseDirection, ConeHalfAngleRad) : BaseDirection;
+		
+		FRotator FinalRotation = LaunchDir.Rotation();
+
+		// 발사체 소유자 설정
+		// 충돌 전 초기화를 위해 Deferred Spawn 사용
+		FTransform SpawnTransform(FinalRotation, MuzzleLocation);
+		
+		AActor* SpawnedActor = GetWorld()->SpawnActorDeferred<AActor>(
+			ClassToSpawn, 
+			SpawnTransform, 
+			Character, 
+			Character, 
+			ESpawnActorCollisionHandlingMethod::AlwaysSpawn
+		);
+		
+		ABrawlProjectile* Projectile = Cast<ABrawlProjectile>(SpawnedActor);
+		UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+		
+		if (Projectile && ASC)
 		{
 			FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
 			ContextHandle.AddSourceObject(this);
@@ -176,20 +201,26 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 					// 데미지 양 설정 (GetDamageAttribute에서 가져옴)
 					bool bFound = false;
 					float DamageValue = ASC->GetGameplayAttributeValue(GetDamageAttribute(), bFound);
-					
+							
 					// 못 찾았으면 기본값(DamageAmount) 사용
 					if (!bFound) DamageValue = DamageAmount;
 
-					// 데미지 적용
-					float FinalDamage = FMath::Abs(DamageValue);
+					// 데미지 적용 (펠릿 스케일 적용)
+					float FinalDamage = FMath::Abs(DamageValue) * DamagePerPelletScale;
 
 					static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
 					SpecHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, FinalDamage);
-					
-					// 발사체에 Spec 주입
+							
+					// 발사체에 Spec 주입 (FinishSpawning 전에 해야 함)
 					Projectile->InitializeProjectile(SpecHandle);
 				}
 			}
+		}
+
+		// 최종 스폰 완료 (이때 물리/충돌 시작)
+		if (SpawnedActor)
+		{
+			UGameplayStatics::FinishSpawningActor(SpawnedActor, SpawnTransform);
 		}
 	}
 }

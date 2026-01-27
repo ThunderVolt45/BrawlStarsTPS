@@ -17,7 +17,7 @@
     *   **Hypercharge:** `Source/BrawlStarsTPS/Public/Abilities/BrawlGameplayAbility_Hyper.h` (.cpp)
     *   **Gadget:** `Source/BrawlStarsTPS/Public/Abilities/BrawlGameplayAbility_Gadget.h` (.cpp)
     *   **Colt Specific:** `Source/BrawlStarsTPS/Public/Abilities/Colt/BrawlGameplayAbility_Colt_Fire.h` (.cpp)
-    *   **Spread Fire (Shelly):** `Source/BrawlStarsTPS/Public/Abilities/BrawlGameplayAbility_Spread_Fire.h` (.cpp)
+    *   **Fire & Spread Fire (Base):** `Source/BrawlStarsTPS/Public/Abilities/BrawlGameplayAbility_Fire.h` (.cpp) - Handles both single and multi-projectile (shotgun) attacks.
     *   **Auto Heal (Passive):** `Source/BrawlStarsTPS/Public/Abilities/BrawlGameplayAbility_AutoHeal.h` (.cpp)
 *   **Projectile:** 
     *   `Source/BrawlStarsTPS/Public/BrawlProjectile.h` (.cpp)
