@@ -50,4 +50,12 @@ protected:
 	// 파괴 효과음
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Obstacle|FX")
 	TObjectPtr<USoundBase> DestructionSFX;
+	
+	// 충격 강도
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Obstacle|Setting")
+	float ImpulseStrength = 1000.0f;
+	
+	// 충격 반경
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Obstacle|Setting")
+	float ImpulseRadius = 100.0f;
 };

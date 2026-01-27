@@ -1,9 +1,7 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Environment/BrawlObstacle.h"
 #include "Components/StaticMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "GeometryCollection/GeometryCollectionComponent.h"
 
 ABrawlObstacle::ABrawlObstacle()
 {
@@ -49,7 +47,21 @@ void ABrawlObstacle::OnDestruction(AActor* InstigatorActor)
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		
 		// 원본과 동일한 위치/회전/스케일에 스폰
-		GetWorld()->SpawnActor<AActor>(DestructionEffectClass, GetActorTransform(), SpawnParams);
+		AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(DestructionEffectClass, GetActorTransform(), SpawnParams);
+
+		if (SpawnedActor)
+		{
+			// 지오메트리 컬렉션 컴포넌트를 찾아 물리적 충격 가하기 (즉시 파괴 연출)
+			if (UGeometryCollectionComponent* GCComp = SpawnedActor->FindComponentByClass<UGeometryCollectionComponent>())
+			{
+				// 공격자 방향에서 밀려나도록 위치 설정 (공격자가 없으면 중앙 하단에서 폭발)
+				FVector ImpulseOrigin = InstigatorActor ? 
+					GetActorLocation() + (InstigatorActor->GetActorLocation() - GetActorLocation()).GetSafeNormal() * 50.0f : 
+					GetActorLocation() - FVector(0, 0, 50.0f);
+				
+				GCComp->AddRadialImpulse(ImpulseOrigin, ImpulseRadius, ImpulseStrength, ERadialImpulseFalloff::RIF_Linear, true);
+			}
+		}
 	}
 
 	// 2. 효과음 재생
