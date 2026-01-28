@@ -41,6 +41,9 @@ void ABrawlBush::BeginPlay()
 		// 초기 투명도 설정
 		CurrentOpacity = NormalOpacity;
 		TargetOpacity = NormalOpacity;
+		
+		// 초기 회전값 저장
+		InitialRotation = MeshComponent->GetRelativeRotation();
 
 		// 다이내믹 머티리얼 인스턴스 생성 (투명도 조절용)
 		if (UMaterialInterface* BaseMat = MeshComponent->GetMaterial(0))
@@ -100,7 +103,7 @@ void ABrawlBush::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// 투명도 보간
+	// 1. 투명도 보간
 	if (!FMath::IsNearlyEqual(CurrentOpacity, TargetOpacity))
 	{
 		CurrentOpacity = FMath::FInterpTo(CurrentOpacity, TargetOpacity, DeltaTime, FadingSpeed);
@@ -109,6 +112,38 @@ void ABrawlBush::Tick(float DeltaTime)
 		{
 			BushMID->SetScalarParameterValue(OpacityParamName, CurrentOpacity);
 		}
+	}
+
+	// 2. 수풀 흔들림 (Wiggle) 처리
+	bool bIsAnyCharacterMoving = false;
+
+	// 안에 있는 캐릭터 중 하나라도 움직이고 있는지 확인
+	for (ABrawlCharacter* Char : CharactersInside)
+	{
+		if (Char && Char->GetVelocity().SizeSquared() > 100.0f) // 약간의 움직임이라도 있으면
+		{
+			bIsAnyCharacterMoving = true;
+			break;
+		}
+	}
+
+	if (MeshComponent)
+	{
+		FRotator TargetRotation = InitialRotation;
+
+		if (bIsAnyCharacterMoving)
+		{
+			// 시간 기반 Sine 파동으로 흔들림 생성
+			float Time = GetWorld()->GetTimeSeconds();
+			float PitchOffset = FMath::Sin(Time * SwaySpeed) * SwayStrength;
+			float RollOffset = FMath::Cos(Time * SwaySpeed * 0.8f) * SwayStrength; // 주기를 다르게 하여 불규칙성 추가
+
+			TargetRotation += FRotator(PitchOffset, 0.0f, RollOffset);
+		}
+
+		// 현재 회전에서 목표 회전으로 부드럽게 보간 (RInterpTo)
+		FRotator NewRotation = FMath::RInterpTo(MeshComponent->GetRelativeRotation(), TargetRotation, DeltaTime, 10.0f);
+		MeshComponent->SetRelativeRotation(NewRotation);
 	}
 }
 

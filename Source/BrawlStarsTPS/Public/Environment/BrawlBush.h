@@ -89,4 +89,16 @@ protected:
 	// 현재 수풀 근처(감지 영역)에 있는 캐릭터들
 	UPROPERTY()
 	TSet<TObjectPtr<class ABrawlCharacter>> CharactersNearby;
+
+protected:
+	// 수풀 흔들림 강도 (각도)
+	UPROPERTY(EditAnywhere, Category = "Bush|Animation")
+	float SwayStrength = 5.0f;
+
+	// 수풀 흔들림 속도
+	UPROPERTY(EditAnywhere, Category = "Bush|Animation")
+	float SwaySpeed = 15.0f;
+
+	// 원래 회전값 저장
+	FRotator InitialRotation;
 };
