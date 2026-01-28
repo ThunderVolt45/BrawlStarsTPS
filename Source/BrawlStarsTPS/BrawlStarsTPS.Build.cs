@@ -23,7 +23,8 @@ public class BrawlStarsTPS : ModuleRules
 			"GameplayTags",
 			"GameplayTasks",
 			"GeometryCollectionEngine",
-			"ChaosSolverEngine"
+			"ChaosSolverEngine",
+			"NavigationSystem"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
