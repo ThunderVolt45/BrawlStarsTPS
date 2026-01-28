@@ -13,12 +13,24 @@ class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
 
 /**
+ * AI의 현재 전략 상태
+ */
+UENUM(BlueprintType)
+enum class EBrawlAIStrategy : uint8
+{
+	Patrol		UMETA(DisplayName = "Patrol"),		// 순찰 (기본)
+	Move		UMETA(DisplayName = "Move"),		// 이동 (타겟 발견, 사거리 밖)
+	Combat		UMETA(DisplayName = "Combat"),		// 교전 (사거리 내)
+	Flee		UMETA(DisplayName = "Flee")			// 도주 (체력 낮음 or 너무 가까움)
+};
+
+/**
  * ABrawlAIController
  * 
  * 브롤스타즈 스타일 AI 컨트롤러
  * - 시야(Sight) 감지를 통해 적을 탐지
  * - Behavior Tree를 실행하여 전투/이동 로직 수행
- * - IGenericTeamAgentInterface를 상속받지 않고 Pawn(Character)의 인터페이스를 활용함
+ * - IGenericTeamAgentInterface를 직접 상속받지 않고 Pawn(Character)의 인터페이스를 활용함
  */
 UCLASS()
 class BRAWLSTARSTPS_API ABrawlAIController : public AAIController

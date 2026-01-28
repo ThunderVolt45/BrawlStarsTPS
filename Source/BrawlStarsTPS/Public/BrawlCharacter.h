@@ -20,6 +20,35 @@ class UBrawlGameplayAbility;
 class UWidgetComponent;
 
 /**
+ * AI 전투 설정 (브롤러별 거리 및 체력 기준)
+ */
+USTRUCT(BlueprintType)
+struct FAICombatSettings
+{
+	GENERATED_BODY()
+
+	// 최대 교전 거리 (이보다 멀면 "이동" 전략)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+	float MaxCombatRange = 1000.0f;
+
+	// 선호 교전 거리 (이 거리 유지를 위해 이동/후퇴)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+	float PreferredCombatRange = 700.0f;
+
+	// 최소 교전 거리 (이보다 가까우면 "도주" 전략)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+	float MinCombatRange = 300.0f;
+
+	// 도주 시작 체력 비율 (0.0 ~ 1.0) - 이 이하로 떨어지면 도주
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+	float FleeHealthRatio = 0.3f;
+
+	// 도주 종료(복귀) 체력 비율 (0.0 ~ 1.0) - 이 이상 회복되면 다시 교전
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+	float ResumeCombatHealthRatio = 0.7f;
+};
+
+/**
  * ABrawlCharacter
  *
  * Lyra 스타일의 모듈형 아키텍처를 지향하는 프로젝트의 기본 캐릭터 클래스입니다.
@@ -48,6 +77,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
 	int32 GetTeamID() const { return TeamID; }
+
+	// AI 설정 반환
+	UFUNCTION(BlueprintCallable, Category = "Brawl|AI")
+	const FAICombatSettings& GetAICombatSettings() const { return AICombatSettings; }
 
 protected:
 	virtual void BeginPlay() override;
@@ -82,6 +115,10 @@ protected:
 	// 초기화용 Gameplay Effect 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
 	TSubclassOf<UGameplayEffect> InitStatsEffectClass;
+
+	// AI 행동 설정값
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|AI")
+	FAICombatSettings AICombatSettings;
 
 protected:
 	// 어빌리티 시스템 컴포넌트
