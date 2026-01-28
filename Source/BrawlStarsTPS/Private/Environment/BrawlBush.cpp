@@ -121,8 +121,9 @@ void ABrawlBush::OnProximityOverlapBegin(UPrimitiveComponent* OverlappedComp, AA
 		// 접근자 목록 추가
 		CharactersNearby.Add(Character);
 
-		// 1. 로컬 플레이어라면 목표 투명도 변경
-		if (Character->IsLocallyControlled())
+		// 1. 플레이어가 제어 중이라면 목표 투명도 변경
+		// TODO: 플레이어와 같은 팀이 제어 중인지 여부를 검사해야 함
+		if (Character->IsPlayerControlled())
 		{
 			TargetOpacity = TranslucentOpacity;
 		}
