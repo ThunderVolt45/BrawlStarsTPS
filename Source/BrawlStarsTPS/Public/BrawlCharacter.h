@@ -103,8 +103,65 @@ public:
 
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
-private:
-	// 이동 속도 속성 변경 시 호출될 콜백
-	void OnMovementSpeedChanged(const FOnAttributeChangeData& Data);
+	/**
+	 * 수풀(Bush) 진입/나감 처리
+	 * @param bInBush true면 수풀 속, false면 나옴
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
+	void SetInBush(bool bInBush);
 
-};
+		/** 현재 수풀 속에 있는지 여부 확인 */
+
+		UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
+
+		bool IsHiddenInBush() const { return bIsHiddenInBush; }
+
+	
+
+		/**
+
+		 * 수풀 속에서 누군가에 의해 감지되었는지 설정
+
+		 * @param bRevealed true면 감지됨(보임), false면 감지 안됨(숨음)
+
+		 */
+
+		void SetRevealed(bool bRevealed);
+
+	
+
+	private:
+
+		// 이동 속도 속성 변경 시 호출될 콜백
+
+		void OnMovementSpeedChanged(const FOnAttributeChangeData& Data);
+
+	
+
+		// 실제 시각적 은신 상태 업데이트
+
+		void UpdateMeshVisibility();
+
+	
+
+		// 수풀 속에 있는지 여부 (은신 가능 상태)
+
+		bool bIsHiddenInBush = false;
+
+		
+
+		// 근처 적 등에 의해 위치가 발각되었는지 여부
+
+		bool bIsRevealed = false;
+
+		
+
+		// 겹쳐진 수풀 개수 (여러 수풀이 겹쳐 있을 때 처리용)
+
+		int32 BushOverlapCount = 0;
+
+	
+
+	};
+
+	
