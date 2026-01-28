@@ -151,7 +151,6 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 	// 3. 목표 지점 및 발사 방향 계산
 	FRotator BaseRotation = Character->GetActorRotation();
 
-	// ABrawlCharacter 인터페이스를 통해 정확한 조준 각도(Pitch 포함)를 가져옴
 	if (ABrawlCharacter* BrawlCharacter = Cast<ABrawlCharacter>(Character))
 	{
 		BaseRotation = BrawlCharacter->GetControlRotation();
@@ -193,11 +192,11 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 				BaseRotation = UKismetMathLibrary::FindLookAtRotation(MuzzleLocation, TargetLocation);
 			}
 		}
-	}
-	else if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
-	{
-		// (구형 로직 백업) ABrawlCharacter가 아닌 경우
-		BaseRotation = PC->GetControlRotation();
+		// AI 브롤러의 경우 간단히 Pitch 보정
+		else
+		{
+			BaseRotation.Pitch += 3.0f;
+		}
 	}
 
 	FVector BaseDirection = BaseRotation.Vector();
