@@ -65,19 +65,20 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 	EBrawlAIStrategy NewStrategy = CurrentStrategy;
 
 	// 4. 전략 결정 로직
-
-	// [도주(Flee) 판정]
+	// 4-1. 도주(Flee) 판정
 	bool bShouldFlee = false;
 	
 	if (CurrentStrategy == EBrawlAIStrategy::Flee)
 	{
+		bShouldFlee = true;
+		
 		// 이미 도주 중이라면: 충분히 회복하고 적과 멀어져야 도주 해제 (Hysteresis)
 		bool bRecovered = (HealthRatio >= Settings.ResumeCombatHealthRatio);
 		bool bSafeDistance = (Distance > Settings.MinCombatRange * 1.5f); 
 
-		if (!bRecovered && !bSafeDistance)
+		if (bRecovered && bSafeDistance)
 		{
-			bShouldFlee = true; // 계속 도주
+			bShouldFlee = false;
 		}
 	}
 	else
@@ -86,14 +87,11 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 		if (HealthRatio <= Settings.FleeHealthRatio || Distance < Settings.MinCombatRange)
 		{
 			bShouldFlee = true;
+			NewStrategy = EBrawlAIStrategy::Flee;
 		}
 	}
 
-	if (bShouldFlee)
-	{
-		NewStrategy = EBrawlAIStrategy::Flee;
-	}
-	else
+	if (!bShouldFlee)
 	{
 		// [이동(Move) vs 교전(Combat) 판정]
 		if (Distance > Settings.MaxCombatRange)
