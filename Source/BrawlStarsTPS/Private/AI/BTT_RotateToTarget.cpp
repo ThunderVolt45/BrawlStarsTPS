@@ -30,14 +30,19 @@ EBTNodeResult::Type UBTT_RotateToTarget::ExecuteTask(UBehaviorTreeComponent& Own
 
 	// 1. 회전 설정 변경 (전투 모드: 컨트롤러 회전 따르기)
 	ACharacter* MyCharacter = Cast<ACharacter>(MyPawn);
+
 	if (MyCharacter)
 	{
+		// 시작 시점의 컨트롤러 회전을 캐릭터가 현재 바라보는 방향으로 동기화
+		// (Patrol 등에서 이동 방향을 보다가 넘어왔을 때 회전 튐 방지)
+		AIController->SetControlRotation(MyCharacter->GetActorRotation());
+
 		// OrientRotationToMovement를 꺼야 제자리 회전이 자연스러움
 		if (MyCharacter->GetCharacterMovement())
 		{
 			MyCharacter->GetCharacterMovement()->bOrientRotationToMovement = false;
 		}
-		
+
 		MyCharacter->bUseControllerRotationYaw = true;
 	}
 

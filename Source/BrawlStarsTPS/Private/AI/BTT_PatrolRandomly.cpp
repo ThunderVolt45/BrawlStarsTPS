@@ -93,7 +93,6 @@ EBTNodeResult::Type UBTT_PatrolRandomly::AbortTask(UBehaviorTreeComponent& Owner
 	if (AIController)
 	{
 		AIController->StopMovement();
-		AIController->GetPawn()->SetActorRotation(AIController->GetControlRotation());
 	}
 
 	return Super::AbortTask(OwnerComp, NodeMemory);
@@ -102,4 +101,32 @@ EBTNodeResult::Type UBTT_PatrolRandomly::AbortTask(UBehaviorTreeComponent& Owner
 void UBTT_PatrolRandomly::OnTaskFinished(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, EBTNodeResult::Type TaskResult)
 {
 	Super::OnTaskFinished(OwnerComp, NodeMemory, TaskResult);
+
+	AAIController* AIController = OwnerComp.GetAIOwner();
+	if (AIController)
+	{
+		// 태스크가 중단(Aborted)되었을 때 이동을 멈춤
+		if (TaskResult == EBTNodeResult::Aborted)
+		{
+			AIController->StopMovement();
+		}
+
+		// 캐릭터 회전 설정 복구
+		ACharacter* MyCharacter = Cast<ACharacter>(AIController->GetPawn());
+		if (MyCharacter)
+		{
+			// 1. 현재 캐릭터가 바라보는 방향으로 컨트롤러 회전을 동기화
+			// (이걸 안 하면 bUseControllerRotationYaw를 켜는 순간 이전 컨트롤러 방향으로 튐)
+			AIController->SetControlRotation(MyCharacter->GetActorRotation());
+
+			// 2. OrientRotationToMovement 끄기
+			if (MyCharacter->GetCharacterMovement())
+			{
+				MyCharacter->GetCharacterMovement()->bOrientRotationToMovement = false;
+			}
+			
+			// 3. Controller Rotation 따르기 켜기
+			MyCharacter->bUseControllerRotationYaw = true;
+		}
+	}
 }
