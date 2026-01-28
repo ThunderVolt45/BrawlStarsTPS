@@ -72,6 +72,16 @@ UAbilitySystemComponent* ABrawlCharacter::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
+void ABrawlCharacter::SetGenericTeamId(const FGenericTeamId& NewTeamID)
+{
+	TeamID = NewTeamID.GetId();
+}
+
+FGenericTeamId ABrawlCharacter::GetGenericTeamId() const
+{
+	return FGenericTeamId(TeamID);
+}
+
 void ABrawlCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
@@ -176,6 +186,82 @@ void ABrawlCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	}
 }
 
+void ABrawlCharacter::SetInBush(bool bInBush)
+{
+	if (bInBush)
+	{
+		BushOverlapCount++;
+	}
+	else
+	{
+		BushOverlapCount--;
+	}
+
+	// 카운트가 0 이하로 떨어지지 않도록 보정
+	if (BushOverlapCount < 0)
+	{
+		BushOverlapCount = 0;
+	}
+
+	// 수풀에 하나라도 겹쳐 있으면 숨김 상태
+	bool bNewHiddenState = (BushOverlapCount > 0);
+
+	if (bIsHiddenInBush != bNewHiddenState)
+	{
+		bIsHiddenInBush = bNewHiddenState;
+		UpdateMeshVisibility();
+		
+		UE_LOG(LogTemp, Log, TEXT("Character [%s] Hidden State Changed: %s (Bush Count: %d)"), *GetName(), bIsHiddenInBush ? TEXT("HIDDEN") : TEXT("VISIBLE"), BushOverlapCount);
+	}
+}
+
+void ABrawlCharacter::SetRevealed(bool bRevealed)
+{
+	if (bIsRevealed != bRevealed)
+	{
+		bIsRevealed = bRevealed;
+		UpdateMeshVisibility();
+		
+		UE_LOG(LogTemp, Log, TEXT("Character [%s] Revealed State Changed: %s"), *GetName(), bIsRevealed ? TEXT("REVEALED") : TEXT("HIDDEN"));
+	}
+}
+
+void ABrawlCharacter::UpdateMeshVisibility()
+{
+	// 최종 은신 여부 판별
+	// 수풀에 있고(HiddenInBush) AND 발각되지 않았어야(Not Revealed) 진짜 은신
+	bool bFinalHidden = bIsHiddenInBush && !bIsRevealed;
+
+	// 로컬 플레이어는 항상 반투명하게라도 보여야 함 (완전 투명 X)
+	// 적(AI)은 조건 만족 시 완전 투명(HiddenInGame) 처리
+	
+	if (IsPlayerControlled())
+	{
+		// 로컬 플레이어: 수풀에 숨으면 약간 반투명하게 처리하여 숨었음을 인지시킴
+		if (GetMesh())
+		{
+			// 머티리얼 변경 없이 단순히 Visibility만으로는 반투명 처리가 어려우므로,
+			// 여기서는 로그만 남기거나 추후 머티리얼 파라미터 조절로 확장 가능.
+			// 현재는 로컬 플레이어는 항상 보이게 설정.
+			GetMesh()->SetHiddenInGame(false);
+		}
+	}
+	else
+	{
+		// 다른 캐릭터(적/AI): 은신 조건 만족 시 메시를 아예 숨김
+		if (GetMesh())
+		{
+			GetMesh()->SetHiddenInGame(bFinalHidden);
+		}
+		
+		// 체력바 등 부착된 위젯도 같이 숨김 처리
+		if (HealthBarComponent)
+		{
+			HealthBarComponent->SetHiddenInGame(bFinalHidden);
+		}
+	}
+}
+
 void ABrawlCharacter::InitializeAttributes()
 {
 	if (!AbilitySystemComponent || !CharacterDataTable)
@@ -233,7 +319,6 @@ void ABrawlCharacter::InitializeAttributes()
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxHyperChargeAttribute(), Row->MaxHyperCharge);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargeAttribute(), 0.0f);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargePerHitAttribute(), Row->HyperChargePerHit);
-
 		
 		UE_LOG(LogTemp, Warning, TEXT("Attributes Initialized via C++ Direct Set."));
 	}

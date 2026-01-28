@@ -27,6 +27,7 @@ public:
 
 	// IBrawlDestructibleInterface
 	virtual bool IsDestructible() const override;
+	virtual bool IsHardObstacle() const override;
 	virtual void OnDestruction(AActor* InstigatorActor) override;
 
 protected:
@@ -41,6 +42,10 @@ protected:
 	// 파괴 가능한지 여부 (Blueprint에서 설정 가능)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Obstacle")
 	bool bIsDestructible = true;
+	
+	// "단단한" 장애물인지 여부 (Blueprint에서 설정 가능)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Obstacle")
+	bool bIsHardObstacle = true;
 
 	// 파괴 시 그 자리에 생성할 액터 (예: Chaos Geometry Collection, 파편 액터)
 	// 평소에는 가벼운 StaticMesh를 쓰다가, 파괴 순간에만 이 액터로 교체합니다.

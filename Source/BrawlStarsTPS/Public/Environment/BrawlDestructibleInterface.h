@@ -26,6 +26,9 @@ class BRAWLSTARSTPS_API IBrawlDestructibleInterface
 public:
 	// 파괴 가능한 상태인지 확인 (예: 이미 파괴되었거나, 특정 조건에서만 파괴 가능)
 	virtual bool IsDestructible() const = 0;
+	
+	// "단단한" 장애물인지 확인 (예: 벽 = 단단함, 수풀 != 단단함)
+	virtual bool IsHardObstacle() const = 0;
 
 	// 파괴 요청이 들어왔을 때 호출 (Instigator: 파괴를 유발한 행위자)
 	virtual void OnDestruction(AActor* InstigatorActor) = 0;

@@ -36,6 +36,11 @@ bool ABrawlObstacle::IsDestructible() const
 	return bIsDestructible;
 }
 
+bool ABrawlObstacle::IsHardObstacle() const
+{
+	return bIsHardObstacle;
+}
+
 void ABrawlObstacle::OnDestruction(AActor* InstigatorActor)
 {
 	if (!bIsDestructible) return;
