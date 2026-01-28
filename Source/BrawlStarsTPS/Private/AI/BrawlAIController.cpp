@@ -109,6 +109,7 @@ void ABrawlAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 		// 적군인지 확인
 		if (GetTeamAttitudeTowards(*Actor) == ETeamAttitude::Hostile)
 		{
+			SetFocus(Actor);
 			UpdateTargetInBlackboard(Actor);
 			UE_LOG(LogTemp, Log, TEXT("AI [%s] Detected Enemy: %s"), *GetName(), *Actor->GetName());
 		}
@@ -117,6 +118,8 @@ void ABrawlAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 	{
 		// 시야에서 사라짐 (추후 로직: 마지막 위치 기억 등)
 		// 현재는 단순히 타겟 해제 또는 거리 기반 로직에 맡김
+		SetFocus(nullptr);
+		UpdateTargetInBlackboard(nullptr);
 		UE_LOG(LogTemp, Log, TEXT("AI [%s] Lost Sight of: %s"), *GetName(), *Actor->GetName());
 	}
 }

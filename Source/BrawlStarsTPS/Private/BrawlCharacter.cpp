@@ -235,7 +235,7 @@ void ABrawlCharacter::UpdateMeshVisibility()
 	// 로컬 플레이어는 항상 반투명하게라도 보여야 함 (완전 투명 X)
 	// 적(AI)은 조건 만족 시 완전 투명(HiddenInGame) 처리
 	
-	if (IsLocallyControlled())
+	if (IsPlayerControlled())
 	{
 		// 로컬 플레이어: 수풀에 숨으면 약간 반투명하게 처리하여 숨었음을 인지시킴
 		if (GetMesh())

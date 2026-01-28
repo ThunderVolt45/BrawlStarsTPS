@@ -33,4 +33,8 @@ protected:
 	// 공격 후 대기 시간 (딜레이)
 	UPROPERTY(EditAnywhere, Category = "AI")
 	float PostAttackDelay = 0.5f;
+
+	// 조준 시 상하 회전(Pitch) 오프셋 (양수면 위쪽)
+	UPROPERTY(EditAnywhere, Category = "AI")
+	float AimPitchOffset = 10.0f;
 };

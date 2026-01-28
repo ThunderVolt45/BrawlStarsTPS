@@ -125,7 +125,6 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 			if (ProjectileClass_Hyper)
 			{
 				ClassToSpawn = ProjectileClass_Hyper;
-				// UE_LOG(LogTemp, Log, TEXT("Fire Ability: Using Hypercharged Projectile!"));
 			}
 		}
 	}

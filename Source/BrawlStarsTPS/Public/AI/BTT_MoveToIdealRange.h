@@ -48,7 +48,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "AI|Randomness")
 	float RandomDeviationAngle = 30.0f;
 
+	// 최대 이동 시간 (이 시간이 지나면 성공으로 간주하고 종료)
+	UPROPERTY(EditAnywhere, Category = "AI")
+	float MaxMoveDuration = 3.0f;
+
 private:
 	// 다음 스트레이핑 이동 시간
 	float NextStrafeTime = 0.0f;
+	
+	// 태스크 시작 시간 저장용
+	float TaskStartTime = 0.0f;
 };

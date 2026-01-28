@@ -120,7 +120,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|AI")
 	FAICombatSettings AICombatSettings;
 
-protected:
 	// 어빌리티 시스템 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Character", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UBrawlAbilitySystemComponent> AbilitySystemComponent;
@@ -166,7 +165,7 @@ public:
 	// bRevealed true면 감지됨(보임), false면 감지 안됨(숨음)
 	void SetRevealed(bool bRevealed);
 
-	private:
+private:
 	// 이동 속도 속성 변경 시 호출될 콜백
 	void OnMovementSpeedChanged(const FOnAttributeChangeData& Data);
 

@@ -28,12 +28,25 @@ EBTNodeResult::Type UBTT_BrawlAttack::ExecuteTask(UBehaviorTreeComponent& OwnerC
 	AActor* TargetActor = Cast<AActor>(Blackboard->GetValueAsObject(TargetActorKey.SelectedKeyName));
 	if (TargetActor)
 	{
-		// 타겟을 바라보도록 회전 (즉시)
-		FVector Direction = TargetActor->GetActorLocation() - MyPawn->GetActorLocation();
-		Direction.Z = 0.0f;
-		FRotator NewRotation = Direction.Rotation();
-		MyPawn->SetActorRotation(NewRotation);
-		AIController->SetControlRotation(NewRotation); // 컨트롤러 회전도 맞춰줘야 발사체가 올바르게 나감
+		// 타겟 방향 벡터 계산
+		FVector StartLocation = MyPawn->GetActorLocation();
+		
+		// 총구 위치가 있다면 거기서부터 계산하는 게 좋지만, 일단 ActorLocation 기준으로 계산
+		FVector TargetLocation = TargetActor->GetActorLocation();
+		
+		FVector Direction = (TargetLocation - StartLocation).GetSafeNormal();
+		FRotator NewControlRot = Direction.Rotation();
+		NewControlRot.Pitch += AimPitchOffset;
+
+		// 1. 컨트롤러 회전 (발사체 방향 결정)
+		AIController->SetFocus(TargetActor);
+		AIController->SetControlRotation(NewControlRot);
+
+		// 2. 캐릭터 몸체 회전 (Yaw 값만 적용하여 몸을 돌림)
+		FRotator NewActorRot = NewControlRot;
+		NewActorRot.Pitch = 0.0f;
+		NewActorRot.Roll = 0.0f;
+		MyPawn->SetActorRotation(NewActorRot);
 	}
 
 	// 2. 어빌리티 발동 시도

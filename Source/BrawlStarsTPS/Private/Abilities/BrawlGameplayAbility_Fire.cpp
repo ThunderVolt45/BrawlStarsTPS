@@ -33,9 +33,6 @@ void UBrawlGameplayAbility_Fire::ActivateAbility(const FGameplayAbilitySpecHandl
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-	
-	// 강제 코스트 적용 (GE 설정이 없어도 탄환 깎음)
-	// ApplyCost(Handle, ActorInfo, ActivationInfo); // CommitAbility 내부에서 호출되므로 중복 호출 제거
 
 	// 2. Gameplay Event 대기 (Event.Weapon.Fire)
 	// 몽타주에서 노티파이로 이벤트를 보내면 OnFireEventReceived가 호출됨
@@ -102,58 +99,107 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		return;
 	}
 
-	// 2. 발사 시작점 (Muzzle) 설정
+	// 2. 발사 시작점 (Muzzle) 찾기
 	FVector MuzzleLocation = Character->GetActorLocation();
-	if (USkeletalMeshComponent* Mesh = Character->GetMesh())
+	bool bSocketFound = false;
+
+	// 2-1. 메인 메쉬 확인
+	if (USkeletalMeshComponent* MainMesh = Character->GetMesh())
 	{
-		if (Mesh->DoesSocketExist(MuzzleSocketName))
+		if (MainMesh->DoesSocketExist(MuzzleSocketName))
 		{
-			MuzzleLocation = Mesh->GetSocketLocation(MuzzleSocketName);
+			MuzzleLocation = MainMesh->GetSocketLocation(MuzzleSocketName);
+			bSocketFound = true;
 		}
 	}
 
-	// 3. 목표 지점 (Camera Aim) 계산
-	FVector TargetLocation = MuzzleLocation + (Character->GetActorForwardVector() * 1000.0f); // 기본값
-
-	if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+	// 2-2. 직접 붙은 컴포넌트(Mesh Component) 확인
+	// (블루프린트 컴포넌트 패널에서 메쉬 아래에 자식으로 붙이고 Parent Socket을 설정한 경우)
+	if (!bSocketFound)
 	{
-		FVector CameraLoc;
-		FRotator CameraRot;
-		PC->GetPlayerViewPoint(CameraLoc, CameraRot);
+		TArray<UMeshComponent*> MeshComponents;
+		Character->GetComponents<UMeshComponent>(MeshComponents);
 
-		// 카메라 위치에서 레이캐스트 시작
-		FVector TraceStart = CameraLoc;
-		FVector TraceEnd = CameraLoc + (CameraRot.Vector() * AimMaxRange);
-
-		FHitResult HitResult;
-		FCollisionQueryParams QueryParams;
-		QueryParams.AddIgnoredActor(Character); // 자신은 무시
-
-		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, 
-			ECC_Visibility, QueryParams))
+		for (UMeshComponent* MeshComp : MeshComponents)
 		{
-			// 충돌 지점까지의 거리 계산
-			float DistanceToHit = (HitResult.ImpactPoint - CameraLoc).Size();
+			// 부모 소켓 확인 (hand_l에 붙어있는 컴포넌트인가?)
+			if (!MuzzleSocketName.IsNone())
+			{
+				if (MeshComp->GetAttachSocketName() != MuzzleSocketName)
+				{
+					continue;
+				}
+			}
 
-			// 최소 사거리보다 가까우면 보정 (거리가 0에 가까울수록 TraceEnd(허공)를 바라봄)
-			if (DistanceToHit < AimMinRange)
+			// 소켓 존재 확인
+			if (MeshComp->DoesSocketExist(MuzzleSocketName))
 			{
-				float Alpha = FMath::Clamp(DistanceToHit / AimMinRange, 0.0f, 1.0f);
-				TargetLocation = FMath::Lerp(TraceEnd, HitResult.ImpactPoint, Alpha);
+				MuzzleLocation = MeshComp->GetSocketLocation(MuzzleSocketName);
+				bSocketFound = true;
+				break;
 			}
-			else
-			{
-				TargetLocation = HitResult.ImpactPoint;
-			}
-		}
-		else
-		{
-			TargetLocation = TraceEnd;
 		}
 	}
 
-	// 4. 발사 방향 계산 (Muzzle -> Target)
-	FRotator BaseRotation = UKismetMathLibrary::FindLookAtRotation(MuzzleLocation, TargetLocation);
+	if (!bSocketFound)
+	{
+		// 못 찾았으면 기본 위치 (하지만 경고는 띄움)
+		UE_LOG(LogTemp, Warning, TEXT("SpawnProjectile: Socket [%s] (Parent: %s) not found! Using ActorLocation."), 
+			*MuzzleSocketName.ToString(), *MuzzleSocketName.ToString());
+	}
+
+	// 3. 목표 지점 및 발사 방향 계산
+	FRotator BaseRotation = Character->GetActorRotation();
+
+	// ABrawlCharacter 인터페이스를 통해 정확한 조준 각도(Pitch 포함)를 가져옴
+	if (ABrawlCharacter* BrawlCharacter = Cast<ABrawlCharacter>(Character))
+	{
+		BaseRotation = BrawlCharacter->GetControlRotation();
+		
+		// 플레이어의 경우, 카메라 레이캐스트를 통한 정밀 보정 (기존 로직 유지)
+		if (BrawlCharacter->IsPlayerControlled())
+		{
+			if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+			{
+				FVector CameraLoc;
+				FRotator CameraRot;
+				PC->GetPlayerViewPoint(CameraLoc, CameraRot);
+
+				FVector TraceStart = CameraLoc;
+				FVector TraceEnd = CameraLoc + (CameraRot.Vector() * AimMaxRange);
+
+				FHitResult HitResult;
+				FCollisionQueryParams QueryParams;
+				QueryParams.AddIgnoredActor(Character); 
+
+				FVector TargetLocation = TraceEnd;
+
+				if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+				{
+					// 너무 가까운 벽을 쏘는 경우 총구가 벽을 뚫고 쏘는 것 방지 등을 위한 보정
+					float DistanceToHit = (HitResult.ImpactPoint - CameraLoc).Size();
+					if (DistanceToHit < AimMinRange)
+					{
+						float Alpha = FMath::Clamp(DistanceToHit / AimMinRange, 0.0f, 1.0f);
+						TargetLocation = FMath::Lerp(TraceEnd, HitResult.ImpactPoint, Alpha);
+					}
+					else
+					{
+						TargetLocation = HitResult.ImpactPoint;
+					}
+				}
+				
+				// Muzzle에서 바라본 TargetLocation의 각도 재계산
+				BaseRotation = UKismetMathLibrary::FindLookAtRotation(MuzzleLocation, TargetLocation);
+			}
+		}
+	}
+	else if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+	{
+		// (구형 로직 백업) ABrawlCharacter가 아닌 경우
+		BaseRotation = PC->GetControlRotation();
+	}
+
 	FVector BaseDirection = BaseRotation.Vector();
 
 	// 5. 발사체 스폰

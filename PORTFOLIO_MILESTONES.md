@@ -36,6 +36,7 @@
 - [x] **Ability Implementation (C++):**
     - [x] **Primary Fire:** `UBrawlGameplayAbility_Fire` (Tag-based interaction with Reload).
         - [x] **Bug Fix:** Resolved double ammo consumption issue by removing redundant `ApplyCost` calls.
+        - [x] **AI Support:** Updated to utilize `GetAimRotation` and `GetWeaponMuzzleLocation` for AI compatibility.
     - [x] **Reload:** `UBrawlGameplayAbility_Reload` (Auto-replenish loop with **Pause/Resume** logic during fire).
     - [x] **Super:** `UBrawlGameplayAbility_Super` (Gauge check & consume).
     - [x] **Gadget:** `UBrawlGameplayAbility_Gadget` (Cooldown based).
@@ -59,30 +60,36 @@
     - [ ] **VFX:** Muzzle flash, Projectile trails, Impact effects, Super/Hypercharge auras.
     - [ ] **SFX:** Fire sounds, Hit sounds, Voice lines, Footsteps.
 
-## Phase 4: Game Modes & UI (Significantly Progressed)
+## Phase 4: Game Modes & Environment (In Progress)
 - [x] **UI Implementation:**
     - [x] **C++ Foundation:** `UBrawlUserWidget` & `UBrawlHUDWidget` with attribute delegates.
     - [x] **Skill Widgets:** Specialized widgets for Gadget (Cooldown), Super (Flash/Ready), Hyper (Duration/Active).
     - [x] **HUD Integration:** `WBP_BrawlHUD` with Health, Ammo, Skill Widgets, and **Match Timer**.
     - [x] **Controller Setup:** Automated HUD creation & GAS binding in `PlayerController`.
     - [ ] **Crosshair:** Dynamic ammo display on crosshair.
-- [ ] **Map Elements (Obstacles) - (In Progress):**
-    - [ ] **Destructible Walls:**
-        - [ ] Class setup (`ABrawlObstacle`) with Gameplay Tags.
-        - [ ] Interaction with `bDestroyObstacles` projectiles.
-        - [ ] Dynamic Navigation Mesh update on destruction.
-    - [ ] **Bushes (Grass):**
-        - [ ] Allow Movement but Block Sight (Stealth mechanic).
-        - [ ] AI Perception handling for Hiding.
-- [ ] **AI System (Critical - Next Step):**
-    - [ ] **AI Controller:** `ABrawlAIController` with perception.
-    - [ ] **Bot Logic:** Behavior Trees / State Trees to mimic player tactics (cover, attack, retreat, collect gems).
+- [x] **Map Elements (Obstacles) - (Completed):**
+    - [x] **Destructible Walls:**
+        - [x] Class setup (`ABrawlObstacle`) and Interaction via `IBrawlDestructibleInterface`.
+        - [x] **Interaction:** Projectiles correctly destroy obstacles or pierce them based on flags.
+        - [x] **Navigation:** Dynamic NavMesh updates on destruction.
+    - [x] **Bushes (Grass):**
+        - [x] **Implementation:** `ABrawlBush` with `ProximitySphere` and `Mesh` overlap handling.
+        - [x] **Stealth Mechanics:** Logic for `SetInBush` (Stealth) and `SetRevealed` (Proximity detection).
+        - [x] **Visuals:** Dynamic opacity fading and procedural sway animation (Wiggle) on character movement.
+        - [x] **Collision:** Configured to ignore Projectiles (except logic handling) and allow Pawn overlap.
+- [x] **AI System (Completed):**
+    - [x] **Architecture:** `ABrawlAIController` with `AIPerception` (Sight) and `IGenericTeamAgentInterface` for IFF.
+    - [x] **Strategy Brain:** `BTS_EvaluateStrategy` service to determine states (Patrol, Move, Combat, Flee) based on health and distance.
+    - [x] **Behavior Tree:** Implemented `BT_BrawlAI` with Selector/Sequence/SimpleParallel structure.
+        - [x] **Combat Logic:** Strafing movement (`BTT_MoveToIdealRange`) combined with Attack task (`BTT_BrawlAttack`).
+        - [x] **Movement:** Kiting logic to maintain optimal range, approach, or retreat with randomness.
+    - [x] **Aiming System:** Implemented `GetAimPitch` and `GetAimRotation` in `ABrawlCharacter` for precise AI vertical aiming and skeletal mesh alignment.
 - [ ] **Game Modes:**
     - [ ] **Showdown:** Free-for-all logic, Power Cube spawning, Poison clouds.
     - [ ] **Gem Grab:** Gem spawning mine, countdown logic, team scoring.
 - [ ] **Game Specific UI:**
-    - [ ] Game Mode specific widgets (Gem count, Players alive).
-    - [ ] Death and Victory screens.
+    - [ ] **Game Mode specific widgets:** Gem count, Players alive.
+    - [ ] **Screens:** Death and Victory screens.
 
 ## Phase 5: Polish & Multiplayer (Bonus)
 - [ ] **Polish:**

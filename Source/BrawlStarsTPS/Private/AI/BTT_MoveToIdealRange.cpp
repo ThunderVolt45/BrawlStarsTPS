@@ -20,11 +20,20 @@ UBTT_MoveToIdealRange::UBTT_MoveToIdealRange()
 EBTNodeResult::Type UBTT_MoveToIdealRange::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
 	// 첫 실행 시 바로 Tick으로 넘김
+	TaskStartTime = GetWorld()->GetTimeSeconds();
 	return EBTNodeResult::InProgress;
 }
 
 void UBTT_MoveToIdealRange::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
 {
+	// 시간 초과 체크
+	if (GetWorld()->GetTimeSeconds() - TaskStartTime >= MaxMoveDuration)
+	{
+		// 시간이 지나면 성공으로 간주하고 종료 (트리가 다시 평가되도록)
+		FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+		return;
+	}
+
 	AAIController* AIController = OwnerComp.GetAIOwner();
 	ABrawlCharacter* MyPawn = AIController ? Cast<ABrawlCharacter>(AIController->GetPawn()) : nullptr;
 	UBlackboardComponent* Blackboard = OwnerComp.GetBlackboardComponent();

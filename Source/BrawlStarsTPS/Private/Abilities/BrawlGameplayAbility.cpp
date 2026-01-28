@@ -84,19 +84,6 @@ void UBrawlGameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Han
 
 bool UBrawlGameplayAbility::CheckCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, OUT FGameplayTagContainer* OptionalRelevantTags) const
 {
-	// 디버깅: 모든 어빌리티의 코스트 체크 로그 출력 (Warning으로 격상)
-	// UE_LOG(LogTemp, Warning, TEXT("CheckCost Called for Ability: %s"), *GetName());
-
-	// Super::CheckCost는 CostGameplayEffectClass의 SetByCaller 값을 알 수 없어서 에러를 발생시킴 (Magnitude not set)
-	// 따라서 Super를 호출하지 않고, 아래에서 직접 Attribute를 검사하는 방식을 사용함.
-	/*
-	if (!Super::CheckCost(Handle, ActorInfo, OptionalRelevantTags))
-	{
-		// UE_LOG(LogTemp, Warning, TEXT("Ability [%s] failed Super::CheckCost"), *GetName());
-		return false;
-	}
-	*/
-
 	// 사격 어빌리티인 경우 탄환 체크
 	static FGameplayTag FireInputTag = FGameplayTag::RequestGameplayTag(FName("InputTag.Ability.Fire"));
 	if (StartupInputTag.MatchesTag(FireInputTag))
