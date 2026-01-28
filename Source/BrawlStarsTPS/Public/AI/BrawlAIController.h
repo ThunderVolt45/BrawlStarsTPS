@@ -5,24 +5,13 @@
 #include "CoreMinimal.h"
 #include "AIController.h"
 #include "Perception/AIPerceptionTypes.h"
+#include "AI/BrawlAIStrategy.h" // 추가
 #include "BrawlAIController.generated.h"
 
 class UBehaviorTreeComponent;
 class UBlackboardComponent;
 class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
-
-/**
- * AI의 현재 전략 상태
- */
-UENUM(BlueprintType)
-enum class EBrawlAIStrategy : uint8
-{
-	Patrol		UMETA(DisplayName = "Patrol"),		// 순찰 (기본)
-	Move		UMETA(DisplayName = "Move"),		// 이동 (타겟 발견, 사거리 밖)
-	Combat		UMETA(DisplayName = "Combat"),		// 교전 (사거리 내)
-	Flee		UMETA(DisplayName = "Flee")			// 도주 (체력 낮음 or 너무 가까움)
-};
 
 /**
  * ABrawlAIController
