@@ -9,6 +9,7 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
 #include "Environment/BrawlDestructibleInterface.h"
+#include "Environment/BrawlBush.h" // 추가: ABrawlBush 참조용
 
 ABrawlProjectile::ABrawlProjectile()
 {
@@ -149,6 +150,14 @@ void ABrawlProjectile::Tick(float DeltaTime)
 		for (const FHitResult& Result : HitResults)
 		{
 			AActor* HitActor = Result.GetActor();
+			UPrimitiveComponent* HitComp = Result.GetComponent();
+
+			// 수풀의 감지용 스피어는 무시
+			if (HitActor && HitActor->IsA(ABrawlBush::StaticClass()) && HitComp && HitComp->GetName().Contains(TEXT("ProximitySphere")))
+			{
+				continue;
+			}
+
 			if (HitActor && !HitActors.Contains(HitActor))
 			{
 				// 발사체끼리는 무시
@@ -175,6 +184,12 @@ void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherAct
 		|| OtherActor == this || OtherActor->IsA(StaticClass())) 
 		return;
 
+	// 수풀의 감지용 스피어는 무시
+	if (OtherActor->IsA(ABrawlBush::StaticClass()) && OtherComp && OtherComp->GetName().Contains(TEXT("ProximitySphere")))
+	{
+		return;
+	}
+
 	// 이미 처리된 액터면 무시 (관통 시 중복 방지)
 	if (HitActors.Contains(OtherActor)) return;
 	HitActors.Add(OtherActor);
@@ -190,6 +205,12 @@ void ABrawlProjectile::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, 
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator()
 		|| OtherActor == this || OtherActor->IsA(StaticClass()))
 		return;
+
+	// 수풀의 감지용 스피어는 무시
+	if (OtherActor->IsA(ABrawlBush::StaticClass()) && OtherComp && OtherComp->GetName().Contains(TEXT("ProximitySphere")))
+	{
+		return;
+	}
 
 	// 이미 처리된 액터면 무시
 	if (HitActors.Contains(OtherActor)) return;
@@ -227,16 +248,15 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 		UE_LOG(LogTemp, Warning, TEXT("ProcessHit: Target [%s] has No AbilitySystemComponent!"), *OtherActor->GetName());
 	}
 	
-	// 맞은 액터가 파괴 가능한 장애물인지 확인
+	// 맞은 액터가 파괴 가능한 장애물인지, "단단한" 장애물인지 확인
 	bool bIsDestructibleObstacle = false;
+	bool bIsHardObstacle = false;
 	if (bDestroyObstacles)
 	{
 		if (IBrawlDestructibleInterface* Destructible = Cast<IBrawlDestructibleInterface>(OtherActor))
 		{
-			if (Destructible->IsDestructible())
-			{
-				bIsDestructibleObstacle = true;
-			}
+			bIsDestructibleObstacle = Destructible->IsDestructible();
+			bIsHardObstacle = Destructible->IsHardObstacle();
 		}
 	}
 	
@@ -246,7 +266,7 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 		DestroyObstacle(OtherActor);
 		
 		// 장애물 관통 능력이 없다면 파괴
-		if (!bCanPierceHardObstacle)
+		if (!bCanPierceHardObstacle && bIsHardObstacle)
 		{
 			Destroy();
 			return;

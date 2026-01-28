@@ -21,7 +21,12 @@ ABrawlBush::ABrawlBush()
 	ProximitySphere = CreateDefaultSubobject<USphereComponent>(TEXT("ProximitySphere"));
 	ProximitySphere->SetupAttachment(RootComponent);
 	ProximitySphere->SetSphereRadius(ProximityRadius);
-	ProximitySphere->SetCollisionProfileName(FName("OverlapAllDynamic")); // 동적 오버랩만 감지
+	
+	// 기본 프로필 대신 커스텀 설정 사용
+	ProximitySphere->SetCollisionProfileName(FName("Custom")); 
+	ProximitySphere->SetCollisionResponseToAllChannels(ECR_Ignore); // 모든 채널 무시
+	ProximitySphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap); // 캐릭터(Pawn)만 감지
+	
 	ProximitySphere->SetGenerateOverlapEvents(true);
 
 	// 수풀은 파괴 가능함 (기본값)
