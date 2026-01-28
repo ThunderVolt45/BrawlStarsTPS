@@ -72,6 +72,16 @@ UAbilitySystemComponent* ABrawlCharacter::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
+void ABrawlCharacter::SetGenericTeamId(const FGenericTeamId& NewTeamID)
+{
+	TeamID = NewTeamID.GetId();
+}
+
+FGenericTeamId ABrawlCharacter::GetGenericTeamId() const
+{
+	return FGenericTeamId(TeamID);
+}
+
 void ABrawlCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
