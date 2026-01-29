@@ -60,7 +60,11 @@ void ABrawlAIController::OnPossess(APawn* InPawn)
 				if (UBehaviorTree* CombatTree = BrawlPawn->GetCombatBehaviorTree())
 				{
 					BlackboardComponent->SetValueAsObject(FName("CombatTree"), CombatTree);
-					UE_LOG(LogTemp, Log, TEXT("AI [%s] Loaded Combat Tree: %s"), *GetName(), *CombatTree->GetName());
+					
+					// Run Behavior Dynamic 노드에서 사용할 수 있도록 등록
+					BehaviorTreeComponent->SetDynamicSubtree(CombatSubtreeTag, CombatTree);
+					
+					UE_LOG(LogTemp, Log, TEXT("AI [%s] Set Dynamic Subtree [AI.Subtree.Combat]: %s"), *GetName(), *CombatTree->GetName());
 				}
 			}
 

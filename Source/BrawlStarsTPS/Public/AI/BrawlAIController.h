@@ -42,6 +42,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	TObjectPtr<class UBehaviorTree> DefaultBehaviorTree;
 	
+	// 서브 행동 트리 주입 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
+	FGameplayTag CombatSubtreeTag = FGameplayTag::RequestGameplayTag(FName("AI.Subtree.Combat"));
+	
 	// 목표 강제 망각 시간
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	float TimeToForgetTarget = 4.0f;
