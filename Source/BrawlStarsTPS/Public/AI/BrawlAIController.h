@@ -65,4 +65,13 @@ protected:
 
 	// 타이머에 의해 호출될 함수
 	void ForceForgetTarget();
+
+	// 감지된 적 목록 관리
+	UPROPERTY(VisibleAnywhere, Category = "AI")
+	TSet<AActor*> DetectedEnemies;
+
+	// 최적의 타겟 선정 함수
+	AActor* SelectBestTarget();
+
+	virtual void Tick(float DeltaTime) override;
 };
