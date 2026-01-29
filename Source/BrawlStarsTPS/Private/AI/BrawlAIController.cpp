@@ -54,21 +54,31 @@ void ABrawlAIController::OnPossess(APawn* InPawn)
 		{
 			BlackboardComponent->InitializeBlackboard(*DefaultBehaviorTree->BlackboardAsset);
 			
-			// 브롤러별 고유 전투 트리(Combat Tree) 설정
+			// 트리 먼저 시작
+			BehaviorTreeComponent->StartTree(*DefaultBehaviorTree);
+
+			// 브롤러별 고유 전투 트리(Combat Tree) 설정 (트리 시작 후 주입)
 			if (ABrawlCharacter* BrawlPawn = Cast<ABrawlCharacter>(InPawn))
 			{
 				if (UBehaviorTree* CombatTree = BrawlPawn->GetCombatBehaviorTree())
 				{
 					BlackboardComponent->SetValueAsObject(FName("CombatTree"), CombatTree);
 					
-					// Run Behavior Dynamic 노드에서 사용할 수 있도록 등록
-					BehaviorTreeComponent->SetDynamicSubtree(CombatSubtreeTag, CombatTree);
+					if (CombatSubtreeTag.IsValid())
+					{
+						// Run Behavior Dynamic 노드에서 사용할 수 있도록 등록
+						BehaviorTreeComponent->SetDynamicSubtree(CombatSubtreeTag, CombatTree);
+						UE_LOG(LogTemp, Log, TEXT("Success: Tag Valid. Subtree Set."));
+						UE_LOG(LogTemp, Log, TEXT("AI [%s] Set Dynamic Subtree [AI.Subtree.Combat]: %s"), *GetName(), *CombatTree->GetName());
+					}
+					else
+					{
+						UE_LOG(LogTemp, Error, TEXT("Error: Gameplay Tag [AI.Subtree.Combat] is INVALID! Register it in Project Settings."));
+					}
 					
-					UE_LOG(LogTemp, Log, TEXT("AI [%s] Set Dynamic Subtree [AI.Subtree.Combat]: %s"), *GetName(), *CombatTree->GetName());
+					BehaviorTreeComponent->SetDynamicSubtree(CombatSubtreeTag, CombatTree);
 				}
 			}
-
-			BehaviorTreeComponent->StartTree(*DefaultBehaviorTree);
 		}
 	}
 }
@@ -152,7 +162,7 @@ AActor* ABrawlAIController::SelectBestTarget()
 		
 		// 지나치게 멀리 있는 액터도 타이머 정리 후 제거
 		float Distance = MyPawn->GetDistanceTo(Enemy);
-		if (Distance > 3000.0f)
+		if (Distance > DistanceToForgetTarget)
 		{
 			GetWorld()->GetTimerManager().ClearTimer(It->Value);
 			It.RemoveCurrent();

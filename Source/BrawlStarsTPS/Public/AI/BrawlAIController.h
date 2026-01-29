@@ -49,6 +49,10 @@ protected:
 	// 목표 강제 망각 시간
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	float TimeToForgetTarget = 4.0f;
+	
+	// 목표 강제 망각 거리
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
+	float DistanceToForgetTarget = 3600.0f;
 
 private:
 	// 감지된 적 목록 및 각 적별 망각 타이머 관리
