@@ -1,52 +1,45 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
+#include "BrawlCharacter.h"
+#include "TimerManager.h"
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
+#include "BrawlAttributeSet.h"
 #include "AI/BrawlAIController.h"
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
-#include "BrawlCharacter.h"
+#include "Perception/AISenseConfig_Damage.h"
 
 ABrawlAIController::ABrawlAIController()
 {
 	// 1. Behavior Tree & Blackboard 컴포넌트 생성
 	BehaviorTreeComponent = CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent"));
 	BlackboardComponent = CreateDefaultSubobject<UBlackboardComponent>(TEXT("BlackboardComponent"));
-
-	// 2. Perception 컴포넌트 생성
-	AIPerception = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception"));
-	SetPerceptionComponent(*AIPerception);
-
-	// 3. 시각 설정 생성
-	SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
 	
-	if (SightConfig)
-	{
-		SightConfig->SightRadius = 1500.0f; // 시야 거리
-		SightConfig->LoseSightRadius = 1800.0f; // 시야 상실 거리
-		SightConfig->PeripheralVisionAngleDegrees = 180.0f; // 시야각 (360도 감지 하려면 180 입력)
-		
-		// 감지 대상 설정: 적, 중립, 아군 모두 감지
-		SightConfig->DetectionByAffiliation.bDetectEnemies = true;
-		SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
-		SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
-
-		// 설정 등록
-		AIPerception->ConfigureSense(*SightConfig);
-		AIPerception->SetDominantSense(SightConfig->GetSenseImplementation());
-	}
+	// AIPerceptionComponent는 블루프린트에서 추가(Add Component)하여 사용합니다.
 }
 
 void ABrawlAIController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 감지 이벤트 바인딩
-	if (AIPerception)
+	// 블루프린트에서 추가한 AIPerceptionComponent 가져오기
+	UAIPerceptionComponent* PerceptionComp = GetPerceptionComponent();
+	
+	if (PerceptionComp)
 	{
-		AIPerception->OnTargetPerceptionUpdated.AddDynamic(this, &ABrawlAIController::OnTargetDetected);
+		PerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &ABrawlAIController::OnTargetDetected);
+		PerceptionComp->OnTargetPerceptionForgotten.AddDynamic(this, &ABrawlAIController::OnTargetForgotten);
+		
+		UE_LOG(LogTemp, Log, TEXT("AI [%s] Perception Component Found & Bound."), *GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AI [%s] No Perception Component Found! Add one in Blueprint."), *GetName());
 	}
 }
 
@@ -60,7 +53,32 @@ void ABrawlAIController::OnPossess(APawn* InPawn)
 		if (DefaultBehaviorTree->BlackboardAsset)
 		{
 			BlackboardComponent->InitializeBlackboard(*DefaultBehaviorTree->BlackboardAsset);
+			
+			// 트리 먼저 시작
 			BehaviorTreeComponent->StartTree(*DefaultBehaviorTree);
+
+			// 브롤러별 고유 전투 트리(Combat Tree) 설정 (트리 시작 후 주입)
+			if (ABrawlCharacter* BrawlPawn = Cast<ABrawlCharacter>(InPawn))
+			{
+				if (UBehaviorTree* CombatTree = BrawlPawn->GetCombatBehaviorTree())
+				{
+					BlackboardComponent->SetValueAsObject(FName("CombatTree"), CombatTree);
+					
+					if (CombatSubtreeTag.IsValid())
+					{
+						// Run Behavior Dynamic 노드에서 사용할 수 있도록 등록
+						BehaviorTreeComponent->SetDynamicSubtree(CombatSubtreeTag, CombatTree);
+						UE_LOG(LogTemp, Log, TEXT("Success: Tag Valid. Subtree Set."));
+						UE_LOG(LogTemp, Log, TEXT("AI [%s] Set Dynamic Subtree [AI.Subtree.Combat]: %s"), *GetName(), *CombatTree->GetName());
+					}
+					else
+					{
+						UE_LOG(LogTemp, Error, TEXT("Error: Gameplay Tag [AI.Subtree.Combat] is INVALID! Register it in Project Settings."));
+					}
+					
+					BehaviorTreeComponent->SetDynamicSubtree(CombatSubtreeTag, CombatTree);
+				}
+			}
 		}
 	}
 }
@@ -99,28 +117,226 @@ ETeamAttitude::Type ABrawlAIController::GetTeamAttitudeTowards(const AActor& Oth
 	return (MyTeamID == OtherTeamID) ? ETeamAttitude::Friendly : ETeamAttitude::Hostile;
 }
 
-void ABrawlAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
+void ABrawlAIController::Tick(float DeltaTime)
 {
-	// 감각 자극이 "성공(감지됨)"인지 "실패(사라짐)"인지 확인
-	bool bDetected = Stimulus.WasSuccessfullySensed();
+	Super::Tick(DeltaTime);
 
-	if (bDetected)
+	// 타겟 목록이 있을 때 최적의 타겟 재선정
+	if (DetectedEnemies.Num() > 0)
 	{
-		// 적군인지 확인
-		if (GetTeamAttitudeTowards(*Actor) == ETeamAttitude::Hostile)
+		AActor* BestTarget = SelectBestTarget();
+		AActor* CurrentTarget = Cast<AActor>(BlackboardComponent->GetValueAsObject(FName("TargetActor")));
+
+		// 타겟이 바뀌었거나, 현재 타겟이 없는데 베스트 타겟이 생긴 경우
+		if (BestTarget != CurrentTarget)
 		{
-			SetFocus(Actor);
-			UpdateTargetInBlackboard(Actor);
-			UE_LOG(LogTemp, Log, TEXT("AI [%s] Detected Enemy: %s"), *GetName(), *Actor->GetName());
+			UpdateTargetInBlackboard(BestTarget);
+			SetFocus(BestTarget);
 		}
 	}
-	else
+}
+
+AActor* ABrawlAIController::SelectBestTarget()
+{
+	APawn* MyPawn = GetPawn();
+	if (!MyPawn) return nullptr;
+
+	AActor* BestActor = nullptr;
+	float BestScore = -100.0f;
+
+	// 현재 타겟 확인 (가산점 부여용)
+	AActor* CurrentTarget = Cast<AActor>(BlackboardComponent->GetValueAsObject(FName("TargetActor")));
+
+	// 목록 순회 (TMap Iteration)
+	for (auto It = DetectedEnemies.CreateIterator(); It; ++It)
 	{
-		// 시야에서 사라짐 (추후 로직: 마지막 위치 기억 등)
-		// 현재는 단순히 타겟 해제 또는 거리 기반 로직에 맡김
+		AActor* Enemy = It->Key;
+		
+		// 유효하지 않은 액터는 타이머 정리 후 제거
+		if (!Enemy || !Enemy->IsValidLowLevel() || Enemy->IsActorBeingDestroyed())
+		{
+			GetWorld()->GetTimerManager().ClearTimer(It->Value);
+			It.RemoveCurrent();
+			continue;
+		}
+		
+		// 지나치게 멀리 있는 액터도 타이머 정리 후 제거
+		float Distance = MyPawn->GetDistanceTo(Enemy);
+		if (Distance > DistanceToForgetTarget)
+		{
+			GetWorld()->GetTimerManager().ClearTimer(It->Value);
+			It.RemoveCurrent();
+			continue;
+		}
+
+		// 점수 계산 (높을수록 좋음)
+		float DistanceScore = FMath::Clamp(1.0f - (Distance / 2000.0f), 0.0f, 1.0f) * 100.0f;
+		float MaintainScore = (Enemy == CurrentTarget) ? 20.0f : 0.0f;
+
+		// 타겟의 체력 점수
+		float HealthScore = 0.0f;
+		if (IAbilitySystemInterface* ASCInterface = Cast<IAbilitySystemInterface>(Enemy))
+		{
+			if (UAbilitySystemComponent* EnemyASC = ASCInterface->GetAbilitySystemComponent())
+			{
+				bool bFoundHealth = false;
+				float Health = EnemyASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetHealthAttribute(), bFoundHealth);
+				float MaxHealth = EnemyASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetMaxHealthAttribute(), bFoundHealth);
+
+				if (bFoundHealth && MaxHealth > 0.0f)
+				{
+					float HealthRatio = FMath::Clamp(Health / MaxHealth, 0.0f, 1.0f);
+					HealthScore = (1.0f - HealthRatio) * 50.0f;
+				}
+			}
+		}
+
+		float TotalScore = DistanceScore + MaintainScore + HealthScore;
+		
+		if (TotalScore > BestScore)
+		{
+			BestScore = TotalScore;
+			BestActor = Enemy;
+		}
+	}
+
+	return BestActor;
+}
+
+void ABrawlAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
+{
+	if (!Actor || !Actor->IsValidLowLevel()) return;
+	if (GetTeamAttitudeTowards(*Actor) == ETeamAttitude::Friendly) return;
+
+	FTimerManager& TimerManager = GetWorld()->GetTimerManager();
+
+	// 1. 피격 감지 (Damage)
+	if (Stimulus.Type == UAISense::GetSenseID<UAISense_Damage>())
+	{
+		if (Stimulus.WasSuccessfullySensed())
+		{
+			// 리스트에 추가 (없으면 추가, 있으면 유지)
+			if (!DetectedEnemies.Contains(Actor))
+			{
+				DetectedEnemies.Add(Actor, FTimerHandle());
+			}
+
+			// 해당 적의 망각 타이머가 있다면 취소 (추격해야 하므로)
+			if (DetectedEnemies[Actor].IsValid())
+			{
+				TimerManager.ClearTimer(DetectedEnemies[Actor]);
+			}
+			
+			// 즉시 타겟팅
+			SetFocus(Actor);
+			UpdateTargetInBlackboard(Actor);
+			// UE_LOG(LogTemp, Warning, TEXT("AI [%s] HIT BY [%s]! Added to List & Switching Target."), *GetName(), *Actor->GetName());
+		}
+		return;
+	}
+
+	// 2. 시각 감지 (Sight)
+	if (Stimulus.Type == UAISense::GetSenseID<UAISense_Sight>())
+	{
+		if (Stimulus.WasSuccessfullySensed())
+		{
+			// 적 발견/재발견
+			if (!DetectedEnemies.Contains(Actor))
+			{
+				DetectedEnemies.Add(Actor, FTimerHandle());
+			}
+			
+			// 다시 보였으므로 타이머 취소
+			if (DetectedEnemies[Actor].IsValid())
+			{
+				TimerManager.ClearTimer(DetectedEnemies[Actor]);
+			}
+
+			// 리스트에 하나뿐이면 즉시 타겟팅
+			if (DetectedEnemies.Num() == 1)
+			{
+				UpdateTargetInBlackboard(Actor);
+				SetFocus(Actor);
+			}
+		}
+		else
+		{
+			// 시야에서 사라짐 -> 개별 타이머 시작
+			if (DetectedEnemies.Contains(Actor))
+			{
+				// 이미 돌고 있는 타이머가 있다면 초기화하고 다시 시작
+				TimerManager.ClearTimer(DetectedEnemies[Actor]);
+				
+				FTimerDelegate TimerDel;
+				TimerDel.BindUObject(this, &ABrawlAIController::ForceForgetTarget, Actor);
+				
+				// 일정 시간 뒤에 이 특정 적을 잊음
+				TimerManager.SetTimer(DetectedEnemies[Actor], TimerDel, TimeToForgetTarget, false);
+				
+				UE_LOG(LogTemp, Log, TEXT("AI [%s] Lost Sight of [%s]. Forget Timer Started."), *GetName(), *Actor->GetName());
+			}
+		}
+	}
+}
+
+void ABrawlAIController::OnTargetForgotten(AActor* Actor)
+{
+	// Perception System에 의해 완전히 잊혀짐
+	if (DetectedEnemies.Contains(Actor))
+	{
+		GetWorld()->GetTimerManager().ClearTimer(DetectedEnemies[Actor]);
+		DetectedEnemies.Remove(Actor);
+	}
+
+	AActor* CurrentTarget = Cast<AActor>(BlackboardComponent->GetValueAsObject(FName("TargetActor")));
+	if (CurrentTarget == Actor)
+	{
+		// 잊었지만 다른 적이 리스트에 남아있다면 교체 시도
+		if (DetectedEnemies.Num() > 0)
+		{
+			AActor* NextBest = SelectBestTarget();
+			if (NextBest)
+			{
+				UpdateTargetInBlackboard(NextBest);
+				SetFocus(NextBest);
+				return;
+			}
+		}
+
 		SetFocus(nullptr);
 		UpdateTargetInBlackboard(nullptr);
-		UE_LOG(LogTemp, Log, TEXT("AI [%s] Lost Sight of: %s"), *GetName(), *Actor->GetName());
+	}
+}
+
+void ABrawlAIController::ForceForgetTarget(AActor* TargetToForget)
+{
+	// 타이머 만료로 인한 강제 망각
+	if (DetectedEnemies.Contains(TargetToForget))
+	{
+		// 맵에서 제거 (타이머 핸들은 이미 만료되었으므로 Clear 불필요하지만 안전하게)
+		GetWorld()->GetTimerManager().ClearTimer(DetectedEnemies[TargetToForget]);
+		DetectedEnemies.Remove(TargetToForget);
+		
+		UE_LOG(LogTemp, Log, TEXT("AI [%s] Force Forgot [%s] (Timer Expired)."), *GetName(), *TargetToForget->GetName());
+	}
+
+	AActor* CurrentTarget = Cast<AActor>(BlackboardComponent->GetValueAsObject(FName("TargetActor")));
+	if (CurrentTarget == TargetToForget)
+	{
+		// 현재 타겟을 잊었다면 다른 타겟 찾기
+		if (DetectedEnemies.Num() > 0)
+		{
+			AActor* NextBest = SelectBestTarget();
+			if (NextBest)
+			{
+				UpdateTargetInBlackboard(NextBest);
+				SetFocus(NextBest);
+				return;
+			}
+		}
+
+		UpdateTargetInBlackboard(nullptr);
+		SetFocus(nullptr);
 	}
 }
 
@@ -128,7 +344,6 @@ void ABrawlAIController::UpdateTargetInBlackboard(AActor* TargetActor)
 {
 	if (BlackboardComponent)
 	{
-		// 블랙보드 키 이름 "TargetActor"에 저장 (블랙보드 에셋 생성 시 맞춰야 함)
 		BlackboardComponent->SetValueAsObject(FName("TargetActor"), TargetActor);
 	}
 }

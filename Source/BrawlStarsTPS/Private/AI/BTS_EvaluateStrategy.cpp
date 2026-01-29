@@ -13,8 +13,12 @@ UBTS_EvaluateStrategy::UBTS_EvaluateStrategy()
 {
 	NodeName = TEXT("Evaluate Strategy");
 	
+	bNotifyBecomeRelevant = true;
+	bNotifyCeaseRelevant = true;
+
 	// 기본 키 필터 설정
 	TargetActorKey.AddObjectFilter(this, GET_MEMBER_NAME_CHECKED(UBTS_EvaluateStrategy, TargetActorKey), AActor::StaticClass());
+	
 	// Enum 필터 복구
 	StrategyStateKey.AddEnumFilter(this, GET_MEMBER_NAME_CHECKED(UBTS_EvaluateStrategy, StrategyStateKey), StaticEnum<EBrawlAIStrategy>()); 
 	DistanceToTargetKey.AddFloatFilter(this, GET_MEMBER_NAME_CHECKED(UBTS_EvaluateStrategy, DistanceToTargetKey));
@@ -30,6 +34,13 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 
 	if (!AIController || !MyPawn || !Blackboard)
 	{
+		return;
+	}
+
+	// 사망 시 행동 트리 정지
+	if (MyPawn->IsDead())
+	{
+		OwnerComp.StopTree(EBTStopMode::Safe);
 		return;
 	}
 

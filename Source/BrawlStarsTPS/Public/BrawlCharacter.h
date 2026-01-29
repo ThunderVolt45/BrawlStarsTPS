@@ -82,6 +82,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|AI")
 	const FAICombatSettings& GetAICombatSettings() const { return AICombatSettings; }
 
+	// AI용 전투 행동 트리 반환 (데이터 테이블 조회)
+	UFUNCTION(BlueprintCallable, Category = "Brawl|AI")
+	class UBehaviorTree* GetCombatBehaviorTree() const;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -108,9 +112,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
 	uint8 TeamID = 255;
 
-	// 능력치 데이터 테이블
+	// 능력치 데이터 테이블 (기본 스탯)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
 	TObjectPtr<UDataTable> CharacterDataTable;
+
+	// AI 설정 데이터 테이블 (행동 트리, 교전 거리 등)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
+	TObjectPtr<UDataTable> AIDataTable;
 
 	// 초기화용 Gameplay Effect 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
@@ -165,6 +173,18 @@ public:
 	// bRevealed true면 감지됨(보임), false면 감지 안됨(숨음)
 	void SetRevealed(bool bRevealed);
 
+	// 캐릭터 사망 처리 (Ragdoll 적용)
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Health")
+	virtual void Die();
+
+	// 사망 여부 확인
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Health")
+	bool IsDead() const { return bIsDead; }
+
+protected:
+	// 체력 속성 변경 시 호출될 콜백
+	virtual void OnHealthChanged(const FOnAttributeChangeData& Data);
+
 private:
 	// 이동 속도 속성 변경 시 호출될 콜백
 	void OnMovementSpeedChanged(const FOnAttributeChangeData& Data);
@@ -177,6 +197,9 @@ private:
 
 	// 근처 적 등에 의해 위치가 발각되었는지 여부
 	bool bIsRevealed = false;
+
+	// 사망 여부
+	bool bIsDead = false;
 
 	// 겹쳐진 수풀 개수 (여러 수풀이 겹쳐 있을 때 처리용)
 	int32 BushOverlapCount = 0;

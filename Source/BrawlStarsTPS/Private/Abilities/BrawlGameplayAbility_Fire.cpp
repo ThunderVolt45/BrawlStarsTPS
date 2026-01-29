@@ -70,11 +70,10 @@ void UBrawlGameplayAbility_Fire::OnFireEventReceived(FGameplayEventData Payload)
 
 void UBrawlGameplayAbility_Fire::SpawnProjectile()
 {
-	// 0. 유효성 검사
 	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
 	if (!Character)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("SpawnProjectile Failed: AvatarActor is not a Character"));
+		UE_LOG(LogTemp, Error, TEXT("SpawnProjectile Failed: AvatarActor is not a Character"));
 		return;
 	}
 	
@@ -113,7 +112,7 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		}
 	}
 
-	// 2-2. 직접 붙은 컴포넌트(Mesh Component) 확인
+	// 2-2. 자식 컴포넌트(Mesh Component) 확인
 	// (블루프린트 컴포넌트 패널에서 메쉬 아래에 자식으로 붙이고 Parent Socket을 설정한 경우)
 	if (!bSocketFound)
 	{
@@ -122,7 +121,6 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 
 		for (UMeshComponent* MeshComp : MeshComponents)
 		{
-			// 부모 소켓 확인 (hand_l에 붙어있는 컴포넌트인가?)
 			if (!MuzzleSocketName.IsNone())
 			{
 				if (MeshComp->GetAttachSocketName() != MuzzleSocketName)
@@ -195,7 +193,7 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		// AI 브롤러의 경우 간단히 Pitch 보정
 		else
 		{
-			BaseRotation.Pitch += 3.0f;
+			BaseRotation.Pitch += AIAimOffset;
 		}
 	}
 

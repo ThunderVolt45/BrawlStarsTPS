@@ -30,38 +30,61 @@ public:
 	ABrawlAIController();
 
 protected:
-	virtual void OnPossess(APawn* InPawn) override;
-	virtual void BeginPlay() override;
-	
-	// 감지 업데이트 델리게이트
-	UFUNCTION()
-	void OnTargetDetected(AActor* Actor, FAIStimulus Stimulus);
-
-public:
-	// 팀 ID 반환 (Pawn의 TeamID를 따라감)
-	virtual FGenericTeamId GetGenericTeamId() const override;
-	virtual ETeamAttitude::Type GetTeamAttitudeTowards(const AActor& Other) const override;
-
-protected:
-	// AI 인지 컴포넌트
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
-	TObjectPtr<UAIPerceptionComponent> AIPerception;
-
-	// 시각 설정
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
-	TObjectPtr<UAISenseConfig_Sight> SightConfig;
-
-	// 행동 트리 컴포넌트 (Blackboard 포함)
+	// 행동 트리 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	TObjectPtr<UBehaviorTreeComponent> BehaviorTreeComponent;
 
+	// 블랙 보드 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	TObjectPtr<UBlackboardComponent> BlackboardComponent;
 
 	// 기본 행동 트리 에셋 (BP에서 할당)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	TObjectPtr<class UBehaviorTree> DefaultBehaviorTree;
+	
+	// 서브 행동 트리 주입 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
+	FGameplayTag CombatSubtreeTag = FGameplayTag::RequestGameplayTag(FName("AI.Subtree.Combat"));
+	
+	// 목표 강제 망각 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
+	float TimeToForgetTarget = 4.0f;
+	
+	// 목표 강제 망각 거리
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
+	float DistanceToForgetTarget = 3600.0f;
 
+private:
+	// 감지된 적 목록 및 각 적별 망각 타이머 관리
+	// Key: Enemy Actor, Value: Forget Timer Handle
+	UPROPERTY()
+	TMap<AActor*, FTimerHandle> DetectedEnemies;
+	
+public:
+	// 팀 ID 반환 (Pawn의 TeamID를 따라감)
+	virtual FGenericTeamId GetGenericTeamId() const override;
+	virtual ETeamAttitude::Type GetTeamAttitudeTowards(const AActor& Other) const override;
+	
+protected:
+	virtual void OnPossess(APawn* InPawn) override;
+	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
+	
+	// 감지 업데이트 델리게이트
+	UFUNCTION()
+	void OnTargetDetected(AActor* Actor, FAIStimulus Stimulus);
+	
+	UFUNCTION()
+	void OnTargetForgotten(AActor* Actor);
+
+private:
 	// 감지된 타겟 관리
 	void UpdateTargetInBlackboard(AActor* TargetActor);
+
+	// 타이머에 의해 호출될 함수 (특정 액터 망각)
+	UFUNCTION()
+	void ForceForgetTarget(AActor* TargetToForget);
+
+	// 최적의 타겟 선정 함수
+	AActor* SelectBestTarget();
 };
