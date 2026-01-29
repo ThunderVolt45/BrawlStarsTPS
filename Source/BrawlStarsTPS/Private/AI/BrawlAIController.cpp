@@ -7,46 +7,36 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
+#include "Perception/AISenseConfig_Damage.h" // 추가
 #include "BrawlCharacter.h"
+#include "Math/UnitConversion.h"
 
 ABrawlAIController::ABrawlAIController()
 {
 	// 1. Behavior Tree & Blackboard 컴포넌트 생성
 	BehaviorTreeComponent = CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent"));
 	BlackboardComponent = CreateDefaultSubobject<UBlackboardComponent>(TEXT("BlackboardComponent"));
-
-	// 2. Perception 컴포넌트 생성
-	AIPerception = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception"));
-	SetPerceptionComponent(*AIPerception);
-
-	// 3. 시각 설정 생성
-	SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
 	
-	if (SightConfig)
-	{
-		SightConfig->SightRadius = 1500.0f; // 시야 거리
-		SightConfig->LoseSightRadius = 1800.0f; // 시야 상실 거리
-		SightConfig->PeripheralVisionAngleDegrees = 180.0f; // 시야각 (360도 감지 하려면 180 입력)
-		
-		// 감지 대상 설정: 적, 중립, 아군 모두 감지
-		SightConfig->DetectionByAffiliation.bDetectEnemies = true;
-		SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
-		SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
-
-		// 설정 등록
-		AIPerception->ConfigureSense(*SightConfig);
-		AIPerception->SetDominantSense(SightConfig->GetSenseImplementation());
-	}
+	// AIPerceptionComponent는 블루프린트에서 추가(Add Component)하여 사용합니다.
 }
 
 void ABrawlAIController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 감지 이벤트 바인딩
-	if (AIPerception)
+	// 블루프린트에서 추가한 AIPerceptionComponent 가져오기
+	UAIPerceptionComponent* PerceptionComp = GetPerceptionComponent();
+	
+	if (PerceptionComp)
 	{
-		AIPerception->OnTargetPerceptionUpdated.AddDynamic(this, &ABrawlAIController::OnTargetDetected);
+		PerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &ABrawlAIController::OnTargetDetected);
+		PerceptionComp->OnTargetPerceptionForgotten.AddDynamic(this, &ABrawlAIController::OnTargetForgotten);
+		
+		UE_LOG(LogTemp, Log, TEXT("AI [%s] Perception Component Found & Bound."), *GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AI [%s] No Perception Component Found! Add one in Blueprint."), *GetName());
 	}
 }
 
@@ -110,28 +100,102 @@ ETeamAttitude::Type ABrawlAIController::GetTeamAttitudeTowards(const AActor& Oth
 	return (MyTeamID == OtherTeamID) ? ETeamAttitude::Friendly : ETeamAttitude::Hostile;
 }
 
+#include "TimerManager.h" // 추가
+
+// ... (기존 코드)
+
 void ABrawlAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 {
-	// 감각 자극이 "성공(감지됨)"인지 "실패(사라짐)"인지 확인
-	bool bDetected = Stimulus.WasSuccessfullySensed();
+	// 자신이거나 이미 사망한 대상 무시
+	if (!Actor || !Actor->IsValidLowLevel()) return;
 
-	if (bDetected)
+	// 적군인지 확인
+	if (GetTeamAttitudeTowards(*Actor) == ETeamAttitude::Friendly) return;
+
+	// 1. 피격 감지 (Damage) - 즉시 타겟 변경 및 타이머 취소
+	if (Stimulus.Type == UAISense::GetSenseID<UAISense_Damage>())
 	{
-		// 적군인지 확인
-		if (GetTeamAttitudeTowards(*Actor) == ETeamAttitude::Hostile)
+		if (Stimulus.WasSuccessfullySensed())
 		{
+			// 피격 시에는 망각 타이머 즉시 취소 (추격해야 하므로)
+			GetWorld()->GetTimerManager().ClearTimer(TimerHandle_ForgetTarget);
+			
 			SetFocus(Actor);
 			UpdateTargetInBlackboard(Actor);
-			UE_LOG(LogTemp, Log, TEXT("AI [%s] Detected Enemy: %s"), *GetName(), *Actor->GetName());
+			UE_LOG(LogTemp, Warning, TEXT("AI [%s] HIT BY [%s]! Switching Target instantly."), *GetName(), *Actor->GetName());
+		}
+		return;
+	}
+
+	// 2. 시각 감지 (Sight)
+	if (Stimulus.Type == UAISense::GetSenseID<UAISense_Sight>())
+	{
+		if (Stimulus.WasSuccessfullySensed())
+		{
+			// 다시 보이면 망각 타이머 취소
+			GetWorld()->GetTimerManager().ClearTimer(TimerHandle_ForgetTarget);
+
+			// 새로운 적 발견 -> 현재 타겟이 없으면 설정
+			AActor* CurrentTarget = Cast<AActor>(BlackboardComponent->GetValueAsObject(FName("TargetActor")));
+			if (!CurrentTarget)
+			{
+				SetFocus(Actor);
+				UpdateTargetInBlackboard(Actor);
+				UE_LOG(LogTemp, Log, TEXT("AI [%s] Saw Enemy: %s"), *GetName(), *Actor->GetName());
+			}
+			else if (CurrentTarget != Actor)
+			{
+				// 이미 타겟이 있을 경우 새 타겟이 더 가깝다면 목표를 교체한다
+				float DistToCurrent = GetPawn()->GetDistanceTo(CurrentTarget);
+				float DistToNew = GetPawn()->GetDistanceTo(Actor);
+				
+				// 25% 이상 더 가까우면 교체
+				if (DistToNew < DistToCurrent * 0.75f)
+				{
+					UpdateTargetInBlackboard(Actor);
+				}
+			}
+		}
+		else
+		{
+			// 시야에서 사라짐 (Lost Sight)
+			// Perception Config의 MaxAge에 의존하지 않고, 직접 타이머를 돌려 확실하게 잊게 함
+			AActor* CurrentTarget = Cast<AActor>(BlackboardComponent->GetValueAsObject(FName("TargetActor")));
+			if (CurrentTarget == Actor)
+			{
+				UE_LOG(LogTemp, Log, TEXT("AI [%s] Lost Sight of Target: %s. Starting Forget Timer (5.0s)."), *GetName(), *Actor->GetName());
+				
+				// 5초 뒤에 강제로 잊음
+				GetWorld()->GetTimerManager().SetTimer(TimerHandle_ForgetTarget, this, &ABrawlAIController::ForceForgetTarget, 5.0f, false);
+			}
 		}
 	}
-	else
+}
+
+void ABrawlAIController::OnTargetForgotten(AActor* Actor)
+{
+	UE_LOG(LogTemp, Log, TEXT("AI [%s] Perception System Try to Forgot Target: %s"), *GetName(), *Actor->GetName());
+	
+	// Perception System에 의해 잊혀짐 (MaxAge 만료)
+	// 타이머보다 먼저 호출될 수도 있음
+	AActor* CurrentTarget = Cast<AActor>(BlackboardComponent->GetValueAsObject(FName("TargetActor")));
+	if (CurrentTarget == Actor)
 	{
-		// 시야에서 사라짐 (추후 로직: 마지막 위치 기억 등)
-		// 현재는 단순히 타겟 해제 또는 거리 기반 로직에 맡김
+		GetWorld()->GetTimerManager().ClearTimer(TimerHandle_ForgetTarget); // 타이머 정리
 		SetFocus(nullptr);
 		UpdateTargetInBlackboard(nullptr);
-		UE_LOG(LogTemp, Log, TEXT("AI [%s] Lost Sight of: %s"), *GetName(), *Actor->GetName());
+		UE_LOG(LogTemp, Log, TEXT("AI [%s] Perception System Forgot Target: %s"), *GetName(), *Actor->GetName());
+	}
+}
+
+void ABrawlAIController::ForceForgetTarget()
+{
+	AActor* CurrentTarget = Cast<AActor>(BlackboardComponent->GetValueAsObject(FName("TargetActor")));
+	if (CurrentTarget)
+	{
+		SetFocus(nullptr);
+		UpdateTargetInBlackboard(nullptr);
+		UE_LOG(LogTemp, Log, TEXT("AI [%s] Force Forgot Target (Timer Expired)."), *GetName());
 	}
 }
 
@@ -139,6 +203,9 @@ void ABrawlAIController::UpdateTargetInBlackboard(AActor* TargetActor)
 {
 	if (BlackboardComponent)
 	{
+		UE_LOG(LogTemp, Log, TEXT("AI [%s] Perception System Update Target To: %s"), *GetName(), 
+			TargetActor ? *TargetActor->GetName() : TEXT("null"));
+		
 		// 블랙보드 키 이름 "TargetActor"에 저장 (블랙보드 에셋 생성 시 맞춰야 함)
 		BlackboardComponent->SetValueAsObject(FName("TargetActor"), TargetActor);
 	}

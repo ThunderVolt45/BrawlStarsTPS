@@ -15,6 +15,7 @@
 #include "Components/WidgetComponent.h"
 #include "UI/BrawlHealthWidget.h"
 #include "Kismet/GameplayStatics.h"
+#include "Perception/AISense_Damage.h"
 
 ABrawlCharacter::ABrawlCharacter()
 {
@@ -363,7 +364,6 @@ void ABrawlCharacter::Die()
 	if (bIsDead) return;
 
 	bIsDead = true;
-	// UE_LOG(LogTemp, Warning, TEXT("Character [%s] has DIED! (Ragdoll Activated)"), *GetName());
 
 	// 1. 컨트롤러 분리 (입력 차단)
 	AController* OldController = GetController();

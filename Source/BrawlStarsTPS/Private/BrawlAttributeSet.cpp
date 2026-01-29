@@ -5,6 +5,7 @@
 #include "MeshPaintVisualize.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Perception/AISense_Damage.h" // 추가
 
 UBrawlAttributeSet::UBrawlAttributeSet()
 {
@@ -76,10 +77,37 @@ void UBrawlAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 		float NewHealth = GetHealth() - FinalDamage;
 		SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
 
+		// AI Perception에 피격 사실 보고
+		AActor* TargetActor = Data.Target.AbilityActorInfo->AvatarActor.Get();
+		AActor* SourceActor = Data.EffectSpec.GetContext().GetInstigator();
+		
+		if (TargetActor && SourceActor && TargetActor != SourceActor)
+		{
+			// 공격자가 폰인 경우를 선호하지만, 컨트롤러일 수도 있음. 
+			// AI Controller는 Pawn을 통해 팀을 확인하므로 Pawn을 넘기는 것이 좋음.
+			AActor* InstigatorActor = SourceActor;
+			if (AController* SourceController = Cast<AController>(SourceActor))
+			{
+				if (APawn* SourcePawn = SourceController->GetPawn())
+				{
+					InstigatorActor = SourcePawn;
+				}
+			}
+
+			UAISense_Damage::ReportDamageEvent(
+				GetWorld(),
+				TargetActor,        // DamagedActor
+				InstigatorActor,    // Instigator (Attacker)
+				FinalDamage,
+				SourceActor->GetActorLocation(), // HitLocation
+				FVector::ZeroVector
+			);
+		}
+
 		// 공격자(Source)에게 게이지 충전
 		UAbilitySystemComponent* SourceASC = Data.EffectSpec.GetContext().GetInstigatorAbilitySystemComponent();
-		AActor* SourceActor = SourceASC ? SourceASC->GetAvatarActor() : nullptr;
-		AActor* TargetActor = Data.Target.AbilityActorInfo->AvatarActor.Get();
+		// AActor* SourceActor = SourceASC ? SourceASC->GetAvatarActor() : nullptr;
+		// AActor* TargetActor = Data.Target.AbilityActorInfo->AvatarActor.Get();
 
 		if (SourceActor && TargetActor && SourceActor != TargetActor)
 		{

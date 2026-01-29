@@ -36,6 +36,9 @@ protected:
 	// 감지 업데이트 델리게이트
 	UFUNCTION()
 	void OnTargetDetected(AActor* Actor, FAIStimulus Stimulus);
+	
+	UFUNCTION()
+	void OnTargetForgotten(AActor* Actor);
 
 public:
 	// 팀 ID 반환 (Pawn의 TeamID를 따라감)
@@ -43,14 +46,6 @@ public:
 	virtual ETeamAttitude::Type GetTeamAttitudeTowards(const AActor& Other) const override;
 
 protected:
-	// AI 인지 컴포넌트
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
-	TObjectPtr<UAIPerceptionComponent> AIPerception;
-
-	// 시각 설정
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
-	TObjectPtr<UAISenseConfig_Sight> SightConfig;
-
 	// 행동 트리 컴포넌트 (Blackboard 포함)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	TObjectPtr<UBehaviorTreeComponent> BehaviorTreeComponent;
@@ -64,4 +59,10 @@ protected:
 
 	// 감지된 타겟 관리
 	void UpdateTargetInBlackboard(AActor* TargetActor);
+
+	// 타겟 망각 타이머
+	FTimerHandle TimerHandle_ForgetTarget;
+
+	// 타이머에 의해 호출될 함수
+	void ForceForgetTarget();
 };
