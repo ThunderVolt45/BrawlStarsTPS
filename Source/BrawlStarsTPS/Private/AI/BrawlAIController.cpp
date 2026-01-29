@@ -1,15 +1,18 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
+#include "BrawlCharacter.h"
+#include "TimerManager.h"
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
+#include "BrawlAttributeSet.h"
 #include "AI/BrawlAIController.h"
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
-#include "Perception/AISenseConfig_Damage.h" // 추가
-#include "BrawlCharacter.h"
-#include "Math/UnitConversion.h"
+#include "Perception/AISenseConfig_Damage.h"
 
 ABrawlAIController::ABrawlAIController()
 {
@@ -99,14 +102,6 @@ ETeamAttitude::Type ABrawlAIController::GetTeamAttitudeTowards(const AActor& Oth
 	// 같은 팀이면 우호, 다르면 적대
 	return (MyTeamID == OtherTeamID) ? ETeamAttitude::Friendly : ETeamAttitude::Hostile;
 }
-
-#include "TimerManager.h" // 추가
-#include "GameFramework/Character.h"
-#include "AbilitySystemComponent.h"
-#include "AbilitySystemInterface.h"
-#include "BrawlAttributeSet.h"
-
-// ... (기존 코드)
 
 void ABrawlAIController::Tick(float DeltaTime)
 {
@@ -253,9 +248,9 @@ void ABrawlAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 				TimerDel.BindUObject(this, &ABrawlAIController::ForceForgetTarget, Actor);
 				
 				// 5초 뒤에 이 특정 적을 잊음
-				TimerManager.SetTimer(DetectedEnemies[Actor], TimerDel, 5.0f, false);
+				TimerManager.SetTimer(DetectedEnemies[Actor], TimerDel, TimeToForgetTarget, false);
 				
-				UE_LOG(LogTemp, Log, TEXT("AI [%s] Lost Sight of [%s]. Forget Timer Started (5.0s)."), *GetName(), *Actor->GetName());
+				UE_LOG(LogTemp, Log, TEXT("AI [%s] Lost Sight of [%s]. Forget Timer Started."), *GetName(), *Actor->GetName());
 			}
 		}
 	}

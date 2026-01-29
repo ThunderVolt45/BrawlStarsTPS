@@ -30,8 +30,37 @@ public:
 	ABrawlAIController();
 
 protected:
+	// 행동 트리 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
+	TObjectPtr<UBehaviorTreeComponent> BehaviorTreeComponent;
+
+	// 블랙 보드 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
+	TObjectPtr<UBlackboardComponent> BlackboardComponent;
+
+	// 기본 행동 트리 에셋 (BP에서 할당)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
+	TObjectPtr<class UBehaviorTree> DefaultBehaviorTree;
+	
+	// 목표 강제 망각 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
+	float TimeToForgetTarget = 4.0f;
+
+private:
+	// 감지된 적 목록 및 각 적별 망각 타이머 관리
+	// Key: Enemy Actor, Value: Forget Timer Handle
+	UPROPERTY()
+	TMap<AActor*, FTimerHandle> DetectedEnemies;
+	
+public:
+	// 팀 ID 반환 (Pawn의 TeamID를 따라감)
+	virtual FGenericTeamId GetGenericTeamId() const override;
+	virtual ETeamAttitude::Type GetTeamAttitudeTowards(const AActor& Other) const override;
+	
+protected:
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
 	
 	// 감지 업데이트 델리게이트
 	UFUNCTION()
@@ -40,23 +69,7 @@ protected:
 	UFUNCTION()
 	void OnTargetForgotten(AActor* Actor);
 
-public:
-	// 팀 ID 반환 (Pawn의 TeamID를 따라감)
-	virtual FGenericTeamId GetGenericTeamId() const override;
-	virtual ETeamAttitude::Type GetTeamAttitudeTowards(const AActor& Other) const override;
-
-protected:
-	// 행동 트리 컴포넌트 (Blackboard 포함)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
-	TObjectPtr<UBehaviorTreeComponent> BehaviorTreeComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
-	TObjectPtr<UBlackboardComponent> BlackboardComponent;
-
-	// 기본 행동 트리 에셋 (BP에서 할당)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
-	TObjectPtr<class UBehaviorTree> DefaultBehaviorTree;
-
+private:
 	// 감지된 타겟 관리
 	void UpdateTargetInBlackboard(AActor* TargetActor);
 
@@ -64,13 +77,6 @@ protected:
 	UFUNCTION()
 	void ForceForgetTarget(AActor* TargetToForget);
 
-	// 감지된 적 목록 및 각 적별 망각 타이머 관리
-	// Key: Enemy Actor, Value: Forget Timer Handle
-	UPROPERTY()
-	TMap<AActor*, FTimerHandle> DetectedEnemies;
-
 	// 최적의 타겟 선정 함수
 	AActor* SelectBestTarget();
-
-	virtual void Tick(float DeltaTime) override;
 };
