@@ -141,16 +141,25 @@ AActor* ABrawlAIController::SelectBestTarget()
 	for (auto It = DetectedEnemies.CreateIterator(); It; ++It)
 	{
 		AActor* Enemy = It->Key;
+		
+		// 유효하지 않은 액터는 타이머 정리 후 제거
 		if (!Enemy || !Enemy->IsValidLowLevel() || Enemy->IsActorBeingDestroyed())
 		{
-			// 유효하지 않은 액터는 타이머 정리 후 제거
+			GetWorld()->GetTimerManager().ClearTimer(It->Value);
+			It.RemoveCurrent();
+			continue;
+		}
+		
+		// 지나치게 멀리 있는 액터도 타이머 정리 후 제거
+		float Distance = MyPawn->GetDistanceTo(Enemy);
+		if (Distance > 3000.0f)
+		{
 			GetWorld()->GetTimerManager().ClearTimer(It->Value);
 			It.RemoveCurrent();
 			continue;
 		}
 
 		// 점수 계산 (높을수록 좋음)
-		float Distance = MyPawn->GetDistanceTo(Enemy);
 		float DistanceScore = FMath::Clamp(1.0f - (Distance / 2000.0f), 0.0f, 1.0f) * 100.0f;
 		float MaintainScore = (Enemy == CurrentTarget) ? 20.0f : 0.0f;
 
@@ -251,7 +260,7 @@ void ABrawlAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 				FTimerDelegate TimerDel;
 				TimerDel.BindUObject(this, &ABrawlAIController::ForceForgetTarget, Actor);
 				
-				// 5초 뒤에 이 특정 적을 잊음
+				// 일정 시간 뒤에 이 특정 적을 잊음
 				TimerManager.SetTimer(DetectedEnemies[Actor], TimerDel, TimeToForgetTarget, false);
 				
 				UE_LOG(LogTemp, Log, TEXT("AI [%s] Lost Sight of [%s]. Forget Timer Started."), *GetName(), *Actor->GetName());
