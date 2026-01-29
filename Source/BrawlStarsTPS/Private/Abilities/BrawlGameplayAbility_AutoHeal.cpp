@@ -4,6 +4,7 @@
 #include "Abilities/BrawlGameplayAbility_AutoHeal.h"
 #include "AbilitySystemComponent.h"
 #include "BrawlAttributeSet.h"
+#include "BrawlCharacter.h"
 #include "TimerManager.h"
 
 UBrawlGameplayAbility_AutoHeal::UBrawlGameplayAbility_AutoHeal()
@@ -20,10 +21,10 @@ void UBrawlGameplayAbility_AutoHeal::ActivateAbility(const FGameplayAbilitySpecH
 	const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-
+	
+	// 1. 전투 상태 태그 감지 (공격 등)
 	if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
 	{
-		// 1. 전투 상태 태그 감지 (공격 등)
 		for (const FGameplayTag& Tag : CombatTriggerTags)
 		{
 			// 이미 등록된 태그인지 확인 (중복 방지)
@@ -130,6 +131,21 @@ void UBrawlGameplayAbility_AutoHeal::StartHealing()
 
 void UBrawlGameplayAbility_AutoHeal::TickHealing()
 {
+	ABrawlCharacter* MyCharacter = Cast<ABrawlCharacter>(GetAvatarActorFromActorInfo());
+	if (!MyCharacter || MyCharacter->IsDead())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AutoHeal: Actor %s Is Dead! Auto Heal Halted!"), *MyCharacter->GetName());
+		
+		// 사망했거나 캐릭터가 유효하지 않으면 회복 중단
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(TimerHandle_StartHeal);
+			World->GetTimerManager().ClearTimer(TimerHandle_TickHeal);
+		}
+		
+		return;
+	}
+
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
 	if (!ASC)
 	{

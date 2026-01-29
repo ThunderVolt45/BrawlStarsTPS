@@ -8,6 +8,7 @@
 #include "Data/BrawlCharacterData.h"
 #include "Camera/CameraComponent.h"
 #include "Components/BrawlHeroComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Components/WidgetComponent.h"
@@ -115,6 +116,9 @@ void ABrawlCharacter::InitAbilityActorInfo()
 
 		// 이동 속도 변화 감지 바인딩
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetMovementSpeedAttribute()).AddUObject(this, &ABrawlCharacter::OnMovementSpeedChanged);
+
+		// 체력 변화 감지 바인딩
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetHealthAttribute()).AddUObject(this, &ABrawlCharacter::OnHealthChanged);
 
 		// 머리 위 위젯 초기화
 		if (HealthBarComponent)
@@ -322,4 +326,67 @@ void ABrawlCharacter::InitializeAttributes()
 		
 		UE_LOG(LogTemp, Warning, TEXT("Attributes Initialized via C++ Direct Set."));
 	}
+}
+
+void ABrawlCharacter::OnHealthChanged(const FOnAttributeChangeData& Data)
+{
+	// 이미 사망했으면 무시
+	if (bIsDead) return;
+
+	// 체력이 0 이하면 사망 처리
+	if (Data.NewValue <= 0.0f)
+	{
+		Die();
+	}
+}
+
+void ABrawlCharacter::Die()
+{
+	if (bIsDead) return;
+
+	bIsDead = true;
+	// UE_LOG(LogTemp, Warning, TEXT("Character [%s] has DIED! (Ragdoll Activated)"), *GetName());
+
+	// 1. 컨트롤러 분리 (입력 차단)
+	AController* OldController = GetController();
+	if (OldController)
+	{
+		DetachFromControllerPendingDestroy();
+	}
+
+	// 2. 캡슐 콜리전 비활성화 (이동 불가 및 물리 간섭 제거)
+	if (GetCapsuleComponent())
+	{
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	// 3. 캐릭터 무브먼트 비활성화
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->StopMovementImmediately();
+		GetCharacterMovement()->DisableMovement();
+		GetCharacterMovement()->SetComponentTickEnabled(false);
+	}
+
+	// 4. 메쉬 래그돌 활성화
+	// if (GetMesh())
+	// {
+	// 	GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+	// 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	// 	GetMesh()->SetAllBodiesSimulatePhysics(true);
+	// 	GetMesh()->SetSimulatePhysics(true);
+	// 	GetMesh()->WakeAllRigidBodies();
+	// 	GetMesh()->bPauseAnims = true; // 애니메이션 멈춤
+	// }
+
+	// 5. 체력바 숨김
+	if (HealthBarComponent)
+	{
+		HealthBarComponent->SetHiddenInGame(true);
+	}
+
+	// 6. 3초 뒤에 Actor 제거 (혹은 리스폰 로직으로 대체 가능)
+	// SetLifeSpan(5.0f);
+	
+	Destroy();
 }
