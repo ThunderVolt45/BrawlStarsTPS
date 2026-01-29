@@ -50,7 +50,7 @@ void UBrawlAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 {
 	Super::PostGameplayEffectExecute(Data);
 
-	UE_LOG(LogTemp, Warning, TEXT("PostGE: Attr [%s], Mag [%f], Source [%s], Target [%s]"), 
+	UE_LOG(LogTemp, Log, TEXT("PostGE: Attr [%s], Mag [%f], Source [%s], Target [%s]"), 
 		*Data.EvaluatedData.Attribute.GetName(), 
 		Data.EvaluatedData.Magnitude,
 		GetOwningActor() ? *GetOwningActor()->GetName() : TEXT("NULL"), // Target (나)
