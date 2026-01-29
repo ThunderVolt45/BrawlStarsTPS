@@ -82,6 +82,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|AI")
 	const FAICombatSettings& GetAICombatSettings() const { return AICombatSettings; }
 
+	// AI용 전투 행동 트리 반환 (데이터 테이블 조회)
+	UFUNCTION(BlueprintCallable, Category = "Brawl|AI")
+	class UBehaviorTree* GetCombatBehaviorTree() const;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -108,9 +112,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
 	uint8 TeamID = 255;
 
-	// 능력치 데이터 테이블
+	// 능력치 데이터 테이블 (기본 스탯)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
 	TObjectPtr<UDataTable> CharacterDataTable;
+
+	// AI 설정 데이터 테이블 (행동 트리, 교전 거리 등)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
+	TObjectPtr<UDataTable> AIDataTable;
 
 	// 초기화용 Gameplay Effect 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")

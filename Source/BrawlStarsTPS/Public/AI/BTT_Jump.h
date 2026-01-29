@@ -21,4 +21,24 @@ public:
 
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 	virtual void TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
+
+protected:
+	// 점프 높이 (Z축 힘)
+	UPROPERTY(EditAnywhere, Category = "Jump")
+	float JumpZ = 500.0f;
+
+	// 점프 전진 속도 (XY축 힘)
+	UPROPERTY(EditAnywhere, Category = "Jump")
+	float JumpForwardSpeed = 500.0f;
+
+	// 타겟 반대 방향으로 점프할지 여부
+	UPROPERTY(EditAnywhere, Category = "Jump")
+	bool bJumpAway = false;
+
+	// 점프 방향 기준이 될 타겟 (설정 안하면 현재 캐릭터 정면 기준)
+	UPROPERTY(EditAnywhere, Category = "Jump")
+	struct FBlackboardKeySelector TargetKey;
+
+private:
+	FVector GetJumpDirection(UBehaviorTreeComponent& OwnerComp, class ACharacter* MyCharacter);
 };

@@ -60,6 +60,17 @@ void ABrawlAIController::OnPossess(APawn* InPawn)
 		if (DefaultBehaviorTree->BlackboardAsset)
 		{
 			BlackboardComponent->InitializeBlackboard(*DefaultBehaviorTree->BlackboardAsset);
+			
+			// 브롤러별 고유 전투 트리(Combat Tree) 설정
+			if (ABrawlCharacter* BrawlPawn = Cast<ABrawlCharacter>(InPawn))
+			{
+				if (UBehaviorTree* CombatTree = BrawlPawn->GetCombatBehaviorTree())
+				{
+					BlackboardComponent->SetValueAsObject(FName("CombatTree"), CombatTree);
+					UE_LOG(LogTemp, Log, TEXT("AI [%s] Loaded Combat Tree: %s"), *GetName(), *CombatTree->GetName());
+				}
+			}
+
 			BehaviorTreeComponent->StartTree(*DefaultBehaviorTree);
 		}
 	}

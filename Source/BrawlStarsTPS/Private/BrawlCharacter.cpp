@@ -6,6 +6,7 @@
 #include "BrawlAttributeSet.h"
 #include "BrawlStarsTPS.h"
 #include "Data/BrawlCharacterData.h"
+#include "Data/BrawlAIData.h"
 #include "Camera/CameraComponent.h"
 #include "Components/BrawlHeroComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -61,6 +62,24 @@ ABrawlCharacter::ABrawlCharacter()
 	
 	// Hero 컴포넌트 생성
 	HeroComponent = CreateDefaultSubobject<UBrawlHeroComponent>(TEXT("HeroComponent"));
+}
+
+UBehaviorTree* ABrawlCharacter::GetCombatBehaviorTree() const
+{
+	if (!AIDataTable)
+	{
+		return nullptr;
+	}
+
+	static const FString ContextString(TEXT("Get Combat BT"));
+	FBrawlAIData* Row = AIDataTable->FindRow<FBrawlAIData>(CharacterID, ContextString);
+
+	if (Row)
+	{
+		return Row->CombatBehaviorTree;
+	}
+
+	return nullptr;
 }
 
 void ABrawlCharacter::BeginPlay()
@@ -274,7 +293,7 @@ void ABrawlCharacter::InitializeAttributes()
 		return;
 	}
 
-	// 데이터 테이블에서 Row 찾기
+	// 1. 기본 스탯 데이터 로드 (DT_BrawlerData)
 	static const FString ContextString(TEXT("Init Attributes"));
 	FBrawlCharacterData* Row = CharacterDataTable->FindRow<FBrawlCharacterData>(CharacterID, ContextString);
 	
@@ -284,47 +303,46 @@ void ABrawlCharacter::InitializeAttributes()
 			*CharacterID.ToString(), Row->MaxHealth, Row->MaxAmmo, Row->MoveSpeed);
 
 		// GE를 사용하지 않고 직접 Base Value 설정 (안전하고 확실함)
-		// 체력
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxHealthAttribute(), Row->MaxHealth);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHealthAttribute(), Row->MaxHealth);
-
-		// 탄환
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxAmmoAttribute(), Row->MaxAmmo);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetAmmoAttribute(), Row->MaxAmmo);
-		
-		// 재장전
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetReloadSpeedAttribute(), Row->ReloadDelay);
-		
-		// 이동 속도
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMovementSpeedAttribute(), Row->MoveSpeed);
-		if (GetCharacterMovement())
-		{
-			GetCharacterMovement()->MaxWalkSpeed = Row->MoveSpeed;
-		}
-		
-		// 공격력
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetAttackDamageAttribute(), Row->AttackDamage);
-		
-		// 가젯 공격력
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetGadgetDamageAttribute(), Row->Gadget1Damage);
-		
-		// 가젯 쿨다운
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetGadgetCooldownAttribute(), Row->Gadget1Cooldown);
-		
-		// 궁극기 공격력
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperDamageAttribute(), Row->SuperDamage);
-		
-		// 궁극기, 하이퍼차지 초기화
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxSuperChargeAttribute(), Row->MaxSuperCharge);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargeAttribute(), 0.0f);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperCostAttribute(), Row->SuperCost);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargePerHitAttribute(), Row->SuperChargePerHit);
-
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxHyperChargeAttribute(), Row->MaxHyperCharge);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargeAttribute(), 0.0f);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargePerHitAttribute(), Row->HyperChargePerHit);
 		
-		UE_LOG(LogTemp, Warning, TEXT("Attributes Initialized via C++ Direct Set."));
+		// 이동 속도 값은 CharacterMovement에 직접 주입한다
+		if (GetCharacterMovement())
+		{
+			GetCharacterMovement()->MaxWalkSpeed = Row->MoveSpeed;
+		}
+	}
+
+	// 2. AI 설정 데이터 로드 (DT_BrawlerAI)
+	if (AIDataTable)
+	{
+		FBrawlAIData* AIRow = AIDataTable->FindRow<FBrawlAIData>(CharacterID, ContextString);
+		if (AIRow)
+		{
+			AICombatSettings.MaxCombatRange = AIRow->MaxCombatRange;
+			AICombatSettings.PreferredCombatRange = AIRow->PreferredCombatRange;
+			AICombatSettings.MinCombatRange = AIRow->MinCombatRange;
+			AICombatSettings.FleeHealthRatio = AIRow->FleeHealthRatio;
+			AICombatSettings.ResumeCombatHealthRatio = AIRow->ResumeCombatHealthRatio;
+			
+			UE_LOG(LogTemp, Warning, TEXT("AI Data Loaded for [%s]. CombatRange: %.1f ~ %.1f"), 
+				*CharacterID.ToString(), AICombatSettings.MinCombatRange, AICombatSettings.MaxCombatRange);
+		}
 	}
 }
 

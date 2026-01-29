@@ -26,47 +26,38 @@ bool UBTD_IsBlocked::CalculateRawConditionValue(UBehaviorTreeComponent& OwnerCom
 	{
 		return false;
 	}
-
-	// 1. 검사 방향 결정
-	// 현재 이동 중(속도 있음)이면 이동 방향을, 멈춰있으면 전방을 사용
-	FVector CheckDir = Pawn->GetVelocity().GetSafeNormal();
-	if (CheckDir.IsNearlyZero())
+	
+	// 0. 무작위 확률로 이유없이 그냥 (!) 점프한다 (플레이어처럼)
+	if (FMath::RandRange(1, 100) >= (100 - RandomJumpChance))
 	{
-		CheckDir = Pawn->GetActorForwardVector();
+		return true;
 	}
 
-	// 2. 트레이스 시작/끝 지점 계산
-	FVector Start = Pawn->GetActorLocation();
-	FVector End = Start + (CheckDir * CheckDistance);
+	// 1. 검사 위치 결정
+	FVector CheckDir = bCheckForward ? Pawn->GetActorForwardVector() : Pawn->GetActorForwardVector() * -1;
 
-	// 자기 자신 무시 설정
+	// 검사 중심점: 캐릭터 위치 + (방향 * 거리)
+	FVector CheckLocation = Pawn->GetActorLocation() + (CheckDir * CheckDistance);
+
+	// 2. 오버랩 테스트 (Sphere Overlap)
 	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(Pawn);
+	Params.AddIgnoredActor(Pawn); // 자기 자신 제외
 
-	// 3. 구체 트레이스 (Sphere Trace) 실행
-	FHitResult HitResult;
-	bool bHit = GetWorld()->SweepSingleByChannel(
-		HitResult,
-		Start,
-		End,
+	bool bOverlap = GetWorld()->OverlapBlockingTestByChannel(
+		CheckLocation,
 		FQuat::Identity,
 		TraceChannel,
 		FCollisionShape::MakeSphere(TraceRadius),
 		Params
 	);
 
-	// 4. 디버그 드로잉
+	// 3. 디버그 드로잉
 	if (bDrawDebug)
 	{
-		FColor DrawColor = bHit ? FColor::Red : FColor::Green;
-		DrawDebugSphere(GetWorld(), Start, TraceRadius, 12, DrawColor, false, 0.5f);
-		DrawDebugLine(GetWorld(), Start, End, DrawColor, false, 0.5f);
-		
-		if (bHit)
-		{
-			DrawDebugSphere(GetWorld(), HitResult.Location, 10.0f, 12, FColor::Blue, false, 0.5f);
-		}
+		FColor DrawColor = bOverlap ? FColor::Red : FColor::Green;
+		DrawDebugSphere(GetWorld(), CheckLocation, TraceRadius, 12, DrawColor, false, 0.5f);
+		DrawDebugLine(GetWorld(), Pawn->GetActorLocation(), CheckLocation, FColor::Yellow, false, 0.5f);
 	}
 
-	return bHit;
+	return bOverlap;
 }

@@ -24,9 +24,17 @@ public:
 	virtual bool CalculateRawConditionValue(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) const override;
 
 protected:
+	// 검사 방향
+	UPROPERTY(EditAnywhere, Category = "Condition")
+	bool bCheckForward = true;
+	
+	// 무작위 점프 확률
+	UPROPERTY(EditAnywhere, Category = "Condition")
+	int RandomJumpChance = 25;
+	
 	// 검사할 거리 (cm)
 	UPROPERTY(EditAnywhere, Category = "Condition")
-	float CheckDistance = 150.0f;
+	float CheckDistance = 180.0f;
 
 	// 트레이스 채널 (기본: Visibility)
 	UPROPERTY(EditAnywhere, Category = "Condition")
@@ -34,7 +42,7 @@ protected:
 
 	// 트레이스 구체 반지름 (캐릭터 폭 고려)
 	UPROPERTY(EditAnywhere, Category = "Condition")
-	float TraceRadius = 30.0f;
+	float TraceRadius = 40.0f;
 	
 	// 디버그 드로잉 여부
 	UPROPERTY(EditAnywhere, Category = "Debug")
