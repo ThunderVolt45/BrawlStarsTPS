@@ -88,5 +88,5 @@ protected:
 	
 	// AI 컨트롤러가 사용할 경우 에임 보정치
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|AI")
-	float AIAimOffset = 3.25f;
+	float AIAimOffset = 3.1f;
 };
