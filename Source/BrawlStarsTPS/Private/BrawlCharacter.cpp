@@ -5,6 +5,7 @@
 #include "BrawlAbilitySystemComponent.h"
 #include "BrawlAttributeSet.h"
 #include "BrawlStarsTPS.h"
+#include "BrawlStarsTPSGameMode.h"
 #include "Data/BrawlCharacterData.h"
 #include "Data/BrawlAIData.h"
 #include "Camera/CameraComponent.h"
@@ -13,6 +14,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Components/WidgetComponent.h"
+#include "GameFramework/GameSession.h"
 #include "UI/BrawlHealthWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "Perception/AISense_Damage.h"
@@ -99,11 +101,21 @@ FBrawlCharacterData ABrawlCharacter::GetCharacterData() const
 UTexture2D* ABrawlCharacter::GetCharacterIcon() const
 {
 	FBrawlCharacterData Data = GetCharacterData();
-	if (!Data.CharacterIcon.IsNull())
+	
+	if (Data.CharacterIcon.IsNull())
 	{
-		return Data.CharacterIcon.LoadSynchronous();
+		UE_LOG(LogTemp, Warning, TEXT("GetCharacterIcon: Icon SoftPtr is NULL for Character [%s]"), *CharacterID.ToString());
+		return nullptr;
 	}
-	return nullptr;
+
+	UTexture2D* LoadedIcon = Data.CharacterIcon.LoadSynchronous();
+	if (!LoadedIcon)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GetCharacterIcon: Failed to LoadSynchronous Icon for [%s]. Path: %s"), 
+			*CharacterID.ToString(), *Data.CharacterIcon.ToString());
+	}
+	
+	return LoadedIcon;
 }
 
 void ABrawlCharacter::BeginPlay()
@@ -388,6 +400,19 @@ void ABrawlCharacter::Die()
 
 	bIsDead = true;
 
+	// 서버에서 GameMode에 사망 사실 알림 (GameState를 통해 클라이언트로 전파됨)
+	if (HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Character::Die - Reporting Kill. Victim: %s, Killer: %s"), 
+			*GetName(), 
+			LastHitInstigator ? *LastHitInstigator->GetName() : TEXT("NULL"));
+
+		if (ABrawlStarsTPSGameMode* GM = GetWorld()->GetAuthGameMode<ABrawlStarsTPSGameMode>())
+		{
+			GM->NotifyKill(LastHitInstigator, this);
+		}
+	}
+
 	// 1. 컨트롤러 분리 (입력 차단)
 	AController* OldController = GetController();
 	if (OldController)
@@ -425,9 +450,9 @@ void ABrawlCharacter::Die()
 	{
 		HealthBarComponent->SetHiddenInGame(true);
 	}
-
+	
 	// 6. 3초 뒤에 Actor 제거 (혹은 리스폰 로직으로 대체 가능)
-	// SetLifeSpan(5.0f);
+	// SetLifeSpan(3.0f);
 	
 	Destroy();
 }

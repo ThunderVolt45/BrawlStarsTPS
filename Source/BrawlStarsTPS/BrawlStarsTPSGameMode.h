@@ -21,10 +21,6 @@ public:
 	/** Constructor */
 	ABrawlStarsTPSGameMode();
 
-	// 처치 이벤트 알림 (BlueprintAssignable for UI)
-	UPROPERTY(BlueprintAssignable, Category = "Brawl|Game")
-	FOnBrawlerKilled OnBrawlerKilled;
-
 	// 처치 발생 시 호출 (AttributeSet 등에서)
 	virtual void NotifyKill(AActor* Killer, AActor* Victim);
 };

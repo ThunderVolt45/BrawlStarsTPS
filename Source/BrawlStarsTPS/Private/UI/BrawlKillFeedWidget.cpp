@@ -3,26 +3,33 @@
 
 #include "UI/BrawlKillFeedWidget.h"
 #include "UI/BrawlKillLogEntry.h"
-#include "BrawlStarsTPSGameMode.h"
+#include "BrawlStarsTPSGameMode.h" // GameMode는 이제 필요 없을 수 있지만, 혹시 모르니 유지하거나 제거
+#include "BrawlGameState.h"      // 추가
 #include "BrawlCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/PanelWidget.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
+#include "GameFramework/GameStateBase.h"
 
 void UBrawlKillFeedWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	if (ABrawlStarsTPSGameMode* GM = Cast<ABrawlStarsTPSGameMode>(UGameplayStatics::GetGameMode(GetWorld())))
+	// GameState를 통해 킬 이벤트 수신 (클라이언트에서도 접근 가능)
+	if (ABrawlGameState* GS = Cast<ABrawlGameState>(UGameplayStatics::GetGameState(GetWorld())))
 	{
-		GM->OnBrawlerKilled.AddDynamic(this, &UBrawlKillFeedWidget::HandleBrawlerKilled);
-		UE_LOG(LogTemp, Log, TEXT("BrawlKillFeedWidget: Successfully bound to BrawlStarsTPSGameMode OnBrawlerKilled."));
+		GS->OnBrawlerKilled.AddDynamic(this, &UBrawlKillFeedWidget::HandleBrawlerKilled);
+		UE_LOG(LogTemp, Log, TEXT("BrawlKillFeedWidget: Successfully bound to BrawlGameState OnBrawlerKilled."));
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("BrawlKillFeedWidget: Failed to cast GameMode to ABrawlStarsTPSGameMode! Current GameMode: %s"), 
-			*UGameplayStatics::GetGameMode(GetWorld())->GetName());
+		// GameState가 아직 복제되지 않았을 수도 있음 (비동기). 
+		// 하지만 NativeConstruct는 보통 GameState가 있을 때 쯤 호출됨.
+		// 만약 실패한다면, Timer를 써서 재시도하거나 OnGameStateSet 이벤트를 기다려야 함.
+		// 여기서는 간단히 로그 출력.
+		UE_LOG(LogTemp, Error, TEXT("BrawlKillFeedWidget: Failed to cast GameState to ABrawlGameState! Current: %s"), 
+			UGameplayStatics::GetGameState(GetWorld()) ? *UGameplayStatics::GetGameState(GetWorld())->GetName() : TEXT("NULL"));
 	}
 
 	if (!KillFeedList)

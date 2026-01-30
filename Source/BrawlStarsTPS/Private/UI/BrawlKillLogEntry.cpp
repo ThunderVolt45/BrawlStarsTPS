@@ -10,30 +10,55 @@
 
 void UBrawlKillLogEntry::SetKillInfo(AActor* Killer, AActor* Victim)
 {
-	bool bIsKillerMyself = (Killer == GetOwningPlayerPawn());
-	bool bIsVictimMyself = (Victim == GetOwningPlayerPawn());
-	
-	// 배경 색상을 정하기 위한 기준을 위해 로컬 플레이어를 가져온다
-	ABrawlCharacter* LocalPlayer = Cast<ABrawlCharacter>(GetOwningLocalPlayer());
-	if (!LocalPlayer)
+	if (!KillerImage) UE_LOG(LogTemp, Error, TEXT("BrawlKillLogEntry: KillerImage is NULL"));
+	if (!KillerNameText) UE_LOG(LogTemp, Error, TEXT("BrawlKillLogEntry: KillerNameText is NULL"));
+	if (!VictimImage) UE_LOG(LogTemp, Error, TEXT("BrawlKillLogEntry: VictimImage is NULL"));
+	if (!VictimNameText) UE_LOG(LogTemp, Error, TEXT("BrawlKillLogEntry: VictimNameText is NULL"));
+
+	if (!KillerImage || !KillerNameText || !VictimImage || !VictimNameText || !BackgroundImage)
 	{
-		UE_LOG(LogTemp, Error, TEXT("LocalPlayer is null! This should not happen! SetKillInfo Halted!"));
+		UE_LOG(LogTemp, Error, TEXT("BrawlKillLogEntry: One of BindWidget Failed! BrawlKillLogEntry Halted!"));
 		return;
 	}
+
+	APawn* OwningPawn = GetOwningPlayerPawn();
+	bool bIsKillerMyself = (Killer == OwningPawn);
+	bool bIsVictimMyself = (Victim == OwningPawn);
+	
+	// 배경 색상을 정하기 위한 기준을 위해 로컬 플레이어를 가져온다
+	ABrawlCharacter* LocalPlayer = Cast<ABrawlCharacter>(OwningPawn);
 	
 	// Killer 브롤러 UI 설정
 	if (ABrawlCharacter* KillerBrawler = Cast<ABrawlCharacter>(Killer))
 	{
-		KillerImage->SetBrushFromTexture(Cast<UTexture2D>(KillerBrawler->GetCharacterIcon()));
-		KillerNameText->SetText(FText::FromString(KillerBrawler->GetName()));
-		
-		// Killer와 로컬 플레이어의 팀을 확인해 알맞은 배경 색상을 설정한다
-		if (KillerBrawler->GetTeamID() == LocalPlayer->GetTeamID())
+		UTexture2D* Icon = KillerBrawler->GetCharacterIcon();
+		if (Icon)
 		{
-			BackgroundImage->SetBrushTintColor(AllyKillBackgroundColor);
+			KillerImage->SetBrushFromTexture(Icon);
 		}
 		else
 		{
+			UE_LOG(LogTemp, Warning, TEXT("BrawlKillLogEntry: Killer Icon is NULL for [%s] (ID: %s)"), 
+				*KillerBrawler->GetName(), *KillerBrawler->GetCharacterID().ToString());
+		}
+		
+		KillerNameText->SetText(FText::FromString(KillerBrawler->GetName()));
+		
+		// 로컬 플레이어가 유효할 때만 팀 비교 수행
+		if (LocalPlayer)
+		{
+			if (KillerBrawler->GetTeamID() == LocalPlayer->GetTeamID())
+			{
+				BackgroundImage->SetBrushTintColor(AllyKillBackgroundColor);
+			}
+			else
+			{
+				BackgroundImage->SetBrushTintColor(EnemyKillBackgroundColor);
+			}
+		}
+		else
+		{
+			// 로컬 플레이어 정보가 없으면 기본적으로 적군(빨강) 색상 사용 (혹은 중립)
 			BackgroundImage->SetBrushTintColor(EnemyKillBackgroundColor);
 		}
 	}
@@ -41,11 +66,15 @@ void UBrawlKillLogEntry::SetKillInfo(AActor* Killer, AActor* Victim)
 	// Victim 브롤러 UI 설정
 	if (ABrawlCharacter* VictimBrawler = Cast<ABrawlCharacter>(Victim))
 	{
-		VictimImage->SetBrushFromTexture(Cast<UTexture2D>(VictimBrawler->GetCharacterIcon()));
+		if (UTexture2D* Icon = VictimBrawler->GetCharacterIcon())
+		{
+			VictimImage->SetBrushFromTexture(Icon);
+		}
+		
 		VictimNameText->SetText(FText::FromString(VictimBrawler->GetName()));
 		
-		// 만약 Killer가 로컬 플레이어를 처치한 것이라면 배경 색상을 바꿔준다
-		if (VictimBrawler == LocalPlayer)
+		// 만약 피해자가 로컬 플레이어라면 배경을 적으로 설정 (내가 죽었으므로 강조)
+		if (LocalPlayer && VictimBrawler == LocalPlayer)
 		{
 			BackgroundImage->SetBrushTintColor(EnemyKillBackgroundColor);
 		}

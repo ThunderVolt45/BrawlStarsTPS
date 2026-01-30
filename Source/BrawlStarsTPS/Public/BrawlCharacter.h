@@ -197,6 +197,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Health")
 	bool IsDead() const { return bIsDead; }
 
+	// 마지막으로 데미지를 입힌 공격자 설정 (서버 전용)
+	void SetLastHitInstigator(AActor* InInstigator) { LastHitInstigator = InInstigator; }
+
 protected:
 	// 체력 속성 변경 시 호출될 콜백
 	virtual void OnHealthChanged(const FOnAttributeChangeData& Data);
@@ -207,6 +210,10 @@ private:
 
 	// 실제 시각적 은신 상태 업데이트
 	void UpdateMeshVisibility();
+
+	// 마지막으로 데미지를 입힌 공격자
+	UPROPERTY()
+	TObjectPtr<AActor> LastHitInstigator;
 
 	// 수풀 속에 있는지 여부 (은신 가능 상태)
 	bool bIsHiddenInBush = false;

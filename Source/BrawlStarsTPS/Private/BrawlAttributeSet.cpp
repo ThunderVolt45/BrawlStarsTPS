@@ -1,10 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "BrawlAttributeSet.h"
+
+#include "BrawlCharacter.h"
 #include "GameplayEffectExtension.h"
-#include "MeshPaintVisualize.h"
-#include "GameFramework/Character.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "Perception/AISense_Damage.h" // 추가
 #include "BrawlStarsTPSGameMode.h"
 #include "Kismet/GameplayStatics.h"
@@ -53,12 +52,6 @@ void UBrawlAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 {
 	Super::PostGameplayEffectExecute(Data);
 
-	UE_LOG(LogTemp, Log, TEXT("PostGE: Attr [%s], Mag [%f], Source [%s], Target [%s]"), 
-		*Data.EvaluatedData.Attribute.GetName(), 
-		Data.EvaluatedData.Magnitude,
-		GetOwningActor() ? *GetOwningActor()->GetName() : TEXT("NULL"), // Target (나)
-		Data.EffectSpec.GetContext().GetInstigator() ? *Data.EffectSpec.GetContext().GetInstigator()->GetName() : TEXT("NULL"));
-
 	// 메타 어트리뷰트 IncomingDamage 처리
 	if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
 	{
@@ -67,6 +60,23 @@ void UBrawlAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 	// 체력 처리
 	else if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
+		// 직접 체력이 깎여서 사망하는 경우 미리 처리
+		if (GetHealth() <= 0.0f) 
+		{
+			// 주의: 여기서 GetHealth()는 이미 깎인 값일 수 있음 (Modifiers 적용 후)
+			// 하지만 SetHealth로 클램핑하기 전에 체크해야 함
+			AActor* TargetActor = Data.Target.AbilityActorInfo->AvatarActor.Get();
+			AActor* SourceActor = Data.EffectSpec.GetContext().GetInstigator();
+
+			if (ABrawlCharacter* TargetBrawler = Cast<ABrawlCharacter>(TargetActor))
+			{
+				if (!TargetBrawler->IsDead())
+				{
+					TargetBrawler->SetLastHitInstigator(SourceActor);
+				}
+			}
+		}
+
 		SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
 	}
 	// 탄약 처리
@@ -112,13 +122,31 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 	float FinalDamage = FMath::RoundToInt(ReductionedDamage);
 
 	// 체력 감소 적용
-	bool bWasAlive = GetHealth() > 0.0f;
 	float NewHealth = GetHealth() - FinalDamage;
+
+	// 사망 예정이라면 공격자 정보를 먼저 저장한다! (SetHealth 호출 시 Die가 실행되므로 그 전에 저장 필수)
+	AActor* TargetActor = Data.Target.AbilityActorInfo->AvatarActor.Get();
+	AActor* SourceActor = Data.EffectSpec.GetContext().GetInstigator();
+
+	if (NewHealth <= 0.0f)
+	{
+		if (ABrawlCharacter* TargetBrawler = Cast<ABrawlCharacter>(TargetActor))
+		{
+			// 디버그용 화면 메시지
+			if (GEngine)
+			{
+				FString DebugMsg = FString::Printf(TEXT("[Server] IncomingDamage Fatal! Set Killer: %s"), 
+					SourceActor ? *SourceActor->GetName() : TEXT("NULL"));
+				GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, DebugMsg);
+			}
+
+			TargetBrawler->SetLastHitInstigator(SourceActor);
+		}
+	}
+
 	SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
 	
 	UAbilitySystemComponent* SourceASC = Data.EffectSpec.GetContext().GetInstigatorAbilitySystemComponent();
-	AActor* TargetActor = Data.Target.AbilityActorInfo->AvatarActor.Get();
-	AActor* SourceActor = Data.EffectSpec.GetContext().GetInstigator();
 
 	if (!TargetActor) return;
 	if (!SourceActor) return;
@@ -132,15 +160,6 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 		if (APawn* SourcePawn = SourceController->GetPawn())
 		{
 			InstigatorActor = SourcePawn;
-		}
-	}
-
-	// 처치 확인 (이번 데미지로 사망했는가?)
-	if (bWasAlive && NewHealth <= 0.0f)
-	{
-		if (ABrawlStarsTPSGameMode* GM = Cast<ABrawlStarsTPSGameMode>(UGameplayStatics::GetGameMode(GetWorld())))
-		{
-			GM->NotifyKill(InstigatorActor, TargetActor);
 		}
 	}
 

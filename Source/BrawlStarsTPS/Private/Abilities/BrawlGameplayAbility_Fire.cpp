@@ -202,6 +202,18 @@ FGameplayEffectSpecHandle UBrawlGameplayAbility_Fire::MakeDamageSpecHandle(float
 
 	FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
 	ContextHandle.AddSourceObject(this);
+	
+	// 명시적으로 Instigator 확인 및 설정 (안전을 위해)
+	if (!ContextHandle.GetInstigator())
+	{
+		AActor* Avatar = GetAvatarActorFromActorInfo();
+		UE_LOG(LogTemp, Warning, TEXT("MakeDamageSpecHandle: Context Instigator was NULL. Setting to Avatar: %s"), Avatar ? *Avatar->GetName() : TEXT("NULL"));
+		ContextHandle.AddInstigator(Avatar, Avatar);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("MakeDamageSpecHandle: Context Instigator is %s"), *ContextHandle.GetInstigator()->GetName());
+	}
 
 	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageEffectClass, GetAbilityLevel(), ContextHandle);
 	if (SpecHandle.IsValid())
