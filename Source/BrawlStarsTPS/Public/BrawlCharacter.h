@@ -189,6 +189,11 @@ public:
 	// bRevealed true면 감지됨(보임), false면 감지 안됨(숨음)
 	void SetRevealed(bool bRevealed);
 
+	// 특정 팀에게 이 캐릭터가 보이는지 확인
+	// 수풀에 없거나, 같은 팀이거나, 발각된 상태면 true
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
+	bool IsVisibleTo(const FGenericTeamId& ObserverTeam) const;
+
 	// 캐릭터 사망 처리 (Ragdoll 적용)
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Health")
 	virtual void Die();

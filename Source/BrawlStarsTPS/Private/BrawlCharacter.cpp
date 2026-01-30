@@ -270,7 +270,7 @@ void ABrawlCharacter::SetInBush(bool bInBush)
 		bIsHiddenInBush = bNewHiddenState;
 		UpdateMeshVisibility();
 		
-		UE_LOG(LogTemp, Log, TEXT("Character [%s] Hidden State Changed: %s (Bush Count: %d)"), *GetName(), bIsHiddenInBush ? TEXT("HIDDEN") : TEXT("VISIBLE"), BushOverlapCount);
+		UE_LOG(LogTemp, Log, TEXT("Character [%s] Hidden State Changed: %s"), *GetName(), bIsHiddenInBush ? TEXT("HIDDEN") : TEXT("VISIBLE"));
 	}
 }
 
@@ -283,6 +283,22 @@ void ABrawlCharacter::SetRevealed(bool bRevealed)
 		
 		UE_LOG(LogTemp, Log, TEXT("Character [%s] Revealed State Changed: %s"), *GetName(), bIsRevealed ? TEXT("REVEALED") : TEXT("HIDDEN"));
 	}
+}
+
+bool ABrawlCharacter::IsVisibleTo(const FGenericTeamId& ObserverTeam) const
+{
+	// 1. 수풀에 없다면 항상 보임
+	if (!bIsHiddenInBush) return true;
+
+	// 2. 같은 팀에게는 항상 보임 (옵저버도 포함)
+	FGenericTeamId MyTeam = GetGenericTeamId();
+	if (MyTeam != FGenericTeamId::NoTeam && MyTeam == ObserverTeam) return true;
+
+	// 3. 발각된 상태라면(근처에 적이 있음) 적에게도 보임
+	if (bIsRevealed) return true;
+
+	// 4. 그 외의 경우(수풀 속 + 발각 안됨 + 적군) -> 안 보임
+	return false;
 }
 
 void ABrawlCharacter::UpdateMeshVisibility()
