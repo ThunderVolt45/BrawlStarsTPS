@@ -340,9 +340,9 @@ void ABrawlCharacter::InitializeAttributes()
 			AICombatSettings.MinCombatRange = AIRow->MinCombatRange;
 			AICombatSettings.FleeHealthRatio = AIRow->FleeHealthRatio;
 			AICombatSettings.ResumeCombatHealthRatio = AIRow->ResumeCombatHealthRatio;
+			AICombatSettings.PursuitTargetHealthRatio = AIRow->PursuitTargetHealthRatio;
 			
-			UE_LOG(LogTemp, Warning, TEXT("AI Data Loaded for [%s]. CombatRange: %.1f ~ %.1f"), 
-				*CharacterID.ToString(), AICombatSettings.MinCombatRange, AICombatSettings.MaxCombatRange);
+			UE_LOG(LogTemp, Warning, TEXT("AI Data Loaded for [%s]"), *CharacterID.ToString());
 		}
 	}
 }

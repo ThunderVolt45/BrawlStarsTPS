@@ -46,6 +46,10 @@ struct FAICombatSettings
 	// 도주 종료(복귀) 체력 비율 (0.0 ~ 1.0) - 이 이상 회복되면 다시 교전
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
 	float ResumeCombatHealthRatio = 0.7f;
+
+	// 타겟의 체력 비율이 이 값 이하라면, 자신의 체력이 낮아도 도주하지 않고 공격 지속 (0.0 ~ 1.0)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+	float PursuitTargetHealthRatio = 0.2f;
 };
 
 /**
