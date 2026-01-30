@@ -28,7 +28,7 @@ protected:
 
 	// 발사체 스폰 로직 (Blueprint에서 호출 가능하도록)                                                                      │
 	UFUNCTION(BlueprintCallable, Category = "Brawl")
-	virtual void SpawnProjectile();  
+	virtual void SpawnProjectile();
 
 	// 몽타주 종료 콜백
 	UFUNCTION()
@@ -36,6 +36,23 @@ protected:
 
 	// 적용할 데미지 어트리뷰트를 반환 (기본값: AttackDamage)
 	virtual FGameplayAttribute GetDamageAttribute() const;
+
+	// [Refactor] 공통 로직 분리
+	// 하이퍼차지 여부에 따라 스폰할 발사체 클래스 반환
+	UFUNCTION(BlueprintPure, Category = "Brawl|Combat")
+	TSubclassOf<AActor> GetProjectileClassToSpawn() const;
+
+	// 소켓 이름(및 부모 소켓)을 기반으로 총구 위치 찾기
+	UFUNCTION(BlueprintPure, Category = "Brawl|Combat")
+	FVector GetMuzzleLocation(FName SocketName, FName ParentSocketName = NAME_None) const;
+
+	// 총구 위치 기준 조준 회전값 계산 (플레이어: 카메라 레이캐스트, AI: 컨트롤 회전 + 보정)
+	UFUNCTION(BlueprintPure, Category = "Brawl|Combat")
+	FRotator GetAimRotation(FVector StartLocation) const;
+
+	// 데미지 적용을 위한 GE Spec Handle 생성
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
+	FGameplayEffectSpecHandle MakeDamageSpecHandle(float DamageScale = 1.0f) const;
 
 protected:
 	// 기본 발사체 클래스
