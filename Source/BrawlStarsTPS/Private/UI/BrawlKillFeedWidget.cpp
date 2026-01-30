@@ -17,11 +17,30 @@ void UBrawlKillFeedWidget::NativeConstruct()
 	if (ABrawlStarsTPSGameMode* GM = Cast<ABrawlStarsTPSGameMode>(UGameplayStatics::GetGameMode(GetWorld())))
 	{
 		GM->OnBrawlerKilled.AddDynamic(this, &UBrawlKillFeedWidget::HandleBrawlerKilled);
+		UE_LOG(LogTemp, Log, TEXT("BrawlKillFeedWidget: Successfully bound to BrawlStarsTPSGameMode OnBrawlerKilled."));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("BrawlKillFeedWidget: Failed to cast GameMode to ABrawlStarsTPSGameMode! Current GameMode: %s"), 
+			*UGameplayStatics::GetGameMode(GetWorld())->GetName());
+	}
+
+	if (!KillFeedList)
+	{
+		UE_LOG(LogTemp, Error, TEXT("BrawlKillFeedWidget: KillFeedList is NULL! Check Widget Name in Blueprint."));
+	}
+	if (!KillLogEntryClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("BrawlKillFeedWidget: KillLogEntryClass is NULL! Set it in Blueprint Details."));
 	}
 }
 
 void UBrawlKillFeedWidget::HandleBrawlerKilled(AActor* Killer, AActor* Victim)
 {
+	UE_LOG(LogTemp, Log, TEXT("BrawlKillFeedWidget: HandleBrawlerKilled Called. Killer: %s, Victim: %s"), 
+		Killer ? *Killer->GetName() : TEXT("None"), 
+		Victim ? *Victim->GetName() : TEXT("None"));
+
 	if (!KillLogEntryClass || !KillFeedList)
 	{
 		return;
@@ -31,6 +50,7 @@ void UBrawlKillFeedWidget::HandleBrawlerKilled(AActor* Killer, AActor* Victim)
 	UBrawlKillLogEntry* NewEntry = CreateWidget<UBrawlKillLogEntry>(this, KillLogEntryClass);
 	if (!NewEntry)
 	{
+		UE_LOG(LogTemp, Error, TEXT("BrawlKillFeedWidget: Fail to Create KillLogWidget!"));
 		return;
 	}
 

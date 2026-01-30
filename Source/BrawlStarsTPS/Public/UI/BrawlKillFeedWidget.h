@@ -30,7 +30,7 @@ protected:
 
 	// 로그가 쌓일 컨테이너 (VerticalBox 등)
 	// 블루프린트에서 이름이 "KillFeedList"인 패널이 있어야 함
-	UPROPERTY(meta = (BindWidgetOptional))
+	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UPanelWidget> KillFeedList;
 
 	// 최대 표시 개수
