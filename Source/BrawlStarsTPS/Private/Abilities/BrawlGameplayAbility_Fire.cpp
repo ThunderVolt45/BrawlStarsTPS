@@ -159,19 +159,22 @@ FRotator UBrawlGameplayAbility_Fire::GetAimRotation(FVector StartLocation) const
 
 			FVector TargetLocation = TraceEnd;
 
-			if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, 
-				ECC_Visibility, QueryParams))
+			// LineTrace -> SweepSingle (Sphere)
+			FCollisionShape SphereShape = FCollisionShape::MakeSphere(AimTraceRadius);
+
+			if (GetWorld()->SweepSingleByChannel(HitResult, TraceStart, TraceEnd, FQuat::Identity, 
+				ECC_Visibility, SphereShape, QueryParams))
 			{
-				// 너무 가까운 벽을 쏘는 경우 보정
-				float DistanceToHit = (HitResult.ImpactPoint - CameraLoc).Size();
+				// 너무 가까운 벽을 쏘는 경우 보정 (ImpactPoint 대신 Sphere의 중심인 Location 사용)
+				float DistanceToHit = (HitResult.Location - CameraLoc).Size();
 				if (DistanceToHit < AimMinRange)
 				{
 					float Alpha = FMath::Clamp(DistanceToHit / AimMinRange, 0.0f, 1.0f);
-					TargetLocation = FMath::Lerp(TraceEnd, HitResult.ImpactPoint, Alpha);
+					TargetLocation = FMath::Lerp(TraceEnd, HitResult.Location, Alpha);
 				}
 				else
 				{
-					TargetLocation = HitResult.ImpactPoint;
+					TargetLocation = HitResult.Location;
 				}
 			}
 			

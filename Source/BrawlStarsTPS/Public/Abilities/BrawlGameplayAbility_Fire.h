@@ -85,7 +85,11 @@ protected:
 
 	// 에임 레이캐스트 최대 사거리
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl")
-	float AimMaxRange = 2000.0f;
+	float AimMaxRange = 3000.0f;
+
+	// 에임 스윕(Sphere Trace) 반지름
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl")
+	float AimTraceRadius = 50.0f;
 
 	// 발사체에 적용할 데미지 GE 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl")
