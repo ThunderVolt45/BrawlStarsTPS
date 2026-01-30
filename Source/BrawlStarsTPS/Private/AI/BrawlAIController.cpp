@@ -1,12 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
+#include "AI/BrawlAIController.h"
 #include "BrawlCharacter.h"
 #include "TimerManager.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "BrawlAttributeSet.h"
-#include "AI/BrawlAIController.h"
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"

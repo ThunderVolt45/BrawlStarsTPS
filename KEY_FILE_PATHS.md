@@ -1,7 +1,7 @@
 # Key File Paths
 
 ## 1. Core Framework (Brawl Stars TPS)
-*   **Game Mode:** `Source/BrawlStarsTPS/Public/GameMode/BSGameModeBase.h` (.cpp)
+*   **Game Mode:** `Source/BrawlStarsTPS/BrawlStarsTPSGameMode.h` (.cpp)
 *   **Base Character:** `Source/BrawlStarsTPS/Public/BrawlCharacter.h` (.cpp)
 *   **Player Controller:** `Source/BrawlStarsTPS/BrawlStarsTPSPlayerController.h` (.cpp)
 *   **Project Module:** `Source/BrawlStarsTPS/BrawlStarsTPS.h` (.cpp)

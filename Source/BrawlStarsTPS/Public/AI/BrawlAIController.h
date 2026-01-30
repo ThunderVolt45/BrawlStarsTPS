@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "GameplayTagContainer.h"
 #include "Perception/AIPerceptionTypes.h"
 #include "AI/BrawlAIStrategy.h" // 추가
 #include "BrawlAIController.generated.h"
