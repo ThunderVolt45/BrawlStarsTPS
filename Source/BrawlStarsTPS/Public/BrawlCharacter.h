@@ -7,6 +7,7 @@
 #include "AbilitySystemInterface.h"
 #include "GameplayTagContainer.h"
 #include "GenericTeamAgentInterface.h"
+#include "Data/BrawlCharacterData.h" // 추가
 #include "BrawlCharacter.generated.h"
 
 struct FOnAttributeChangeData;
@@ -46,6 +47,10 @@ struct FAICombatSettings
 	// 도주 종료(복귀) 체력 비율 (0.0 ~ 1.0) - 이 이상 회복되면 다시 교전
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
 	float ResumeCombatHealthRatio = 0.7f;
+
+	// 타겟의 체력 비율이 이 값 이하라면, 자신의 체력이 낮아도 도주하지 않고 공격 지속 (0.0 ~ 1.0)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+	float PursuitTargetHealthRatio = 0.2f;
 };
 
 /**
@@ -77,6 +82,17 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
 	int32 GetTeamID() const { return TeamID; }
+
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
+	FName GetCharacterID() const { return CharacterID; }
+
+	// 캐릭터 데이터 반환
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
+	FBrawlCharacterData GetCharacterData() const;
+
+	// 캐릭터 아이콘(Soft Object Ptr -> Load) 반환
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
+	UTexture2D* GetCharacterIcon() const;
 
 	// AI 설정 반환
 	UFUNCTION(BlueprintCallable, Category = "Brawl|AI")
@@ -173,6 +189,11 @@ public:
 	// bRevealed true면 감지됨(보임), false면 감지 안됨(숨음)
 	void SetRevealed(bool bRevealed);
 
+	// 특정 팀에게 이 캐릭터가 보이는지 확인
+	// 수풀에 없거나, 같은 팀이거나, 발각된 상태면 true
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
+	bool IsVisibleTo(const FGenericTeamId& ObserverTeam) const;
+
 	// 캐릭터 사망 처리 (Ragdoll 적용)
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Health")
 	virtual void Die();
@@ -180,6 +201,9 @@ public:
 	// 사망 여부 확인
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Health")
 	bool IsDead() const { return bIsDead; }
+
+	// 마지막으로 데미지를 입힌 공격자 설정 (서버 전용)
+	void SetLastHitInstigator(AActor* InInstigator) { LastHitInstigator = InInstigator; }
 
 protected:
 	// 체력 속성 변경 시 호출될 콜백
@@ -191,6 +215,10 @@ private:
 
 	// 실제 시각적 은신 상태 업데이트
 	void UpdateMeshVisibility();
+
+	// 마지막으로 데미지를 입힌 공격자
+	UPROPERTY()
+	TObjectPtr<AActor> LastHitInstigator;
 
 	// 수풀 속에 있는지 여부 (은신 가능 상태)
 	bool bIsHiddenInBush = false;

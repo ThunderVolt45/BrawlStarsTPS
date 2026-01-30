@@ -5,6 +5,7 @@
 #include "BrawlAbilitySystemComponent.h"
 #include "BrawlAttributeSet.h"
 #include "BrawlStarsTPS.h"
+#include "BrawlStarsTPSGameMode.h"
 #include "Data/BrawlCharacterData.h"
 #include "Data/BrawlAIData.h"
 #include "Camera/CameraComponent.h"
@@ -13,6 +14,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Components/WidgetComponent.h"
+#include "GameFramework/GameSession.h"
 #include "UI/BrawlHealthWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "Perception/AISense_Damage.h"
@@ -81,6 +83,39 @@ UBehaviorTree* ABrawlCharacter::GetCombatBehaviorTree() const
 	}
 
 	return nullptr;
+}
+
+FBrawlCharacterData ABrawlCharacter::GetCharacterData() const
+{
+	if (CharacterDataTable)
+	{
+		static const FString ContextString(TEXT("Get Character Data"));
+		if (FBrawlCharacterData* Row = CharacterDataTable->FindRow<FBrawlCharacterData>(CharacterID, ContextString))
+		{
+			return *Row;
+		}
+	}
+	return FBrawlCharacterData();
+}
+
+UTexture2D* ABrawlCharacter::GetCharacterIcon() const
+{
+	FBrawlCharacterData Data = GetCharacterData();
+	
+	if (Data.CharacterIcon.IsNull())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GetCharacterIcon: Icon SoftPtr is NULL for Character [%s]"), *CharacterID.ToString());
+		return nullptr;
+	}
+
+	UTexture2D* LoadedIcon = Data.CharacterIcon.LoadSynchronous();
+	if (!LoadedIcon)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GetCharacterIcon: Failed to LoadSynchronous Icon for [%s]. Path: %s"), 
+			*CharacterID.ToString(), *Data.CharacterIcon.ToString());
+	}
+	
+	return LoadedIcon;
 }
 
 void ABrawlCharacter::BeginPlay()
@@ -235,7 +270,7 @@ void ABrawlCharacter::SetInBush(bool bInBush)
 		bIsHiddenInBush = bNewHiddenState;
 		UpdateMeshVisibility();
 		
-		UE_LOG(LogTemp, Log, TEXT("Character [%s] Hidden State Changed: %s (Bush Count: %d)"), *GetName(), bIsHiddenInBush ? TEXT("HIDDEN") : TEXT("VISIBLE"), BushOverlapCount);
+		UE_LOG(LogTemp, Log, TEXT("Character [%s] Hidden State Changed: %s"), *GetName(), bIsHiddenInBush ? TEXT("HIDDEN") : TEXT("VISIBLE"));
 	}
 }
 
@@ -248,6 +283,22 @@ void ABrawlCharacter::SetRevealed(bool bRevealed)
 		
 		UE_LOG(LogTemp, Log, TEXT("Character [%s] Revealed State Changed: %s"), *GetName(), bIsRevealed ? TEXT("REVEALED") : TEXT("HIDDEN"));
 	}
+}
+
+bool ABrawlCharacter::IsVisibleTo(const FGenericTeamId& ObserverTeam) const
+{
+	// 1. 수풀에 없다면 항상 보임
+	if (!bIsHiddenInBush) return true;
+
+	// 2. 같은 팀에게는 항상 보임 (옵저버도 포함)
+	FGenericTeamId MyTeam = GetGenericTeamId();
+	if (MyTeam != FGenericTeamId::NoTeam && MyTeam == ObserverTeam) return true;
+
+	// 3. 발각된 상태라면(근처에 적이 있음) 적에게도 보임
+	if (bIsRevealed) return true;
+
+	// 4. 그 외의 경우(수풀 속 + 발각 안됨 + 적군) -> 안 보임
+	return false;
 }
 
 void ABrawlCharacter::UpdateMeshVisibility()
@@ -340,9 +391,9 @@ void ABrawlCharacter::InitializeAttributes()
 			AICombatSettings.MinCombatRange = AIRow->MinCombatRange;
 			AICombatSettings.FleeHealthRatio = AIRow->FleeHealthRatio;
 			AICombatSettings.ResumeCombatHealthRatio = AIRow->ResumeCombatHealthRatio;
+			AICombatSettings.PursuitTargetHealthRatio = AIRow->PursuitTargetHealthRatio;
 			
-			UE_LOG(LogTemp, Warning, TEXT("AI Data Loaded for [%s]. CombatRange: %.1f ~ %.1f"), 
-				*CharacterID.ToString(), AICombatSettings.MinCombatRange, AICombatSettings.MaxCombatRange);
+			UE_LOG(LogTemp, Warning, TEXT("AI Data Loaded for [%s]"), *CharacterID.ToString());
 		}
 	}
 }
@@ -364,6 +415,15 @@ void ABrawlCharacter::Die()
 	if (bIsDead) return;
 
 	bIsDead = true;
+
+	// 서버에서 GameMode에 사망 사실 알림 (GameState를 통해 클라이언트로 전파됨)
+	if (HasAuthority())
+	{
+		if (ABrawlStarsTPSGameMode* GM = GetWorld()->GetAuthGameMode<ABrawlStarsTPSGameMode>())
+		{
+			GM->NotifyKill(LastHitInstigator, this);
+		}
+	}
 
 	// 1. 컨트롤러 분리 (입력 차단)
 	AController* OldController = GetController();
@@ -402,9 +462,9 @@ void ABrawlCharacter::Die()
 	{
 		HealthBarComponent->SetHiddenInGame(true);
 	}
-
+	
 	// 6. 3초 뒤에 Actor 제거 (혹은 리스폰 로직으로 대체 가능)
-	// SetLifeSpan(5.0f);
+	// SetLifeSpan(3.0f);
 	
 	Destroy();
 }

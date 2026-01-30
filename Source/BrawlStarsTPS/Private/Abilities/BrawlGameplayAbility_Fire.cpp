@@ -68,18 +68,12 @@ void UBrawlGameplayAbility_Fire::OnFireEventReceived(FGameplayEventData Payload)
 	SpawnProjectile();
 }
 
-void UBrawlGameplayAbility_Fire::SpawnProjectile()
+TSubclassOf<AActor> UBrawlGameplayAbility_Fire::GetProjectileClassToSpawn() const
 {
-	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
-	if (!Character)
-	{
-		UE_LOG(LogTemp, Error, TEXT("SpawnProjectile Failed: AvatarActor is not a Character"));
-		return;
-	}
-	
-	// 1. 발사체 클래스 결정 (하이퍼차지 여부 확인)
+	// 기본 발사체
 	TSubclassOf<AActor> ClassToSpawn = ProjectileClass;
 	
+	// 만약 하이퍼차지 상태고 하이퍼차지용 발사체가 있다면 발사체 교체
 	if (const UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
 		static FGameplayTag HyperStateTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
@@ -91,122 +85,171 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 			}
 		}
 	}
+	
+	return ClassToSpawn;
+}
 
+FVector UBrawlGameplayAbility_Fire::GetMuzzleLocation(FName SocketName, FName ParentSocketName) const
+{
+	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character) return FVector::ZeroVector;
+
+	if (SocketName.IsNone()) return Character->GetActorLocation();
+
+	// 1. 메인 메쉬 확인 (ParentSocketName이 없거나 일치할 때만)
+	if (ParentSocketName.IsNone())
+	{
+		if (USkeletalMeshComponent* MainMesh = Character->GetMesh())
+		{
+			if (MainMesh->DoesSocketExist(SocketName))
+			{
+				return MainMesh->GetSocketLocation(SocketName);
+			}
+		}
+	}
+
+	// 2. 자식 컴포넌트(Mesh Component) 확인
+	TArray<UMeshComponent*> MeshComponents;
+	Character->GetComponents<UMeshComponent>(MeshComponents);
+
+	for (UMeshComponent* MeshComp : MeshComponents)
+	{
+		if (!ParentSocketName.IsNone())
+		{
+			if (MeshComp->GetAttachSocketName() != ParentSocketName)
+			{
+				continue;
+			}
+		}
+
+		if (MeshComp->DoesSocketExist(SocketName))
+		{
+			return MeshComp->GetSocketLocation(SocketName);
+		}
+	}
+
+	// 못 찾았으면 기본 위치 (경고는 호출 측에서 판단하거나 여기서 띄움)
+	UE_LOG(LogTemp, Warning, TEXT("GetMuzzleLocation: Socket [%s] (Parent: %s) not found!"), *SocketName.ToString(), *ParentSocketName.ToString());
+	return Character->GetActorLocation();
+}
+
+FRotator UBrawlGameplayAbility_Fire::GetAimRotation(FVector StartLocation) const
+{
+	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character) return FRotator::ZeroRotator;
+
+	// ABrawlCharacter로 캐스팅
+	ABrawlCharacter* BrawlCharacter = Cast<ABrawlCharacter>(Character);
+	
+	// 플레이어의 경우, 카메라 레이캐스트를 통한 정밀 보정
+	if (BrawlCharacter && BrawlCharacter->IsPlayerControlled())
+	{
+		if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+		{
+			FVector CameraLoc;
+			FRotator CameraRot;
+			PC->GetPlayerViewPoint(CameraLoc, CameraRot);
+
+			FVector TraceStart = CameraLoc;
+			FVector TraceEnd = CameraLoc + (CameraRot.Vector() * AimMaxRange);
+
+			FHitResult HitResult;
+			FCollisionQueryParams QueryParams;
+			QueryParams.AddIgnoredActor(Character); 
+
+			FVector TargetLocation = TraceEnd;
+
+			// LineTrace -> SweepSingle (Sphere)
+			FCollisionShape SphereShape = FCollisionShape::MakeSphere(AimTraceRadius);
+
+			if (GetWorld()->SweepSingleByChannel(HitResult, TraceStart, TraceEnd, FQuat::Identity, 
+				ECC_Visibility, SphereShape, QueryParams))
+			{
+				// 너무 가까운 벽을 쏘는 경우 보정 (ImpactPoint 대신 Sphere의 중심인 Location 사용)
+				float DistanceToHit = (HitResult.Location - CameraLoc).Size();
+				if (DistanceToHit < AimMinRange)
+				{
+					float Alpha = FMath::Clamp(DistanceToHit / AimMinRange, 0.0f, 1.0f);
+					TargetLocation = FMath::Lerp(TraceEnd, HitResult.Location, Alpha);
+				}
+				else
+				{
+					TargetLocation = HitResult.Location;
+				}
+			}
+			
+			// Muzzle에서 바라본 TargetLocation의 각도
+			return UKismetMathLibrary::FindLookAtRotation(StartLocation, TargetLocation);
+		}
+	}
+
+	// AI 또는 기타: ControlRotation (AI Controller가 바라보는 방향)
+	FRotator BaseRotation = Character->GetControlRotation();
+	
+	// AI 에임 보정 (Pitch)
+	if (BrawlCharacter && !BrawlCharacter->IsPlayerControlled())
+	{
+		BaseRotation.Pitch += AIAimOffset;
+	}
+	
+	return BaseRotation;
+}
+
+FGameplayEffectSpecHandle UBrawlGameplayAbility_Fire::MakeDamageSpecHandle(float DamageScale) const
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	if (!ASC || !DamageEffectClass) return FGameplayEffectSpecHandle();
+
+	FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+	ContextHandle.AddSourceObject(this);
+
+	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageEffectClass, GetAbilityLevel(), ContextHandle);
+	if (SpecHandle.IsValid())
+	{
+		// 데미지 양 설정 (GetDamageAttribute에서 가져옴)
+		bool bFound = false;
+		float DamageValue = ASC->GetGameplayAttributeValue(GetDamageAttribute(), bFound);
+				
+		// 못 찾았으면 기본값(DamageAmount) 사용
+		if (!bFound) DamageValue = DamageAmount;
+
+		// 데미지 적용 (Scale 적용)
+		float FinalDamage = FMath::Abs(DamageValue) * DamageScale;
+
+		static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
+		SpecHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, FinalDamage);
+	}
+
+	return SpecHandle;
+}
+
+void UBrawlGameplayAbility_Fire::SpawnProjectile()
+{
+	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character) return;
+	
+	// 1. 발사체 클래스
+	TSubclassOf<AActor> ClassToSpawn = GetProjectileClassToSpawn();
 	if (!ClassToSpawn) 
 	{
 		UE_LOG(LogTemp, Error, TEXT("SpawnProjectile Failed: ProjectileClass is NULL"));
 		return;
 	}
 
-	// 2. 발사 시작점 (Muzzle) 찾기
-	FVector MuzzleLocation = Character->GetActorLocation();
-	bool bSocketFound = false;
+	// 2. 발사 시작점
+	FVector MuzzleLocation = GetMuzzleLocation(MuzzleSocketName);
 
-	// 2-1. 메인 메쉬 확인
-	if (USkeletalMeshComponent* MainMesh = Character->GetMesh())
-	{
-		if (MainMesh->DoesSocketExist(MuzzleSocketName))
-		{
-			MuzzleLocation = MainMesh->GetSocketLocation(MuzzleSocketName);
-			bSocketFound = true;
-		}
-	}
-
-	// 2-2. 자식 컴포넌트(Mesh Component) 확인
-	// (블루프린트 컴포넌트 패널에서 메쉬 아래에 자식으로 붙이고 Parent Socket을 설정한 경우)
-	if (!bSocketFound)
-	{
-		TArray<UMeshComponent*> MeshComponents;
-		Character->GetComponents<UMeshComponent>(MeshComponents);
-
-		for (UMeshComponent* MeshComp : MeshComponents)
-		{
-			if (!MuzzleSocketName.IsNone())
-			{
-				if (MeshComp->GetAttachSocketName() != MuzzleSocketName)
-				{
-					continue;
-				}
-			}
-
-			// 소켓 존재 확인
-			if (MeshComp->DoesSocketExist(MuzzleSocketName))
-			{
-				MuzzleLocation = MeshComp->GetSocketLocation(MuzzleSocketName);
-				bSocketFound = true;
-				break;
-			}
-		}
-	}
-
-	if (!bSocketFound)
-	{
-		// 못 찾았으면 기본 위치 (하지만 경고는 띄움)
-		UE_LOG(LogTemp, Warning, TEXT("SpawnProjectile: Socket [%s] (Parent: %s) not found! Using ActorLocation."), 
-			*MuzzleSocketName.ToString(), *MuzzleSocketName.ToString());
-	}
-
-	// 3. 목표 지점 및 발사 방향 계산
-	FRotator BaseRotation = Character->GetActorRotation();
-
-	if (ABrawlCharacter* BrawlCharacter = Cast<ABrawlCharacter>(Character))
-	{
-		BaseRotation = BrawlCharacter->GetControlRotation();
-		
-		// 플레이어의 경우, 카메라 레이캐스트를 통한 정밀 보정 (기존 로직 유지)
-		if (BrawlCharacter->IsPlayerControlled())
-		{
-			if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
-			{
-				FVector CameraLoc;
-				FRotator CameraRot;
-				PC->GetPlayerViewPoint(CameraLoc, CameraRot);
-
-				FVector TraceStart = CameraLoc;
-				FVector TraceEnd = CameraLoc + (CameraRot.Vector() * AimMaxRange);
-
-				FHitResult HitResult;
-				FCollisionQueryParams QueryParams;
-				QueryParams.AddIgnoredActor(Character); 
-
-				FVector TargetLocation = TraceEnd;
-
-				if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
-				{
-					// 너무 가까운 벽을 쏘는 경우 총구가 벽을 뚫고 쏘는 것 방지 등을 위한 보정
-					float DistanceToHit = (HitResult.ImpactPoint - CameraLoc).Size();
-					if (DistanceToHit < AimMinRange)
-					{
-						float Alpha = FMath::Clamp(DistanceToHit / AimMinRange, 0.0f, 1.0f);
-						TargetLocation = FMath::Lerp(TraceEnd, HitResult.ImpactPoint, Alpha);
-					}
-					else
-					{
-						TargetLocation = HitResult.ImpactPoint;
-					}
-				}
-				
-				// Muzzle에서 바라본 TargetLocation의 각도 재계산
-				BaseRotation = UKismetMathLibrary::FindLookAtRotation(MuzzleLocation, TargetLocation);
-			}
-		}
-		// AI 브롤러의 경우 간단히 Pitch 보정
-		else
-		{
-			BaseRotation.Pitch += AIAimOffset;
-		}
-	}
-
+	// 3. 발사 방향
+	FRotator BaseRotation = GetAimRotation(MuzzleLocation);
 	FVector BaseDirection = BaseRotation.Vector();
 
-	// 5. 발사체 스폰
+	// 4. 발사체 스폰 (Multi-Projectile Logic)
 	int32 RealCount = FMath::Max(1, ProjectileCount);
-	
-	// SpreadAngle은 도(Degree) 단위이므로 라디안으로 변환 (VRandCone은 라디안 사용)
 	float ConeHalfAngleRad = FMath::DegreesToRadians(SpreadAngle);
-	
-	// 시드 랜덤 스트림
 	FRandomStream WeaponRandomStream(FMath::Rand());
+
+	// 데미지 스펙 미리 생성
+	FGameplayEffectSpecHandle SpecHandle = MakeDamageSpecHandle(DamagePerPelletScale);
 
 	for (int32 i = 0; i < RealCount; i++)
 	{
@@ -216,8 +259,6 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 		
 		FRotator FinalRotation = LaunchDir.Rotation();
 
-		// 발사체 소유자 설정
-		// 충돌 전 초기화를 위해 Deferred Spawn 사용
 		FTransform SpawnTransform(FinalRotation, MuzzleLocation);
 		
 		AActor* SpawnedActor = GetWorld()->SpawnActorDeferred<AActor>(
@@ -228,39 +269,15 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 			ESpawnActorCollisionHandlingMethod::AlwaysSpawn
 		);
 		
-		ABrawlProjectile* Projectile = Cast<ABrawlProjectile>(SpawnedActor);
-		UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
-		
-		if (Projectile && ASC)
+		if (ABrawlProjectile* Projectile = Cast<ABrawlProjectile>(SpawnedActor))
 		{
-			FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
-			ContextHandle.AddSourceObject(this);
-
-			if (DamageEffectClass)
+			// 미리 만든 Spec 주입
+			if (SpecHandle.IsValid())
 			{
-				FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageEffectClass, GetAbilityLevel(), ContextHandle);
-				if (SpecHandle.IsValid())
-				{
-					// 데미지 양 설정 (GetDamageAttribute에서 가져옴)
-					bool bFound = false;
-					float DamageValue = ASC->GetGameplayAttributeValue(GetDamageAttribute(), bFound);
-							
-					// 못 찾았으면 기본값(DamageAmount) 사용
-					if (!bFound) DamageValue = DamageAmount;
-
-					// 데미지 적용 (펠릿 스케일 적용)
-					float FinalDamage = FMath::Abs(DamageValue) * DamagePerPelletScale;
-
-					static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
-					SpecHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, FinalDamage);
-							
-					// 발사체에 Spec 주입 (FinishSpawning 전에 해야 함)
-					Projectile->InitializeProjectile(SpecHandle);
-				}
+				Projectile->InitializeProjectile(SpecHandle);
 			}
 		}
 
-		// 최종 스폰 완료 (이때 물리/충돌 시작)
 		if (SpawnedActor)
 		{
 			UGameplayStatics::FinishSpawningActor(SpawnedActor, SpawnTransform);

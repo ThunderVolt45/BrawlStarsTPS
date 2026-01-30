@@ -13,6 +13,7 @@
     - [x] **Base Class:** Implement `UBrawlPawnComponent` base class for modular components.
     - [x] **Modular Components:** Implement `UBrawlHeroComponent` for input/camera handling (Lyra pattern).
     - [x] **GAS Initialization:** Implement `IAbilitySystemInterface` and bind `AbilitySystemComponent`.
+    - [x] **Death Logic:** Implement **Ragdoll Physics** death handling (`Die()` method, Input/Movement disable).
 - [x] **Input Architecture (Lyra-Style):**
     - [x] **Input Config:** Implement `UBrawlInputConfig` DataAssets for Tag-to-Action mapping.
     - [x] **Custom Input Component:** Implement `UBrawlInputComponent` for automated tag-based binding.
@@ -33,6 +34,7 @@
         - [x] **Area Damage:** Added `ExplosionRadius` logic to `BrawlProjectile_Explosive` for immediate radial damage.
     - [x] **Damage Logic:** `IncomingDamage` meta-attribute with Defense (`DamageReduction`) calculation.
     - [x] **Charge Logic:** Super/Hyper accumulation on hit based on Data Table per-hit values.
+    - [x] **Death & Recovery:** Disabled `AutoHeal` ability upon death (`IsDead` check).
 - [x] **Ability Implementation (C++):**
     - [x] **Primary Fire:** `UBrawlGameplayAbility_Fire` (Tag-based interaction with Reload).
         - [x] **Bug Fix:** Resolved double ammo consumption issue by removing redundant `ApplyCost` calls.
@@ -77,13 +79,22 @@
         - [x] **Stealth Mechanics:** Logic for `SetInBush` (Stealth) and `SetRevealed` (Proximity detection).
         - [x] **Visuals:** Dynamic opacity fading and procedural sway animation (Wiggle) on character movement.
         - [x] **Collision:** Configured to ignore Projectiles (except logic handling) and allow Pawn overlap.
-- [x] **AI System (Completed):**
-    - [x] **Architecture:** `ABrawlAIController` with `AIPerception` (Sight) and `IGenericTeamAgentInterface` for IFF.
-    - [x] **Strategy Brain:** `BTS_EvaluateStrategy` service to determine states (Patrol, Move, Combat, Flee) based on health and distance.
-    - [x] **Behavior Tree:** Implemented `BT_BrawlAI` with Selector/Sequence/SimpleParallel structure.
-        - [x] **Combat Logic:** Strafing movement (`BTT_MoveToIdealRange`) combined with Attack task (`BTT_BrawlAttack`).
-        - [x] **Movement:** Kiting logic to maintain optimal range, approach, or retreat with randomness.
-    - [x] **Aiming System:** Implemented `GetAimPitch` and `GetAimRotation` in `ABrawlCharacter` for precise AI vertical aiming and skeletal mesh alignment.
+- [x] **AI System (Major Update):**
+    - [x] **Architecture:** `ABrawlAIController` with **Dynamic Sub-Tree Injection**.
+        - [x] **Data Separation:** Split `DT_BrawlerData` (Stats) and `DT_BrawlerAI` (AI Settings & Behavior Trees).
+        - [x] **Sub-Tree Injection:** Implemented logic to inject specific `CombatTree` based on Brawler ID via `SetDynamicSubtree` in `OnPossess`.
+    - [x] **Perception System (Refined):**
+        - [x] **Multi-Sense:** Configured `AISense_Sight` and `AISense_Damage`.
+        - [x] **Target Management:** Implemented `DetectedEnemies` Map with individual Forget Timers.
+        - [x] **Priority Logic:** Added `SelectBestTarget` with scoring based on Distance, Health (Kill-shot), and Current Target persistence.
+        - [x] **Damage Reaction:** Immediate target switching and list addition upon taking damage (`ReportDamageEvent` in AttributeSet).
+        - [x] **Team ID Fix:** Resolved Controller vs Pawn Team Attitude check issues.
+    - [x] **Strategy Brain:** `BTS_EvaluateStrategy` service to determine states (Patrol, Move, Combat, Flee).
+        - [x] **Death Handling:** Stop Behavior Tree execution upon death.
+    - [x] **Custom AI Nodes:**
+        - [x] **Tasks:** `BTT_Jump` (Physics-based Launch), `BTT_UseAbility` (GAS Tag Activation).
+        - [x] **Decorators:** `BTD_HasAbility` (Cooldown/Cost check), `BTD_IsObstacleDestructible` (Interface check), `BTD_IsBlocked` (Sphere Overlap).
+        - [x] **Services:** `BTS_UpdateSelfStatus` (Health Ratio update to Blackboard).
 - [ ] **Game Modes:**
     - [ ] **Showdown:** Free-for-all logic, Power Cube spawning, Poison clouds.
     - [ ] **Gem Grab:** Gem spawning mine, countdown logic, team scoring.

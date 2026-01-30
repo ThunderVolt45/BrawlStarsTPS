@@ -13,7 +13,24 @@ ABrawlBush::ABrawlBush()
 	// 수풀 메시는 "은신 영역"으로 사용
 	if (MeshComponent)
 	{
-		MeshComponent->SetCollisionProfileName(FName("OverlapAll"));
+		// AI 시야 차단을 위해 Visibility 채널을 Block으로 설정
+		MeshComponent->SetCollisionProfileName(FName("Custom"));
+		MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		MeshComponent->SetCollisionObjectType(ECC_WorldStatic);
+
+		// 기본적으로 모두 Overlap (기존 OverlapAll 동작 유지)
+		MeshComponent->SetCollisionResponseToAllChannels(ECR_Overlap);
+		
+		// 1. AI 시야(Visibility)는 무시 -> 물리적으로는 투시 가능 (로직으로 처리)
+		MeshComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+
+		// 2. 카메라(Camera)는 무시 -> 카메라가 수풀 때문에 당겨지는 것 방지
+		MeshComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+		MeshComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+		
+		// 3. 캐릭터(Pawn)는 겹침 -> 진입 감지
+		MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+
 		MeshComponent->SetGenerateOverlapEvents(true);
 	}
 
@@ -203,12 +220,24 @@ void ABrawlBush::UpdateVisibilityForHiddenCharacters()
 		// 이 캐릭터를 감지할 수 있는 사람(접근자)이 있는지 확인
 		bool bRevealed = false;
 		
-		// 접근자가 한 명이라도 있으면 (일단 지금은 팀 구분 없이)
-		// 실제로는: "적군"이 접근했을 때만 Revealed 되어야 하고, "아군"은 항상 보여야 함.
-		// 프로토타입 단계에서는 "누군가 접근하면 보임"으로 처리.
-		if (CharactersNearby.Num() > 0)
+		for (ABrawlCharacter* NearbyChar : CharactersNearby)
 		{
-			bRevealed = true;
+			if (!NearbyChar) continue;
+			
+			// 자기 자신은 감지자가 될 수 없음
+			if (HiddenChar == NearbyChar) continue;
+			
+			// 같은 팀은 감지하지 않음 (팀 ID 비교)
+			// 255(NoTeam)는 모두와 적대적이라고 가정 (FFA 등)
+			uint8 HiddenTeam = HiddenChar->GetGenericTeamId().GetId();
+			uint8 NearbyTeam = NearbyChar->GetGenericTeamId().GetId();
+			
+			// 서로 다른 팀이거나, 둘 다 팀이 없는 경우(FFA) 적대 관계 -> 발각됨
+			if (HiddenTeam != NearbyTeam || (HiddenTeam == 255 && NearbyTeam == 255))
+			{
+				bRevealed = true;
+				break;
+			}
 		}
 
 		// 캐릭터에게 "누군가에 의해 감지되고 있음"을 알림

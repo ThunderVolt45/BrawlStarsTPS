@@ -1,12 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
+#include "AI/BrawlAIController.h"
 #include "BrawlCharacter.h"
 #include "TimerManager.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "BrawlAttributeSet.h"
-#include "AI/BrawlAIController.h"
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
@@ -121,7 +121,83 @@ void ABrawlAIController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// 타겟 목록이 있을 때 최적의 타겟 재선정
+	FTimerManager& TimerManager = GetWorld()->GetTimerManager();
+
+	// 1. 타겟 목록 검증 (논리적 시야 확인)
+	// 수풀이 물리적으로는 투명하므로, 여기서 논리적 은신 여부를 판단하여 망각 처리
+	if (DetectedEnemies.Num() > 0)
+	{
+		FGenericTeamId MyTeam = GetGenericTeamId();
+
+		for (auto It = DetectedEnemies.CreateIterator(); It; ++It)
+		{
+			AActor* Enemy = It->Key;
+			ABrawlCharacter* BrawlChar = Cast<ABrawlCharacter>(Enemy);
+			
+			if (BrawlChar)
+			{
+				bool bLogicallyVisible = BrawlChar->IsVisibleTo(MyTeam);
+				bool bTimerActive = TimerManager.IsTimerActive(It->Value);
+
+				if (!bLogicallyVisible)
+				{
+					// 논리적으로 안 보임 (수풀 진입)
+					// 타이머가 안 돌고 있다면 -> 망각 타이머 시작 (벽 뒤로 숨은 것과 동일 처리)
+					if (!bTimerActive)
+					{
+						FTimerDelegate TimerDel;
+						TimerDel.BindUObject(this, &ABrawlAIController::ForceForgetTarget, Enemy);
+						TimerManager.SetTimer(It->Value, TimerDel, TimeToForgetTarget, false);
+						// UE_LOG(LogTemp, Log, TEXT("AI [%s] Logically Lost Sight of [%s] (Bush). Timer Started."), *GetName(), *Enemy->GetName());
+					}
+				}
+				else
+				{
+					// 논리적으로 보임 (수풀 밖 or 발각됨)
+					// 타이머가 돌고 있다면 -> 취소 (다시 보임)
+					if (bTimerActive)
+					{
+						TimerManager.ClearTimer(It->Value);
+						// UE_LOG(LogTemp, Log, TEXT("AI [%s] Regained Logical Sight of [%s]. Timer Cleared."), *GetName(), *Enemy->GetName());
+					}
+				}
+			}
+		}
+	}
+
+	// 2. 물리적으로 보이지만 리스트에 없는 적 재탐색 (수풀에서 나온 적 등)
+	if (UAIPerceptionComponent* PerceptionComp = GetPerceptionComponent())
+	{
+		TArray<AActor*> PerceivedActors;
+		PerceptionComp->GetCurrentlyPerceivedActors(UAISense_Sight::StaticClass(), PerceivedActors);
+
+		FGenericTeamId MyTeam = GetGenericTeamId();
+
+		for (AActor* Actor : PerceivedActors)
+		{
+			if (!Actor || !Actor->IsValidLowLevel()) continue;
+			
+			// 이미 감지된 적은 패스
+			if (DetectedEnemies.Contains(Actor)) continue;
+
+			// 적대적인지 확인
+			if (GetTeamAttitudeTowards(*Actor) == ETeamAttitude::Friendly) continue;
+
+			// 논리적으로 보이는지 확인
+			if (ABrawlCharacter* BrawlChar = Cast<ABrawlCharacter>(Actor))
+			{
+				if (BrawlChar->IsVisibleTo(MyTeam))
+				{
+					// 물리적으로 보이고 + 논리적으로도 보임 + 리스트에 없음 -> 추가
+					DetectedEnemies.Add(Actor, FTimerHandle());
+					// UE_LOG(LogTemp, Log, TEXT("AI [%s] Re-acquired Sight of [%s] (Exited Bush)"), *GetName(), *Actor->GetName());
+				}
+			}
+		}
+	}
+
+	// 3. 타겟 목록이 있을 때 최적의 타겟 재선정
+	if (DetectedEnemies.Num() > 0)
 	if (DetectedEnemies.Num() > 0)
 	{
 		AActor* BestTarget = SelectBestTarget();
@@ -208,6 +284,16 @@ void ABrawlAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 	if (!Actor || !Actor->IsValidLowLevel()) return;
 	if (GetTeamAttitudeTowards(*Actor) == ETeamAttitude::Friendly) return;
 
+	// 논리적 시야 확인 (물리적으로 보여도, 수풀 속에 숨어있으면 무시)
+	if (ABrawlCharacter* BrawlChar = Cast<ABrawlCharacter>(Actor))
+	{
+		if (!BrawlChar->IsVisibleTo(GetGenericTeamId()))
+		{
+			// 안 보임 -> 감지 처리 안 함 (기존에 감지되었더라도 무시됨 -> Tick에서 처리됨)
+			return;
+		}
+	}
+
 	FTimerManager& TimerManager = GetWorld()->GetTimerManager();
 
 	// 1. 피격 감지 (Damage)
@@ -261,7 +347,7 @@ void ABrawlAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 		}
 		else
 		{
-			// 시야에서 사라짐 -> 개별 타이머 시작
+			// 시야에서 사라짐 (벽 뒤로 숨음 등) -> 개별 타이머 시작
 			if (DetectedEnemies.Contains(Actor))
 			{
 				// 이미 돌고 있는 타이머가 있다면 초기화하고 다시 시작

@@ -1,6 +1,6 @@
 # [YYYY-MM-DD] 작업 내역 요약
 
-## 작업 상세 (Detailed Changes)
+## 작업 상세
 *Git Commit Convention을 따릅니다.*
 
 ### ✨ Feat (새로운 기능)

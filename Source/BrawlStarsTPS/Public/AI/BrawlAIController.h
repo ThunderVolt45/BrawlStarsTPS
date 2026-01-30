@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "GameplayTagContainer.h"
 #include "Perception/AIPerceptionTypes.h"
 #include "AI/BrawlAIStrategy.h" // 추가
 #include "BrawlAIController.generated.h"
@@ -53,6 +54,10 @@ protected:
 	// 목표 강제 망각 거리
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	float DistanceToForgetTarget = 3600.0f;
+	
+	// 수풀 투시 거리
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
+	float DistanceViewThroughBush = 300.0f;
 
 private:
 	// 감지된 적 목록 및 각 적별 망각 타이머 관리
