@@ -124,35 +124,27 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 	// 체력 감소 적용
 	float NewHealth = GetHealth() - FinalDamage;
 
-	// 사망 예정이라면 공격자 정보를 먼저 저장한다! (SetHealth 호출 시 Die가 실행되므로 그 전에 저장 필수)
+	// 공격자와 피격자를 가져온다
 	AActor* TargetActor = Data.Target.AbilityActorInfo->AvatarActor.Get();
 	AActor* SourceActor = Data.EffectSpec.GetContext().GetInstigator();
-
-	if (NewHealth <= 0.0f)
-	{
-		if (ABrawlCharacter* TargetBrawler = Cast<ABrawlCharacter>(TargetActor))
-		{
-			// 디버그용 화면 메시지
-			if (GEngine)
-			{
-				FString DebugMsg = FString::Printf(TEXT("[Server] IncomingDamage Fatal! Set Killer: %s"), 
-					SourceActor ? *SourceActor->GetName() : TEXT("NULL"));
-				GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, DebugMsg);
-			}
-
-			TargetBrawler->SetLastHitInstigator(SourceActor);
-		}
-	}
-
-	SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
-	
-	UAbilitySystemComponent* SourceASC = Data.EffectSpec.GetContext().GetInstigatorAbilitySystemComponent();
 
 	if (!TargetActor) return;
 	if (!SourceActor) return;
 	// if (TargetActor == SourceActor) return; // 자해 데미지도 처리 가능하게 주석 해제 고려
 	
-	// 공격자가 폰인 경우를 선호하지만, 컨트롤러일 수도 있음. 
+	// 사망 예정이라면 공격자 정보를 먼저 저장한다 (SetHealth 호출 시 Die가 실행되므로 그 전에 저장 필수)
+	if (NewHealth <= 0.0f)
+	{
+		if (ABrawlCharacter* TargetBrawler = Cast<ABrawlCharacter>(TargetActor))
+		{
+			TargetBrawler->SetLastHitInstigator(SourceActor);
+		}
+	}
+
+	// 공격자 정보를 저장한 다음 체력을 갱신한다
+	SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
+	
+	// 공격자가 폰인 경우를 선호하지만, 컨트롤러일 수도 있음.
 	// AI Controller는 Pawn을 통해 팀을 확인하므로 Pawn을 넘기는 것이 좋음.
 	AActor* InstigatorActor = SourceActor;
 	if (AController* SourceController = Cast<AController>(SourceActor))
@@ -173,17 +165,17 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 		FVector::ZeroVector
 	);
 	
-	// 공격자(Source)에게 게이지 충전
 	float ChargeAmount = 0.0f;
 	float HyperChargeAmount = 0.0f;
 
+	// 공격자의 궁극기, 하이퍼차지 게이지 충전
+	UAbilitySystemComponent* SourceASC = Data.EffectSpec.GetContext().GetInstigatorAbilitySystemComponent();
 	if (SourceASC)
 	{
 		bool bFound = false;
 		ChargeAmount = SourceASC->GetGameplayAttributeValue(GetSuperChargePerHitAttribute(), bFound);
 		HyperChargeAmount = SourceASC->GetGameplayAttributeValue(GetHyperChargePerHitAttribute(), bFound);
 	}
-
 	if (ChargeAmount > 0.0f)
 	{
 		SourceASC->ApplyModToAttributeUnsafe(GetSuperChargeAttribute(), EGameplayModOp::Additive, ChargeAmount);

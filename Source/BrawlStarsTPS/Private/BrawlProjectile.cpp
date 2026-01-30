@@ -236,19 +236,6 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 	{
 		if (DamageSpecHandle.IsValid())
 		{
-			AActor* SpecInstigator = DamageSpecHandle.Data.Get()->GetContext().GetInstigator();
-			
-			if (GEngine)
-			{
-				FString DebugMsg = FString::Printf(TEXT("[Server] Proj Hit: Instigator [%s]"), 
-					SpecInstigator ? *SpecInstigator->GetName() : TEXT("NULL"));
-				GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, DebugMsg);
-			}
-
-			UE_LOG(LogTemp, Log, TEXT("Projectile Hitting [%s]. Spec Instigator: %s"), 
-				*OtherActor->GetName(), 
-				SpecInstigator ? *SpecInstigator->GetName() : TEXT("NULL"));
-
 			FActiveGameplayEffectHandle ActiveGE = TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpecHandle.Data.Get());
 		}
 		else

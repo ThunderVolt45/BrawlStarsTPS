@@ -45,14 +45,44 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|UI")
 	FColor EnemyKillBackgroundColor = FColor::Red;
 	
+	// 표시 지속 시간 (초)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Animation")
+	float DisplayDuration = 4.0f;
+
+	// 애니메이션 속도
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Animation")
+	float AnimationSpeed = 10.0f;
+
+	// 등장/퇴장 시 이동할 오프셋 (X, Y)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Animation")
+	FVector2D SlideOffset = FVector2D(500.0f, 0.0f);
+
 public:
 	// 킬 정보 설정 (액터 전달)
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void SetKillInfo(AActor* Killer, AActor* Victim);
 
 protected:
+	virtual void NativeConstruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+
 	// 블루프린트에서 UI 업데이트 (텍스트 설정, 색상 변경 등)
 	// Killer/Victim이 ABrawlCharacter일 수 있으므로 Cast해서 정보 사용
 	UFUNCTION(BlueprintImplementableEvent, Category = "Brawl|UI")
 	void OnKillInfoSet(AActor* Killer, AActor* Victim, bool bIsKillerMyself, bool bIsVictimMyself);
+
+private:
+	// 퇴장 애니메이션 시작
+	void StartOutro();
+
+	// 애니메이션 상태
+	enum class EAnimationState
+	{
+		Intro, // 등장 중
+		Idle,  // 대기 중
+		Outro  // 사라지는 중
+	};
+
+	EAnimationState AnimState = EAnimationState::Intro;
+	FTimerHandle OutroTimerHandle;
 };

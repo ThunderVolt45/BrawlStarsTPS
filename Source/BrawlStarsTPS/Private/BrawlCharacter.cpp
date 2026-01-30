@@ -403,10 +403,6 @@ void ABrawlCharacter::Die()
 	// 서버에서 GameMode에 사망 사실 알림 (GameState를 통해 클라이언트로 전파됨)
 	if (HasAuthority())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Character::Die - Reporting Kill. Victim: %s, Killer: %s"), 
-			*GetName(), 
-			LastHitInstigator ? *LastHitInstigator->GetName() : TEXT("NULL"));
-
 		if (ABrawlStarsTPSGameMode* GM = GetWorld()->GetAuthGameMode<ABrawlStarsTPSGameMode>())
 		{
 			GM->NotifyKill(LastHitInstigator, this);
