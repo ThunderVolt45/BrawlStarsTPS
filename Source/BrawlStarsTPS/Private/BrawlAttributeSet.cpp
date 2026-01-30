@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Perception/AISense_Damage.h" // 추가
+#include "BrawlStarsTPSGameMode.h"
+#include "Kismet/GameplayStatics.h"
 
 UBrawlAttributeSet::UBrawlAttributeSet()
 {
@@ -110,6 +112,7 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 	float FinalDamage = FMath::RoundToInt(ReductionedDamage);
 
 	// 체력 감소 적용
+	bool bWasAlive = GetHealth() > 0.0f;
 	float NewHealth = GetHealth() - FinalDamage;
 	SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
 	
@@ -119,7 +122,7 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 
 	if (!TargetActor) return;
 	if (!SourceActor) return;
-	if (TargetActor == SourceActor) return;
+	// if (TargetActor == SourceActor) return; // 자해 데미지도 처리 가능하게 주석 해제 고려
 	
 	// 공격자가 폰인 경우를 선호하지만, 컨트롤러일 수도 있음. 
 	// AI Controller는 Pawn을 통해 팀을 확인하므로 Pawn을 넘기는 것이 좋음.
@@ -129,6 +132,15 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 		if (APawn* SourcePawn = SourceController->GetPawn())
 		{
 			InstigatorActor = SourcePawn;
+		}
+	}
+
+	// 처치 확인 (이번 데미지로 사망했는가?)
+	if (bWasAlive && NewHealth <= 0.0f)
+	{
+		if (ABrawlStarsTPSGameMode* GM = Cast<ABrawlStarsTPSGameMode>(UGameplayStatics::GetGameMode(GetWorld())))
+		{
+			GM->NotifyKill(InstigatorActor, TargetActor);
 		}
 	}
 

@@ -38,6 +38,9 @@
     *   `Source/BrawlStarsTPS/Public/UI/BrawlSuperWidget.h` (.cpp)
     *   `Source/BrawlStarsTPS/Public/UI/BrawlHyperWidget.h` (.cpp)
     *   `Source/BrawlStarsTPS/Public/UI/BrawlGadgetWidget.h` (.cpp)
+*   **Kill Feed:**
+    *   `Source/BrawlStarsTPS/Public/UI/BrawlKillFeedWidget.h` (.cpp)
+    *   `Source/BrawlStarsTPS/Public/UI/BrawlKillLogEntry.h` (.cpp)
 
 ## 5. Data & Configuration
 *   **Character Data:** `Source/BrawlStarsTPS/Public/Data/BrawlCharacterData.h` (.cpp)

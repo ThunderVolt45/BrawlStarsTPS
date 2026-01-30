@@ -7,6 +7,7 @@
 #include "AbilitySystemInterface.h"
 #include "GameplayTagContainer.h"
 #include "GenericTeamAgentInterface.h"
+#include "Data/BrawlCharacterData.h" // 추가
 #include "BrawlCharacter.generated.h"
 
 struct FOnAttributeChangeData;
@@ -81,6 +82,17 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
 	int32 GetTeamID() const { return TeamID; }
+
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
+	FName GetCharacterID() const { return CharacterID; }
+
+	// 캐릭터 데이터 반환
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
+	FBrawlCharacterData GetCharacterData() const;
+
+	// 캐릭터 아이콘(Soft Object Ptr -> Load) 반환
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
+	UTexture2D* GetCharacterIcon() const;
 
 	// AI 설정 반환
 	UFUNCTION(BlueprintCallable, Category = "Brawl|AI")

@@ -83,6 +83,29 @@ UBehaviorTree* ABrawlCharacter::GetCombatBehaviorTree() const
 	return nullptr;
 }
 
+FBrawlCharacterData ABrawlCharacter::GetCharacterData() const
+{
+	if (CharacterDataTable)
+	{
+		static const FString ContextString(TEXT("Get Character Data"));
+		if (FBrawlCharacterData* Row = CharacterDataTable->FindRow<FBrawlCharacterData>(CharacterID, ContextString))
+		{
+			return *Row;
+		}
+	}
+	return FBrawlCharacterData();
+}
+
+UTexture2D* ABrawlCharacter::GetCharacterIcon() const
+{
+	FBrawlCharacterData Data = GetCharacterData();
+	if (!Data.CharacterIcon.IsNull())
+	{
+		return Data.CharacterIcon.LoadSynchronous();
+	}
+	return nullptr;
+}
+
 void ABrawlCharacter::BeginPlay()
 {
 	Super::BeginPlay();
