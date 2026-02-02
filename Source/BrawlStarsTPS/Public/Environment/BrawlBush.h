@@ -30,12 +30,12 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	// Mesh 겹침 (실제 수풀 내부, 은신)
+	// HidingVolume 겹침 (실제 수풀 내부, 은신)
 	UFUNCTION()
-	void OnMeshOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	void OnHidingOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	UFUNCTION()
-	void OnMeshOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+	void OnHidingOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	// Sphere 겹침 (접근, 투명화 및 탐지)
 	UFUNCTION()
@@ -48,6 +48,10 @@ protected:
 	void UpdateVisibilityForHiddenCharacters();
 
 protected:
+	// 실제 은신 처리를 담당할 내부 영역 (메시보다 작게 설정하여 중심 진입 시 은신)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bush")
+	TObjectPtr<UBoxComponent> HidingVolume;
+
 	// 접근 감지용 스피어 (투명화 및 은신 감지)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bush")
 	TObjectPtr<USphereComponent> ProximitySphere;
