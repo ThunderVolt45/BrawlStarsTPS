@@ -9,10 +9,11 @@
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "Perception/AISense_Sight.h"
 #include "Environment/BrawlPowerCube.h" // 추가
+#include "Kismet/GameplayStatics.h"
 
 ABrawlPowerCubeBox::ABrawlPowerCubeBox()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 	// GAS 컴포넌트 생성
 	AbilitySystemComponent = CreateDefaultSubobject<UBrawlAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -91,6 +92,29 @@ void ABrawlPowerCubeBox::BeginPlay()
 			AbilitySystemComponent->ApplyModToAttributeUnsafe(AttributeSet->GetMaxHealthAttribute(), EGameplayModOp::Override, DefaultMaxHealth);
 			// Health 설정
 			AbilitySystemComponent->ApplyModToAttributeUnsafe(AttributeSet->GetHealthAttribute(), EGameplayModOp::Override, DefaultMaxHealth);
+		}
+	}
+}
+
+void ABrawlPowerCubeBox::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	
+	// 체력바 빌보드 처리 (카메라 방향을 보게 함)
+	if (HealthBarComponent && HealthBarComponent->GetWidgetSpace() == EWidgetSpace::World)
+	{
+		if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+		{
+			FVector CameraLocation;
+			FRotator CameraRotation;
+			PC->GetPlayerViewPoint(CameraLocation, CameraRotation);
+			
+			// 카메라의 전방 벡터를 가져와 반대로 뒤집는다
+			FVector CameraForward = CameraRotation.Vector() * -1.0f;
+			FRotator CameraRotator = CameraForward.Rotation();
+			
+			// UI가 기울어지지 않고 카메라와 마주볼 수 있다
+			HealthBarComponent->SetWorldRotation(CameraRotator);
 		}
 	}
 }
