@@ -186,6 +186,14 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 	// 공격자의 궁극기, 하이퍼차지 게이지 충전
 	if (SourceASC)
 	{
+		// 만약 브롤러가 아닌 목표를 공격한 것이라면 여기서 중단
+		ABrawlCharacter* Character = Cast<ABrawlCharacter>(TargetActor);
+		if (!Character)
+		{
+			UE_LOG(LogTemp, Log, TEXT("BrawlAttributeSet: TargetActor is not ABrawlCharacter. Super/Hyper Charge Halted."));
+			return;
+		}
+		
 		bool bFound = false;
 		float ChargeAmount = SourceASC->GetGameplayAttributeValue(GetSuperChargePerHitAttribute(), bFound);
 		float HyperChargeAmount = SourceASC->GetGameplayAttributeValue(GetHyperChargePerHitAttribute(), bFound);
