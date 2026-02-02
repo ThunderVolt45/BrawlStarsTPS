@@ -45,18 +45,18 @@ protected:
 	TObjectPtr<URotatingMovementComponent> RotatingMovement;
 
 	// 획득 시 적용할 이펙트 (GE_PowerCube)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PowerCube")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
 	TSubclassOf<UGameplayEffect> PowerCubeEffectClass;
 
 	// 획득 효과음
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PowerCube")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
 	TObjectPtr<USoundBase> PickupSound;
 
 	// 등장 효과음 (스폰 시 재생)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PowerCube")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
 	TObjectPtr<USoundBase> SpawnSound;
 
 	// 획득 시 파티클 효과
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PowerCube")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
 	TObjectPtr<UParticleSystem> PickupVFX;
 };
