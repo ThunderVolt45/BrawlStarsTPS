@@ -26,12 +26,18 @@ public:
 
 	virtual void BeginPlay() override;
 
+	// 플레이어 시작 지점 선택 (부모 클래스 오버라이드)
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+
 	// 처치 발생 시 호출 (부모 클래스 오버라이드)
 	virtual void NotifyKill(AActor* Killer, AActor* Victim) override;
 
 protected:
 	// 파워 큐브 상자 스폰 로직
 	void SpawnPowerCubeBoxes();
+
+	// AI 봇 스폰 로직
+	void SpawnBots();
 
 	// 남은 플레이어 수 확인 및 게임 종료 체크
 	void CheckGameEndCondition();
@@ -44,9 +50,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")
 	TSubclassOf<ABrawlPowerCubeBox> PowerCubeBoxClass;
 
+	// AI로 스폰할 브롤러 클래스 목록 (랜덤 선택)
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")
+	TArray<TSubclassOf<class ABrawlCharacter>> AICharacterClasses;
+
 	// 상자 스폰 개수
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")
 	int32 MaxPowerCubeBoxes = 10;
+
+	// 봇 스폰 개수 (최대 플레이어 수 - 1)
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")
+	int32 MaxBots = 5;
 
 	// 현재 생존한 브롤러 수 (플레이어 + AI)
 	UPROPERTY(VisibleInstanceOnly, Category = "Brawl|Showdown")
