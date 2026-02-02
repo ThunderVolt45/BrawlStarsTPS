@@ -148,7 +148,6 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 
 	if (!TargetActor) return;
 	if (!SourceActor) return;
-	// if (TargetActor == SourceActor) return; // 자해 데미지도 처리 가능하게 주석 해제 고려
 	
 	// 사망 예정이라면 공격자 정보를 먼저 저장한다 (SetHealth 호출 시 Die가 실행되므로 그 전에 저장 필수)
 	if (NewHealth <= 0.0f)
@@ -183,27 +182,23 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 		FVector::ZeroVector
 	);
 	
-	float ChargeAmount = 0.0f;
-	float HyperChargeAmount = 0.0f;
 
 	// 공격자의 궁극기, 하이퍼차지 게이지 충전
-	UAbilitySystemComponent* SourceASC = Data.EffectSpec.GetContext().GetInstigatorAbilitySystemComponent();
 	if (SourceASC)
 	{
 		bool bFound = false;
-		ChargeAmount = SourceASC->GetGameplayAttributeValue(GetSuperChargePerHitAttribute(), bFound);
-		HyperChargeAmount = SourceASC->GetGameplayAttributeValue(GetHyperChargePerHitAttribute(), bFound);
-	}
-	if (ChargeAmount > 0.0f)
-	{
-		SourceASC->ApplyModToAttributeUnsafe(GetSuperChargeAttribute(), EGameplayModOp::Additive, ChargeAmount);
-	}
-
-	// 하이퍼차지 중이 아닐 때만 하이퍼차지 충전
-	static FGameplayTag HyperTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
-	if (SourceASC && !SourceASC->HasMatchingGameplayTag(HyperTag))
-	{
-		if (HyperChargeAmount > 0.0f)
+		float ChargeAmount = SourceASC->GetGameplayAttributeValue(GetSuperChargePerHitAttribute(), bFound);
+		float HyperChargeAmount = SourceASC->GetGameplayAttributeValue(GetHyperChargePerHitAttribute(), bFound);
+		
+		// 궁극기 충전
+		if (ChargeAmount > 0.0f)
+		{
+			SourceASC->ApplyModToAttributeUnsafe(GetSuperChargeAttribute(), EGameplayModOp::Additive, ChargeAmount);
+		}
+		
+		// 하이퍼차지 중이 아닐 때만 하이퍼차지 충전
+		static FGameplayTag HyperTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
+		if (!SourceASC->HasMatchingGameplayTag(HyperTag) && HyperChargeAmount > 0.0f)
 		{
 			SourceASC->ApplyModToAttributeUnsafe(GetHyperChargeAttribute(), EGameplayModOp::Additive, HyperChargeAmount);
 		}
