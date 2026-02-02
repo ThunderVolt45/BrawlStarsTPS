@@ -326,7 +326,8 @@ void ABrawlCharacter::UpdateMeshVisibility()
 		// 다른 캐릭터(적/AI): 은신 조건 만족 시 메시를 아예 숨김
 		if (GetMesh())
 		{
-			GetMesh()->SetHiddenInGame(bFinalHidden);
+			// 자신과 모든 자식 컴포넌트(무기 등)를 포함하여 숨김 처리
+			GetMesh()->SetHiddenInGame(bFinalHidden, true);
 		}
 		
 		// 체력바 등 부착된 위젯도 같이 숨김 처리
