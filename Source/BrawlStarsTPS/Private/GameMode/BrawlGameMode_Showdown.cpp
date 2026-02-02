@@ -7,6 +7,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "BrawlCharacter.h"
 #include "AIController.h"
+#include "GameMode/BrawlSpawnPoint.h"
+#include "Data/BrawlSpawnPointType.h" // 추가
 
 ABrawlGameMode_Showdown::ABrawlGameMode_Showdown()
 {
@@ -49,39 +51,68 @@ void ABrawlGameMode_Showdown::SpawnPowerCubeBoxes()
 		return;
 	}
 
-	UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
-	if (!NavSystem)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("NavigationSystem is NOT Valid!"));
-		return;
-	}
-
 	int32 SpawnedCount = 0;
-	int32 MaxAttempts = MaxPowerCubeBoxes * 2; // 실패 가능성 고려하여 시도 횟수 여유 있게 설정
 
-	for (int32 i = 0; i < MaxAttempts; i++)
+	// 1. 우선 ABrawlSpawnPoint 액터를 찾아서 상자 스폰 포인트로 사용
+	TArray<AActor*> FoundSpawnPoints;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlSpawnPoint::StaticClass(), FoundSpawnPoints);
+
+	for (AActor* Actor : FoundSpawnPoints)
 	{
-		if (SpawnedCount >= MaxPowerCubeBoxes) break;
-
-		FNavLocation RandomLocation;
-		// 맵 전체 범위에서 랜덤 위치 탐색 (반경은 맵 크기에 맞게 조정 필요, 여기서는 10000.0f로 가정)
-		if (NavSystem->GetRandomPointInNavigableRadius(FVector::ZeroVector, 10000.0f, RandomLocation))
+		if (ABrawlSpawnPoint* SpawnPoint = Cast<ABrawlSpawnPoint>(Actor))
 		{
-			FVector SpawnLocation = RandomLocation.Location;
-			SpawnLocation.Z += 50.0f; // 바닥에 파묻히지 않게 약간 띄움
-
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
-
-			ABrawlPowerCubeBox* NewBox = GetWorld()->SpawnActor<ABrawlPowerCubeBox>(PowerCubeBoxClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
-			if (NewBox)
+			if (SpawnPoint->SpawnPointType == EBrawlSpawnPointType::PowerCubeBox)
 			{
-				SpawnedCount++;
+				if (SpawnedCount >= MaxPowerCubeBoxes) break;
+
+				FVector SpawnLocation = SpawnPoint->GetActorLocation();
+				FRotator SpawnRotation = SpawnPoint->GetActorRotation();
+
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+				ABrawlPowerCubeBox* NewBox = GetWorld()->SpawnActor<ABrawlPowerCubeBox>(PowerCubeBoxClass, SpawnLocation, SpawnRotation, SpawnParams);
+				if (NewBox)
+				{
+					SpawnedCount++;
+				}
 			}
 		}
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("Spawned %d PowerCube Boxes."), SpawnedCount);
+	// 2. 지정된 스폰 포인트가 부족한 경우에만 NavMesh 랜덤 스폰으로 보충 (선택 사항)
+	if (SpawnedCount < MaxPowerCubeBoxes)
+	{
+		UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
+		if (NavSystem)
+		{
+			int32 RemainingToSpawn = MaxPowerCubeBoxes - SpawnedCount;
+			int32 MaxAttempts = RemainingToSpawn * 3;
+
+			for (int32 i = 0; i < MaxAttempts; i++)
+			{
+				if (SpawnedCount >= MaxPowerCubeBoxes) break;
+
+				FNavLocation RandomLocation;
+				if (NavSystem->GetRandomPointInNavigableRadius(FVector::ZeroVector, 10000.0f, RandomLocation))
+				{
+					FVector SpawnLocation = RandomLocation.Location;
+					SpawnLocation.Z += 50.0f;
+
+					FActorSpawnParameters SpawnParams;
+					SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
+
+					ABrawlPowerCubeBox* NewBox = GetWorld()->SpawnActor<ABrawlPowerCubeBox>(PowerCubeBoxClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
+					if (NewBox)
+					{
+						SpawnedCount++;
+					}
+				}
+			}
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("Spawned %d PowerCube Boxes (Total)."), SpawnedCount);
 }
 
 void ABrawlGameMode_Showdown::CheckGameEndCondition()
