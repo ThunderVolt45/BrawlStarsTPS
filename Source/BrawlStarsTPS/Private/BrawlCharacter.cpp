@@ -18,6 +18,7 @@
 #include "UI/BrawlHealthWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "Perception/AISense_Damage.h"
+#include "GameplayEffect.h" // 추가
 
 ABrawlCharacter::ABrawlCharacter()
 {
@@ -165,38 +166,53 @@ void ABrawlCharacter::OnRep_PlayerState()
 
 void ABrawlCharacter::InitAbilityActorInfo()
 {
-	if (AbilitySystemComponent)
+	if (!AbilitySystemComponent)
 	{
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+		UE_LOG(LogTemp, Error, TEXT("BrawlCharacter: AbilitySystemComponent is NOT EXIST!!"));
+		return;
+	}
 
-		// 이동 속도 변화 감지 바인딩
-		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetMovementSpeedAttribute()).AddUObject(this, &ABrawlCharacter::OnMovementSpeedChanged);
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 
-		// 체력 변화 감지 바인딩
-		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetHealthAttribute()).AddUObject(this, &ABrawlCharacter::OnHealthChanged);
+	// 이동 속도 변화 감지 바인딩
+	AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		UBrawlAttributeSet::GetMovementSpeedAttribute()).AddUObject(this, &ABrawlCharacter::OnMovementSpeedChanged);
 
-		// 머리 위 위젯 초기화
-		if (HealthBarComponent)
+	// 체력 변화 감지 바인딩
+	AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		UBrawlAttributeSet::GetHealthAttribute()).AddUObject(this, &ABrawlCharacter::OnHealthChanged);
+
+	// 전투 상태 태그(State.Combat) 변화 감지 바인딩 (공격 중일 때 즉시 노출)
+	CombatStateTagDelegateHandle = AbilitySystemComponent->RegisterGameplayTagEvent(CombatTag,
+		EGameplayTagEventType::NewOrRemoved).AddUObject(this, &ABrawlCharacter::OnCombatRevealedTagChanged);
+	
+	// 발각 태그(State.Combat.Revealed) 변화 감지 바인딩
+	CombatRevealedTagDelegateHandle = AbilitySystemComponent->RegisterGameplayTagEvent(RevealedTag,
+		EGameplayTagEventType::NewOrRemoved).AddUObject(this, &ABrawlCharacter::OnCombatRevealedTagChanged);
+
+	// 머리 위 위젯 초기화
+	if (HealthBarComponent)
+	{
+		HealthBarComponent->InitWidget(); // 위젯 인스턴스 확인 및 생성
+
+		if (UUserWidget* WidgetObj = HealthBarComponent->GetUserWidgetObject())
 		{
-			HealthBarComponent->InitWidget(); // 위젯 인스턴스 확인 및 생성
-			
-			if (UUserWidget* WidgetObj = HealthBarComponent->GetUserWidgetObject())
+			if (UBrawlHealthWidget* HealthWidget = Cast<UBrawlHealthWidget>(WidgetObj))
 			{
-				if (UBrawlHealthWidget* HealthWidget = Cast<UBrawlHealthWidget>(WidgetObj))
-				{
-					UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::InitAbilityActorInfo - Initializing HealthWidget..."));
-					HealthWidget->InitializeWithAbilitySystem(AbilitySystemComponent);
-				}
-				else
-				{
-					UE_LOG(LogTemp, Error, TEXT("BrawlCharacter::InitAbilityActorInfo - Widget Class is NOT UBrawlHealthWidget! Class: %s"), *WidgetObj->GetClass()->GetName());
-				}
+				UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::InitAbilityActorInfo - Initializing HealthWidget..."));
+				HealthWidget->InitializeWithAbilitySystem(AbilitySystemComponent);
 			}
 			else
 			{
-				// 아직 위젯이 생성되지 않았을 수 있음 (비동기 등) -> 보통 InitWidget 후에는 있어야 함
-				UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::InitAbilityActorInfo - GetUserWidgetObject returned NULL."));
+				UE_LOG(LogTemp, Error,
+				       TEXT("BrawlCharacter::InitAbilityActorInfo - Widget Class is NOT UBrawlHealthWidget! Class: %s"),
+				       *WidgetObj->GetClass()->GetName());
 			}
+		}
+		else
+		{
+			// 아직 위젯이 생성되지 않았을 수 있음 (비동기 등) -> 보통 InitWidget 후에는 있어야 함
+			UE_LOG(LogTemp, Warning, TEXT("BrawlCharacter::InitAbilityActorInfo - GetUserWidgetObject returned NULL."));
 		}
 	}
 }
@@ -270,7 +286,8 @@ void ABrawlCharacter::SetInBush(bool bInBush)
 		bIsHiddenInBush = bNewHiddenState;
 		UpdateMeshVisibility();
 		
-		UE_LOG(LogTemp, Log, TEXT("Character [%s] Hidden State Changed: %s"), *GetName(), bIsHiddenInBush ? TEXT("HIDDEN") : TEXT("VISIBLE"));
+		UE_LOG(LogTemp, Log, TEXT("Character [%s] Hidden State Changed: %s"), *GetName(), 
+			bIsHiddenInBush ? TEXT("HIDDEN") : TEXT("VISIBLE"));
 	}
 }
 
@@ -281,46 +298,103 @@ void ABrawlCharacter::SetRevealed(bool bRevealed)
 		bIsRevealed = bRevealed;
 		UpdateMeshVisibility();
 		
-		UE_LOG(LogTemp, Log, TEXT("Character [%s] Revealed State Changed: %s"), *GetName(), bIsRevealed ? TEXT("REVEALED") : TEXT("HIDDEN"));
+		UE_LOG(LogTemp, Log, TEXT("Character [%s] Revealed State Changed: %s"), *GetName(), 
+			bIsRevealed ? TEXT("REVEALED") : TEXT("HIDDEN"));
 	}
+}
+
+void ABrawlCharacter::NotifyCombatAction()
+{
+	ApplyCombatRevealEffect();
+}
+
+void ABrawlCharacter::ApplyCombatRevealEffect()
+{
+	if (!AbilitySystemComponent) return;
+
+	if (CombatRevealEffectClass)
+	{
+		FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+		Context.AddSourceObject(this);
+		
+		// 레벨은 1.0f로 적용 (필요 시 변경 가능)
+		AbilitySystemComponent->ApplyGameplayEffectToSelf(
+			CombatRevealEffectClass.GetDefaultObject(), 
+			1.0f, 
+			Context
+		);
+		
+		UE_LOG(LogTemp, Log, TEXT("Character [%s] Applied Combat Reveal Effect (BP Class)."), *GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Character [%s] has NO CombatRevealEffectClass set! Combat visibility will NOT work."), *GetName());
+	}
+}
+
+void ABrawlCharacter::OnCombatRevealedTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
+{
+	if (CallbackTag == RevealedTag)
+	{
+		bIsRevealedByCombat = (NewCount > 0);
+	}
+	else if (CallbackTag == CombatTag)
+	{
+		bIsCombatState = (NewCount > 0);
+	}
+
+	UpdateMeshVisibility();
 }
 
 bool ABrawlCharacter::IsVisibleTo(const FGenericTeamId& ObserverTeam) const
 {
 	// 1. 수풀에 없다면 항상 보임
-	if (!bIsHiddenInBush) return true;
+	if (!bIsHiddenInBush)
+	{
+		return true;
+	}
 
 	// 2. 같은 팀에게는 항상 보임 (옵저버도 포함)
 	FGenericTeamId MyTeam = GetGenericTeamId();
-	if (MyTeam != FGenericTeamId::NoTeam && MyTeam == ObserverTeam) return true;
+	if (MyTeam != FGenericTeamId::NoTeam && MyTeam == ObserverTeam)
+	{
+		return true;
+	}
 
 	// 3. 발각된 상태라면(근처에 적이 있음) 적에게도 보임
-	if (bIsRevealed) return true;
+	if (bIsRevealed)
+	{
+		return true;
+	}
 
-	// 4. 그 외의 경우(수풀 속 + 발각 안됨 + 적군) -> 안 보임
+	// 4. 전투 상태 태그가 있다면 보임
+	// - State.Combat.Revealed: 피격 등으로 인해 일정 시간 노출
+	// - State.Combat: 공격 행동 중이라 노출
+	if (bIsRevealedByCombat || bIsCombatState)
+	{
+		return true;
+	}
+
+	// 5. 그 외의 경우(수풀 속 + 발각 안됨 + 전투 안함 + 적군) -> 안 보임
 	return false;
 }
 
 void ABrawlCharacter::UpdateMeshVisibility()
 {
 	// 최종 은신 여부 판별
-	// 수풀에 있고(HiddenInBush) AND 발각되지 않았어야(Not Revealed) 진짜 은신
-	bool bFinalHidden = bIsHiddenInBush && !bIsRevealed;
+	// 수풀에 있고(HiddenInBush) 발각되지 않은 상태(Revealed) 인가?
+	// 그리고 전투 중(CombatState)이거나 피격 노출(RevealedByCombat) 상태가 아니어야 함
+	bool bFinalHidden = bIsHiddenInBush && !bIsRevealed && !bIsRevealedByCombat && !bIsCombatState;
 
-	// 로컬 플레이어는 항상 반투명하게라도 보여야 함 (완전 투명 X)
-	// 적(AI)은 조건 만족 시 완전 투명(HiddenInGame) 처리
-	
+	// 로컬 플레이어는 항상 보여야 함
 	if (IsPlayerControlled())
 	{
-		// 로컬 플레이어: 수풀에 숨으면 약간 반투명하게 처리하여 숨었음을 인지시킴
 		if (GetMesh())
 		{
-			// 머티리얼 변경 없이 단순히 Visibility만으로는 반투명 처리가 어려우므로,
-			// 여기서는 로그만 남기거나 추후 머티리얼 파라미터 조절로 확장 가능.
-			// 현재는 로컬 플레이어는 항상 보이게 설정.
 			GetMesh()->SetHiddenInGame(false);
 		}
 	}
+	// 적(AI)은 조건 만족 시 완전 투명(HiddenInGame) 처리
 	else
 	{
 		// 다른 캐릭터(적/AI): 은신 조건 만족 시 메시를 아예 숨김
@@ -404,6 +478,12 @@ void ABrawlCharacter::OnHealthChanged(const FOnAttributeChangeData& Data)
 	// 이미 사망했으면 무시
 	if (bIsDead) return;
 
+	// 데미지를 입은 경우 (체력 감소)
+	if (Data.NewValue < Data.OldValue)
+	{
+		NotifyCombatAction();
+	}
+
 	// 체력이 0 이하면 사망 처리
 	if (Data.NewValue <= 0.0f)
 	{
@@ -447,25 +527,12 @@ void ABrawlCharacter::Die()
 		GetCharacterMovement()->SetComponentTickEnabled(false);
 	}
 
-	// 4. 메쉬 래그돌 활성화
-	// if (GetMesh())
-	// {
-	// 	GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
-	// 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	// 	GetMesh()->SetAllBodiesSimulatePhysics(true);
-	// 	GetMesh()->SetSimulatePhysics(true);
-	// 	GetMesh()->WakeAllRigidBodies();
-	// 	GetMesh()->bPauseAnims = true; // 애니메이션 멈춤
-	// }
-
 	// 5. 체력바 숨김
 	if (HealthBarComponent)
 	{
 		HealthBarComponent->SetHiddenInGame(true);
 	}
 	
-	// 6. 3초 뒤에 Actor 제거 (혹은 리스폰 로직으로 대체 가능)
-	// SetLifeSpan(3.0f);
-	
+	// 6. Actor 제거 (혹은 리스폰 로직으로 대체 가능)
 	Destroy();
 }

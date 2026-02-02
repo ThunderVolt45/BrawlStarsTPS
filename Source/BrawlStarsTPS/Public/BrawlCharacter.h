@@ -160,6 +160,22 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Abilities")
 	TArray<TSubclassOf<UBrawlGameplayAbility>> StartupAbilities;
 	
+	// 전투 은신 해제용 GE 클래스 (BP에서 설정)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
+	TSubclassOf<UGameplayEffect> CombatRevealEffectClass;
+	
+	// 전투 상태 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
+	FGameplayTag CombatTag = FGameplayTag::RequestGameplayTag(FName("State.Combat"));
+	
+	// 발각 상태 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
+	FGameplayTag RevealedTag = FGameplayTag::RequestGameplayTag(FName("State.Combat.Revealed"));
+
+	// 전투 후 은신이 해제되는 시간 (초) - GE 지속시간으로 사용 (동적 GE 사용 시)
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Combat")
+	float CombatRevealDuration = 1.0f;
+	
 	// 스프링 암
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;
@@ -189,10 +205,14 @@ public:
 	// bRevealed true면 감지됨(보임), false면 감지 안됨(숨음)
 	void SetRevealed(bool bRevealed);
 
+	// 전투 행위(피격, 공격) 발생 시 호출하여 은신 해제 (내부적으로 태그 부여)
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
+	void NotifyCombatAction();
+
 	// 특정 팀에게 이 캐릭터가 보이는지 확인
 	// 수풀에 없거나, 같은 팀이거나, 발각된 상태면 true
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
-	bool IsVisibleTo(const FGenericTeamId& ObserverTeam) const;
+	virtual bool IsVisibleTo(const FGenericTeamId& ObserverTeam) const;
 
 	// 캐릭터 사망 처리 (Ragdoll 적용)
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Health")
@@ -209,12 +229,18 @@ protected:
 	// 체력 속성 변경 시 호출될 콜백
 	virtual void OnHealthChanged(const FOnAttributeChangeData& Data);
 
+	// 전투 은신 해제 태그(State.Combat.Revealed) 변경 시 호출
+	virtual void OnCombatRevealedTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
+
 private:
 	// 이동 속도 속성 변경 시 호출될 콜백
 	void OnMovementSpeedChanged(const FOnAttributeChangeData& Data);
 
 	// 실제 시각적 은신 상태 업데이트
 	void UpdateMeshVisibility();
+
+	// 전투 노출 상태 적용 (GE 적용)
+	void ApplyCombatRevealEffect();
 
 	// 마지막으로 데미지를 입힌 공격자
 	UPROPERTY()
@@ -225,6 +251,18 @@ private:
 
 	// 근처 적 등에 의해 위치가 발각되었는지 여부
 	bool bIsRevealed = false;
+
+	// 전투 노출 태그(State.Combat.Revealed)가 활성화되어 있는지 여부
+	bool bIsRevealedByCombat = false;
+
+	// 전투 상태 태그(State.Combat)가 활성화되어 있는지 여부
+	bool bIsCombatState = false;
+
+	// 전투 노출 태그 변화 감지용 핸들 (피격 시 - Duration)
+	FDelegateHandle CombatRevealedTagDelegateHandle;
+
+	// 전투 상태 태그 변화 감지용 핸들 (공격 시 - Instant)
+	FDelegateHandle CombatStateTagDelegateHandle;
 
 	// 사망 여부
 	bool bIsDead = false;
