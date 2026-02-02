@@ -7,6 +7,7 @@
 #include "BrawlGameMode_Showdown.generated.h"
 
 class ABrawlPowerCubeBox;
+class ABrawlPowerCube;
 
 /**
  * ABrawlGameMode_Showdown
@@ -39,6 +40,9 @@ protected:
 	// AI 봇 스폰 로직
 	void SpawnBots();
 
+	// 브롤러 사망 시 파워 큐브 드랍
+	void DropPowerCubes(AActor* Victim);
+
 	// 남은 플레이어 수 확인 및 게임 종료 체크
 	void CheckGameEndCondition();
 
@@ -49,6 +53,10 @@ protected:
 	// 스폰할 상자 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")
 	TSubclassOf<ABrawlPowerCubeBox> PowerCubeBoxClass;
+
+	// 드랍할 파워 큐브 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")
+	TSubclassOf<ABrawlPowerCube> PowerCubeClass;
 
 	// AI로 스폰할 브롤러 클래스 목록 (랜덤 선택)
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")

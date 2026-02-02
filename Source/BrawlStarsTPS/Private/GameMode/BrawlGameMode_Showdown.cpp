@@ -3,6 +3,7 @@
 
 #include "GameMode/BrawlGameMode_Showdown.h"
 #include "Environment/BrawlPowerCubeBox.h"
+#include "Environment/BrawlPowerCube.h" // 추가
 #include "NavigationSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "BrawlCharacter.h"
@@ -10,6 +11,8 @@
 #include "GameMode/BrawlSpawnPoint.h"
 #include "Data/BrawlSpawnPointType.h"
 #include "GameFramework/PlayerStart.h"
+#include "AbilitySystemBlueprintLibrary.h" // 추가
+#include "BrawlAttributeSet.h" // 추가
 
 ABrawlGameMode_Showdown::ABrawlGameMode_Showdown()
 {
@@ -156,12 +159,57 @@ void ABrawlGameMode_Showdown::NotifyKill(AActor* Killer, AActor* Victim)
 {
 	Super::NotifyKill(Killer, Victim);
 
+	// 파워 큐브 드랍
+	DropPowerCubes(Victim);
+
 	// 생존자 수 감소
 	AliveBrawlerCount--;
 	
 	UE_LOG(LogTemp, Log, TEXT("Brawler Killed. Alive Brawlers: %d"), AliveBrawlerCount);
 
 	CheckGameEndCondition();
+}
+
+void ABrawlGameMode_Showdown::DropPowerCubes(AActor* Victim)
+{
+	if (!Victim || !PowerCubeClass) return;
+
+	int32 DropCount = 1; // 기본 드랍 1개
+
+	// Victim이 가지고 있던 파워 큐브 개수 확인
+	if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Victim))
+	{
+		bool bFound = false;
+		float CurrentCubes = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetPowerCubeCountAttribute(), bFound);
+		
+		if (bFound && CurrentCubes > 0.0f)
+		{
+			// 가지고 있던 큐브의 절반을 추가로 드랍 (Brawl Stars 규칙)
+			DropCount += FMath::FloorToInt(CurrentCubes / 2.0f);
+		}
+	}
+
+	FVector CenterLocation = Victim->GetActorLocation();
+	
+	// 바닥에 붙도록 Z축 조정 (캐릭터 중심이 떠있을 수 있음)
+	CenterLocation.Z -= 40.0f; // 대략적인 캡슐 반 높이 고려, 실제로는 Trace를 하는 게 정확하지만 약식으로 처리
+
+	for (int32 i = 0; i < DropCount; i++)
+	{
+		// 흩뿌리기
+		FVector2D RandomOffset = FMath::RandPointInCircle(100.0f);
+		FVector SpawnLocation = CenterLocation + FVector(RandomOffset.X, RandomOffset.Y, 0);
+		
+		// 너무 바닥 아래로 내려가지 않게 보정
+		SpawnLocation.Z = FMath::Max(SpawnLocation.Z, 10.0f);
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+		GetWorld()->SpawnActor<ABrawlPowerCube>(PowerCubeClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("Dropped %d Power Cubes from %s"), DropCount, *Victim->GetName());
 }
 
 void ABrawlGameMode_Showdown::SpawnPowerCubeBoxes()
