@@ -76,7 +76,7 @@ protected:
 	
 	// 파괴 시 드롭할 파워 큐브 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Drops")
-	TSubclassOf<class ABrawlPowerCube> PowerCubeClass;
+	TSubclassOf<AActor> PowerCubeClass;
 	
 	// 초기화용 Gameplay Effect (속성 초기화용)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|GAS")
