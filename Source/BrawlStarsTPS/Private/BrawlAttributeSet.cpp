@@ -46,6 +46,10 @@ void UBrawlAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute,
 		// 0.0 (0%) ~ 1.0 (100%) 제한
 		NewValue = FMath::Clamp(NewValue, 0.0f, 1.0f);
 	}
+	else if (Attribute == GetPowerCubeCountAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f);
+	}
 }
 
 void UBrawlAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
@@ -113,6 +117,20 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 
 	// 0 이하의 데미지는 무시
 	if (LocalIncomingDamage <= 0.0f) return;
+
+	// 공격자의 파워 큐브 개수 확인 및 데미지 증폭
+	UAbilitySystemComponent* SourceASC = Data.EffectSpec.GetContext().GetInstigatorAbilitySystemComponent();
+	if (SourceASC)
+	{
+		bool bFound = false;
+		float CubeCount = SourceASC->GetGameplayAttributeValue(GetPowerCubeCountAttribute(), bFound);
+		if (bFound && CubeCount > 0.0f)
+		{
+			// 파워 큐브 1개당 10% 증가
+			float Multiplier = 1.0f + (CubeCount * 0.1f);
+			LocalIncomingDamage *= Multiplier;
+		}
+	}
 
 	// 방어력 적용 (DamageReduction)
 	float CurrentReduction = GetDamageReduction(); // 0.0 ~ 1.0
