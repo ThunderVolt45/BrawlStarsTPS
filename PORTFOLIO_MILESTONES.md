@@ -26,7 +26,7 @@
 
 ## Phase 2: Combat System (GAS) (Completed & Refined)
 - [x] **Ability System Core:**
-    - [x] `UBrawlAttributeSet`: Health, Ammo, SuperCharge, HyperCharge, **MovementSpeed**, **DamageReduction**.
+    - [x] `UBrawlAttributeSet`: Health, Ammo, SuperCharge, HyperCharge, **MovementSpeed**, **DamageReduction**, **PowerCubeCount**.
     - [x] **Data-Driven Initialization:** Initialize attributes from `DT_BrawlerData` (including ReloadSpeed, MoveSpeed).
 - [x] **Combat Assets & Logic:**
     - [x] **Projectile System:** `ABrawlProjectile` with GAS integration and hybrid collision.
@@ -79,6 +79,16 @@
         - [x] **Stealth Mechanics:** Logic for `SetInBush` (Stealth) and `SetRevealed` (Proximity detection).
         - [x] **Visuals:** Dynamic opacity fading and procedural sway animation (Wiggle) on character movement.
         - [x] **Collision:** Configured to ignore Projectiles (except logic handling) and allow Pawn overlap.
+- [x] **Power Cube System (Showdown Mechanics) - (Completed):**
+    - [x] **Power Cube Boxes:** 
+        - [x] `ABrawlPowerCubeBox` implementation inheriting from `ABrawlObstacle`.
+        - [x] **GAS Integration:** Uses `AbilitySystemComponent` to manage box health.
+        - [x] **Destruction Logic:** Spawns `ABrawlPowerCube` upon destruction.
+    - [x] **Power Cubes:**
+        - [x] `ABrawlPowerCube` implementation with pickup logic via `SphereComponent` overlap.
+        - [x] **Stat Buff Logic:** GAS-based attribute modification (Health & Damage increase).
+        - [x] **Damage Amplification:** Implemented 10% damage boost per cube in `BrawlAttributeSet`.
+    - [x] **Procedural Spawning:** Implemented `ABrawlGameMode_Showdown` with NavMesh-based box spawning.
 - [x] **AI System (Major Update):**
     - [x] **Architecture:** `ABrawlAIController` with **Dynamic Sub-Tree Injection**.
         - [x] **Data Separation:** Split `DT_BrawlerData` (Stats) and `DT_BrawlerAI` (AI Settings & Behavior Trees).
@@ -96,7 +106,7 @@
         - [x] **Decorators:** `BTD_HasAbility` (Cooldown/Cost check), `BTD_IsObstacleDestructible` (Interface check), `BTD_IsBlocked` (Sphere Overlap).
         - [x] **Services:** `BTS_UpdateSelfStatus` (Health Ratio update to Blackboard).
 - [ ] **Game Modes:**
-    - [ ] **Showdown:** Free-for-all logic, Power Cube spawning, Poison clouds.
+    - [ ] **Showdown:** [x] Free-for-all logic (Win Check), [x] Power Cube spawning, [ ] Poison clouds.
     - [ ] **Gem Grab:** Gem spawning mine, countdown logic, team scoring.
 - [ ] **Game Specific UI:**
     - [ ] **Game Mode specific widgets:** Gem count, Players alive.

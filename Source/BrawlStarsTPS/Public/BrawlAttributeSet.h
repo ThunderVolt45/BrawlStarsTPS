@@ -117,6 +117,11 @@ public:
 	FGameplayAttributeData DamageReduction;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, DamageReduction);
 
+	// 파워 큐브 개수 (개당 공격력 10% 증가)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Stats")
+	FGameplayAttributeData PowerCubeCount;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, PowerCubeCount);
+
 	// 메타 속성: 데미지 처리를 위한 임시 값 (서버에서만 유효)
 	UPROPERTY(BlueprintReadOnly, Category = "Meta Attributes")
 	FGameplayAttributeData IncomingDamage;

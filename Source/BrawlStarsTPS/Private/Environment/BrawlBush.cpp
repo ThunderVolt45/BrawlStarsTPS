@@ -4,13 +4,14 @@
 #include "Environment/BrawlBush.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
+#include "Components/BoxComponent.h" // 추가
 #include "BrawlCharacter.h"
 
 ABrawlBush::ABrawlBush()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	// 수풀 메시는 "은신 영역"으로 사용
+	// 수풀 메시는 시각적 표현 및 장애물 역할
 	if (MeshComponent)
 	{
 		// AI 시야 차단을 위해 Visibility 채널을 Block으로 설정
@@ -26,13 +27,24 @@ ABrawlBush::ABrawlBush()
 
 		// 2. 카메라(Camera)는 무시 -> 카메라가 수풀 때문에 당겨지는 것 방지
 		MeshComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
-		MeshComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 		
-		// 3. 캐릭터(Pawn)는 겹침 -> 진입 감지
-		MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+		// 3. 캐릭터(Pawn)는 무시 -> 은신 판정은 HidingVolume이 담당
+		MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore); 
 
-		MeshComponent->SetGenerateOverlapEvents(true);
+		MeshComponent->SetGenerateOverlapEvents(false); // 메시 자체 오버랩 이벤트 끔
 	}
+
+	// 은신 판정용 내부 볼륨 (메시보다 작게 설정하여 중심 진입 시 은신)
+	HidingVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("HidingVolume"));
+	HidingVolume->SetupAttachment(RootComponent);
+	HidingVolume->SetBoxExtent(FVector(35.0f, 35.0f, 50.0f)); // 기본 크기, 메시 크기에 맞춰 조정 필요
+	HidingVolume->SetRelativeScale3D(FVector(0.6f, 0.6f, 1.0f)); // 시각적 크기보다 작게 설정 (중심 판정 유도)
+	
+	HidingVolume->SetCollisionProfileName(FName("Custom"));
+	HidingVolume->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	HidingVolume->SetCollisionResponseToAllChannels(ECR_Ignore);
+	HidingVolume->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	HidingVolume->SetGenerateOverlapEvents(true);
 
 	// 접근 감지용 스피어 생성
 	ProximitySphere = CreateDefaultSubobject<USphereComponent>(TEXT("ProximitySphere"));
@@ -54,12 +66,15 @@ void ABrawlBush::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// MeshComponent (은신 영역) 바인딩
+	// HidingVolume (은신 영역) 바인딩
+	if (HidingVolume)
+	{
+		HidingVolume->OnComponentBeginOverlap.AddDynamic(this, &ABrawlBush::OnHidingOverlapBegin);
+		HidingVolume->OnComponentEndOverlap.AddDynamic(this, &ABrawlBush::OnHidingOverlapEnd);
+	}
+
 	if (MeshComponent)
 	{
-		MeshComponent->OnComponentBeginOverlap.AddDynamic(this, &ABrawlBush::OnMeshOverlapBegin);
-		MeshComponent->OnComponentEndOverlap.AddDynamic(this, &ABrawlBush::OnMeshOverlapEnd);
-
 		// 초기 투명도 설정
 		CurrentOpacity = NormalOpacity;
 		TargetOpacity = NormalOpacity;
@@ -87,7 +102,7 @@ void ABrawlBush::BeginPlay()
 	}
 }
 
-void ABrawlBush::OnMeshOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void ABrawlBush::OnHidingOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (!OtherActor) return;
 
@@ -104,7 +119,7 @@ void ABrawlBush::OnMeshOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor*
 	}
 }
 
-void ABrawlBush::OnMeshOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+void ABrawlBush::OnHidingOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	if (!OtherActor) return;
 

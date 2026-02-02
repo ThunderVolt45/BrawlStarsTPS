@@ -46,6 +46,10 @@ void UBrawlAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute,
 		// 0.0 (0%) ~ 1.0 (100%) 제한
 		NewValue = FMath::Clamp(NewValue, 0.0f, 1.0f);
 	}
+	else if (Attribute == GetPowerCubeCountAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f);
+	}
 }
 
 void UBrawlAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
@@ -114,6 +118,20 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 	// 0 이하의 데미지는 무시
 	if (LocalIncomingDamage <= 0.0f) return;
 
+	// 공격자의 파워 큐브 개수 확인 및 데미지 증폭
+	UAbilitySystemComponent* SourceASC = Data.EffectSpec.GetContext().GetInstigatorAbilitySystemComponent();
+	if (SourceASC)
+	{
+		bool bFound = false;
+		float CubeCount = SourceASC->GetGameplayAttributeValue(GetPowerCubeCountAttribute(), bFound);
+		if (bFound && CubeCount > 0.0f)
+		{
+			// 파워 큐브 1개당 10% 증가
+			float Multiplier = 1.0f + (CubeCount * 0.1f);
+			LocalIncomingDamage *= Multiplier;
+		}
+	}
+
 	// 방어력 적용 (DamageReduction)
 	float CurrentReduction = GetDamageReduction(); // 0.0 ~ 1.0
 	float ReductionedDamage = LocalIncomingDamage * (1.0f - CurrentReduction);
@@ -130,7 +148,6 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 
 	if (!TargetActor) return;
 	if (!SourceActor) return;
-	// if (TargetActor == SourceActor) return; // 자해 데미지도 처리 가능하게 주석 해제 고려
 	
 	// 사망 예정이라면 공격자 정보를 먼저 저장한다 (SetHealth 호출 시 Die가 실행되므로 그 전에 저장 필수)
 	if (NewHealth <= 0.0f)
@@ -165,27 +182,31 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 		FVector::ZeroVector
 	);
 	
-	float ChargeAmount = 0.0f;
-	float HyperChargeAmount = 0.0f;
 
 	// 공격자의 궁극기, 하이퍼차지 게이지 충전
-	UAbilitySystemComponent* SourceASC = Data.EffectSpec.GetContext().GetInstigatorAbilitySystemComponent();
 	if (SourceASC)
 	{
+		// 만약 브롤러가 아닌 목표를 공격한 것이라면 여기서 중단
+		ABrawlCharacter* Character = Cast<ABrawlCharacter>(TargetActor);
+		if (!Character)
+		{
+			UE_LOG(LogTemp, Log, TEXT("BrawlAttributeSet: TargetActor is not ABrawlCharacter. Super/Hyper Charge Halted."));
+			return;
+		}
+		
 		bool bFound = false;
-		ChargeAmount = SourceASC->GetGameplayAttributeValue(GetSuperChargePerHitAttribute(), bFound);
-		HyperChargeAmount = SourceASC->GetGameplayAttributeValue(GetHyperChargePerHitAttribute(), bFound);
-	}
-	if (ChargeAmount > 0.0f)
-	{
-		SourceASC->ApplyModToAttributeUnsafe(GetSuperChargeAttribute(), EGameplayModOp::Additive, ChargeAmount);
-	}
-
-	// 하이퍼차지 중이 아닐 때만 하이퍼차지 충전
-	static FGameplayTag HyperTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
-	if (SourceASC && !SourceASC->HasMatchingGameplayTag(HyperTag))
-	{
-		if (HyperChargeAmount > 0.0f)
+		float ChargeAmount = SourceASC->GetGameplayAttributeValue(GetSuperChargePerHitAttribute(), bFound);
+		float HyperChargeAmount = SourceASC->GetGameplayAttributeValue(GetHyperChargePerHitAttribute(), bFound);
+		
+		// 궁극기 충전
+		if (ChargeAmount > 0.0f)
+		{
+			SourceASC->ApplyModToAttributeUnsafe(GetSuperChargeAttribute(), EGameplayModOp::Additive, ChargeAmount);
+		}
+		
+		// 하이퍼차지 중이 아닐 때만 하이퍼차지 충전
+		static FGameplayTag HyperTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
+		if (!SourceASC->HasMatchingGameplayTag(HyperTag) && HyperChargeAmount > 0.0f)
 		{
 			SourceASC->ApplyModToAttributeUnsafe(GetHyperChargeAttribute(), EGameplayModOp::Additive, HyperChargeAmount);
 		}
