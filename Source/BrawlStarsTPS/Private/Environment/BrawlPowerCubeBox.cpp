@@ -8,8 +8,9 @@
 #include "GameplayEffectExtension.h"
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "Perception/AISense_Sight.h"
-#include "Environment/BrawlPowerCube.h" // 추가
+#include "Environment/BrawlPowerCube.h"
 #include "Kismet/GameplayStatics.h"
+#include "UI/BrawlHealthWidget.h" // 추가
 
 ABrawlPowerCubeBox::ABrawlPowerCubeBox()
 {
@@ -92,6 +93,18 @@ void ABrawlPowerCubeBox::BeginPlay()
 			AbilitySystemComponent->ApplyModToAttributeUnsafe(AttributeSet->GetMaxHealthAttribute(), EGameplayModOp::Override, DefaultMaxHealth);
 			// Health 설정
 			AbilitySystemComponent->ApplyModToAttributeUnsafe(AttributeSet->GetHealthAttribute(), EGameplayModOp::Override, DefaultMaxHealth);
+		}
+	}
+
+	// 체력바 위젯 초기화
+	if (HealthBarComponent)
+	{
+		// 위젯 컴포넌트가 위젯을 생성하도록 초기화
+		HealthBarComponent->InitWidget();
+		
+		if (UBrawlHealthWidget* HealthWidget = Cast<UBrawlHealthWidget>(HealthBarComponent->GetUserWidgetObject()))
+		{
+			HealthWidget->InitializeWithAbilitySystem(AbilitySystemComponent);
 		}
 	}
 }
