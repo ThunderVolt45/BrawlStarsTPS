@@ -27,6 +27,7 @@ ABrawlProjectile::ABrawlProjectile()
 	SphereComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
 	SphereComponent->SetCollisionResponseToChannel(ECC_Destructible, ECR_Block);
 	SphereComponent->SetGenerateOverlapEvents(true);
+	SphereComponent->SetCanEverAffectNavigation(false); // NavMesh에 영향 주지 않음
 	
 	// 1-2. 충돌 이벤트 바인딩
 	SphereComponent->OnComponentHit.AddDynamic(this, &ABrawlProjectile::OnHit);
@@ -36,6 +37,7 @@ ABrawlProjectile::ABrawlProjectile()
 	ProjectileMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ProjectileMesh"));
 	ProjectileMesh->SetupAttachment(SphereComponent);
 	ProjectileMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ProjectileMesh->SetCanEverAffectNavigation(false); // NavMesh에 영향 주지 않음
 
 	// 3. 이동 컴포넌트 설정
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
