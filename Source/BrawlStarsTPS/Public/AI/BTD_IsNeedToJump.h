@@ -4,22 +4,22 @@
 
 #include "CoreMinimal.h"
 #include "BehaviorTree/BTDecorator.h"
-#include "BTD_IsBlocked.generated.h"
+#include "BTD_IsNeedToJump.generated.h"
 
 /**
- * UBTD_IsBlocked
+ * UBTD_IsNeedToJump
  * 
- * 캐릭터가 이동하려는 방향에 장애물이 있는지 검사하는 데코레이터입니다.
+ * 캐릭터가 이동하려는 방향이 막혀있거나 무작위 확률로 점프가 필요한지 검사합니다.
  * - 이동 중일 때: 현재 속도(Velocity) 방향 검사
  * - 정지 상태일 때: 캐릭터 전방(Forward) 방향 검사
  */
 UCLASS()
-class BRAWLSTARSTPS_API UBTD_IsBlocked : public UBTDecorator
+class BRAWLSTARSTPS_API UBTD_IsNeedToJump : public UBTDecorator
 {
 	GENERATED_BODY()
 	
 public:
-	UBTD_IsBlocked();
+	UBTD_IsNeedToJump();
 
 	virtual bool CalculateRawConditionValue(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) const override;
 
