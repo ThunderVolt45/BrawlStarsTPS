@@ -106,7 +106,8 @@
         - [x] **Decorators:** `BTD_HasAbility` (Cooldown/Cost check), `BTD_IsObstacleDestructible` (Interface check), `BTD_IsBlocked` (Sphere Overlap).
         - [x] **Services:** `BTS_UpdateSelfStatus` (Health Ratio update to Blackboard).
 - [ ] **Game Modes:**
-    - [ ] **Showdown:** [x] Free-for-all logic (Win Check), [x] Power Cube spawning, [ ] Poison clouds.
+    - [ ] **Showdown:** [x] Free-for-all logic (Win Check), [x] Power Cube spawning, [x] Poison clouds.
+        - [ ] **Bug:** AI Brawler fails to correctly aim/rotate towards PowerCube boxes (Pitch issue).
     - [ ] **Gem Grab:** Gem spawning mine, countdown logic, team scoring.
 - [ ] **Game Specific UI:**
     - [ ] **Game Mode specific widgets:** Gem count, Players alive.

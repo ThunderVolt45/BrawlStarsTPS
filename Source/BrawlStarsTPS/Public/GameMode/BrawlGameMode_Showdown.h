@@ -50,6 +50,16 @@ protected:
 	void EndGame(bool bIsPlayerWinner);
 
 protected:
+	// 독구름(자기장) 시작
+	void StartPoisonLogic();
+
+	// 독구름 업데이트 (매 틱 또는 타이머로 호출)
+	void UpdatePoisonZone();
+
+	// 독구름 데미지 체크
+	void CheckPoisonDamage();
+
+protected:
 	// 스폰할 상자 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")
 	TSubclassOf<ABrawlPowerCubeBox> PowerCubeBoxClass;
@@ -57,6 +67,14 @@ protected:
 	// 드랍할 파워 큐브 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")
 	TSubclassOf<ABrawlPowerCube> PowerCubeClass;
+
+	// 독구름 액터 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown|Poison")
+	TSubclassOf<class ABrawlPoisonZone> PoisonZoneClass;
+
+	// 독구름 액터 인스턴스
+	UPROPERTY()
+	TObjectPtr<class ABrawlPoisonZone> PoisonZoneInstance;
 
 	// AI로 스폰할 브롤러 클래스 목록 (랜덤 선택)
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")
@@ -80,4 +98,28 @@ protected:
 
 	// AI 설정 (행동 트리 주입 등)
 	void ConfigureAI(class AController* AIController);
+
+	// 독구름 설정
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown|Poison")
+	float InitialSafeZoneRadius = 4000.0f; // 초기 안전 구역 반지름 (맵 크기에 맞게 조절)
+
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown|Poison")
+	float MinSafeZoneRadius = 300.0f; // 최소 안전 구역 반지름 (마지막 결전)
+
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown|Poison")
+	float PoisonShrinkSpeed = 50.0f; // 초당 줄어드는 반지름 크기
+
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown|Poison")
+	float PoisonDamage = 1000.0f; // 틱당 데미지
+
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown|Poison")
+	float PoisonDamageInterval = 1.0f; // 데미지 주기 (초)
+
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown|Poison")
+	float PoisonStartDelay = 5.0f; // 게임 시작 후 독구름 축소 시작 딜레이
+
+	// 내부 변수
+	float CurrentSafeZoneRadius;
+	FTimerHandle PoisonUpdateTimerHandle;
+	FTimerHandle PoisonDamageTimerHandle;
 };

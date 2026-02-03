@@ -3,14 +3,15 @@
 
 #include "GameMode/BrawlGameMode_Showdown.h"
 #include "Environment/BrawlPowerCubeBox.h"
-#include "Environment/BrawlPowerCube.h" // 추가
+#include "Environment/BrawlPowerCube.h" 
+#include "Environment/BrawlPoisonZone.h" // 추가
 #include "NavigationSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "BrawlCharacter.h"
 #include "GameMode/BrawlSpawnPoint.h"
 #include "Data/BrawlSpawnPointType.h"
-#include "AbilitySystemBlueprintLibrary.h" // 추가
-#include "BrawlAttributeSet.h" // 추가
+#include "AbilitySystemBlueprintLibrary.h" 
+#include "BrawlAttributeSet.h" 
 #include "AI/BrawlAIController.h"
 
 ABrawlGameMode_Showdown::ABrawlGameMode_Showdown()
@@ -36,7 +37,97 @@ void ABrawlGameMode_Showdown::BeginPlay()
 	AliveBrawlerCount = FoundBrawlers.Num();
 
 	UE_LOG(LogTemp, Log, TEXT("Showdown Mode Started. Alive Brawlers: %d"), AliveBrawlerCount);
+
+	// 독구름 로직 시작
+	StartPoisonLogic();
 }
+
+void ABrawlGameMode_Showdown::StartPoisonLogic()
+{
+	CurrentSafeZoneRadius = InitialSafeZoneRadius;
+
+	// 독구름 액터 스폰 (맵 중앙 0,0,0 가정)
+	if (PoisonZoneClass)
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		PoisonZoneInstance = GetWorld()->SpawnActor<ABrawlPoisonZone>(PoisonZoneClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+
+		if (PoisonZoneInstance)
+		{
+			PoisonZoneInstance->SetZoneRadius(CurrentSafeZoneRadius);
+		}
+	}
+
+	// 축소 및 데미지 타이머 설정
+	if (PoisonStartDelay > 0.0f)
+	{
+		FTimerHandle StartDelayHandle;
+		GetWorld()->GetTimerManager().SetTimer(StartDelayHandle, [this]()
+		{
+			// 0.1초마다 구역 축소 업데이트
+			GetWorld()->GetTimerManager().SetTimer(PoisonUpdateTimerHandle, this, &ABrawlGameMode_Showdown::UpdatePoisonZone, 0.1f, true);
+			
+			// 설정된 간격으로 데미지 체크
+			GetWorld()->GetTimerManager().SetTimer(PoisonDamageTimerHandle, this, &ABrawlGameMode_Showdown::CheckPoisonDamage, PoisonDamageInterval, true);
+			
+			UE_LOG(LogTemp, Log, TEXT("Poison Cloud Started Shrinking!"));
+
+		}, PoisonStartDelay, false);
+	}
+	else
+	{
+		GetWorld()->GetTimerManager().SetTimer(PoisonUpdateTimerHandle, this, &ABrawlGameMode_Showdown::UpdatePoisonZone, 0.1f, true);
+		GetWorld()->GetTimerManager().SetTimer(PoisonDamageTimerHandle, this, &ABrawlGameMode_Showdown::CheckPoisonDamage, PoisonDamageInterval, true);
+	}
+}
+
+void ABrawlGameMode_Showdown::UpdatePoisonZone()
+{
+	// 반지름 축소
+	float DeltaTime = 0.1f; // 타이머 주기와 일치시켜야 함
+	CurrentSafeZoneRadius -= PoisonShrinkSpeed * DeltaTime;
+
+	if (CurrentSafeZoneRadius < MinSafeZoneRadius)
+	{
+		CurrentSafeZoneRadius = MinSafeZoneRadius;
+		// 더 이상 줄어들지 않으면 타이머 멈출 수도 있지만, UI 업데이트 등을 위해 계속 돌릴 수도 있음.
+	}
+
+	// 비주얼 업데이트
+	if (PoisonZoneInstance)
+	{
+		PoisonZoneInstance->SetZoneRadius(CurrentSafeZoneRadius);
+	}
+}
+
+void ABrawlGameMode_Showdown::CheckPoisonDamage()
+{
+	// 모든 브롤러 검색
+	TArray<AActor*> FoundBrawlers;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlCharacter::StaticClass(), FoundBrawlers);
+
+	for (AActor* Actor : FoundBrawlers)
+	{
+		if (ABrawlCharacter* Brawler = Cast<ABrawlCharacter>(Actor))
+		{
+			if (Brawler->IsDead()) continue;
+
+			// 맵 중앙(0,0,0)으로부터의 거리 계산 (XY 평면 기준)
+			float Distance = Brawler->GetActorLocation().Size2D();
+
+			// 안전 구역 밖이라면 데미지
+			if (Distance > CurrentSafeZoneRadius)
+			{
+				UGameplayStatics::ApplyDamage(Brawler, PoisonDamage, nullptr, PoisonZoneInstance, UDamageType::StaticClass());
+				
+				// Optional: 시각적 피드백 (화면 녹색 점멸 등)
+				// Brawler->OnPoisonDamage(); 
+			}
+		}
+	}
+}
+
 
 AActor* ABrawlGameMode_Showdown::ChoosePlayerStart_Implementation(AController* Player)
 {
@@ -321,6 +412,10 @@ void ABrawlGameMode_Showdown::CheckGameEndCondition()
 
 void ABrawlGameMode_Showdown::EndGame(bool bIsPlayerWinner)
 {
+	// 타이머 정리
+	GetWorld()->GetTimerManager().ClearTimer(PoisonUpdateTimerHandle);
+	GetWorld()->GetTimerManager().ClearTimer(PoisonDamageTimerHandle);
+
 	if (bIsPlayerWinner)
 	{
 		UE_LOG(LogTemp, Log, TEXT("GAME OVER! Player WINS!"));
