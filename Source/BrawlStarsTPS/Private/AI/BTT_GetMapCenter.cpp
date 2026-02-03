@@ -21,20 +21,35 @@ EBTNodeResult::Type UBTT_GetMapCenter::ExecuteTask(UBehaviorTreeComponent& Owner
 		return EBTNodeResult::Failed;
 	}
 
-	// 기본값: (0, 0, 0)
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (!NavSys)
+	{
+		return EBTNodeResult::Failed;
+	}
+
+	// 1. 중심점 설정 및 유효성 검사
 	// TODO: 추후 쇼다운 독구름 축소 로직과 연동하여 '현재 안전 구역의 중심'을 가져오도록 수정 필요
 	FVector CenterLocation = FVector::ZeroVector;
 	FVector ResultLocation = CenterLocation;
 
-	// 반경 내 랜덤 위치 탐색
-	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
-	if (NavSys)
+	// 중심점 자체가 네비메쉬 밖에 있을 수 있으므로(벽 속 등), 가장 가까운 유효 지점으로 투영
+	FNavLocation CenterNavLoc;
+	if (NavSys->ProjectPointToNavigation(CenterLocation, CenterNavLoc, FVector(500.0f, 500.0f, 500.0f)))
 	{
-		FNavLocation RandomPt;
-		if (NavSys->GetRandomPointInNavigableRadius(CenterLocation, PatrolRadius, RandomPt))
-		{
-			ResultLocation = RandomPt.Location;
-		}
+		CenterLocation = CenterNavLoc.Location;
+	}
+
+	// 2. 도달 가능한(Reachable) 랜덤 위치 탐색
+	// GetRandomReachablePointInRadius는 중심점에서 경로가 연결된 지점만 반환합니다.
+	FNavLocation RandomPt;
+	if (NavSys->GetRandomReachablePointInRadius(CenterLocation, PatrolRadius, RandomPt))
+	{
+		ResultLocation = RandomPt.Location;
+	}
+	else
+	{
+		// 실패 시 즉시 중단
+		return EBTNodeResult::Failed;
 	}
 
 	// 블랙보드에 저장
