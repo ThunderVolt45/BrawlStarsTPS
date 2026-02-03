@@ -102,7 +102,24 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 		bool bRecovered = (HealthRatio >= Settings.ResumeCombatHealthRatio);
 		bool bSafeDistance = (Distance > Settings.MinCombatRange * 1.5f); 
 
-		if (bRecovered && bSafeDistance)
+		// [추가] 시야가 가려지면(안전하면) 도주 중단
+		bool bLineOfSight = true;
+		{
+			FVector Start = MyPawn->GetPawnViewLocation();
+			FVector End = TargetActor->GetActorLocation();
+			FHitResult HitResult;
+			FCollisionQueryParams Params;
+			Params.AddIgnoredActor(MyPawn);
+
+			bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, TraceChannel, Params);
+			if (bHit && HitResult.GetActor() != TargetActor)
+			{
+				bLineOfSight = false; // 장애물에 가려짐
+			}
+		}
+
+		// 회복되었거나, 안전 거리이거나, *시야가 가려져서 숨었으면* 도주 종료
+		if ((bRecovered && bSafeDistance) || !bLineOfSight)
 		{
 			bShouldFlee = false;
 		}

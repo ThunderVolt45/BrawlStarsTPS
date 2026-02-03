@@ -32,4 +32,8 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "AI")
 	struct FBlackboardKeySelector DistanceToTargetKey;
+
+	// 시야 검사 채널 (도주 판정 시 사용)
+	UPROPERTY(EditAnywhere, Category = "AI")
+	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 };
