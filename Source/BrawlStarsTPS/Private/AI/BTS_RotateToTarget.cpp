@@ -62,12 +62,7 @@ void UBTS_RotateToTarget::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* Nod
 	FVector TargetLocation = FVector::ZeroVector;
 	bool bTargetValid = false;
 
-	if (Blackboard->IsVectorValueSet(TargetKey.SelectedKeyName))
-	{
-		TargetLocation = Blackboard->GetValueAsVector(TargetKey.SelectedKeyName);
-		bTargetValid = true;
-	}
-	else if (UObject* KeyObject = Blackboard->GetValueAsObject(TargetKey.SelectedKeyName))
+	if (UObject* KeyObject = Blackboard->GetValueAsObject(TargetKey.SelectedKeyName))
 	{
 		if (AActor* TargetActor = Cast<AActor>(KeyObject))
 		{
@@ -102,7 +97,8 @@ void UBTS_RotateToTarget::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* Nod
 	}
 
 	// 오차가 허용 범위 이내라면 회전하지 않음 (Jitter 방지)
-	if (FMath::Abs(DeltaRot.Yaw) < Precision)
+	// Yaw와 Pitch 모두 오차 범위 이내일 때만 반환하도록 수정 (높이 차이 반영)
+	if (FMath::Abs(DeltaRot.Yaw) < Precision && FMath::Abs(DeltaRot.Pitch) < Precision)
 	{
 		return;
 	}

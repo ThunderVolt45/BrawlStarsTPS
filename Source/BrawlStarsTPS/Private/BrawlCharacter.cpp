@@ -230,7 +230,7 @@ void ABrawlCharacter::OnMovementSpeedChanged(const FOnAttributeChangeData& Data)
 void ABrawlCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	
 	// 체력바 빌보드 처리 (카메라 방향을 보게 함)
 	if (HealthBarComponent && HealthBarComponent->GetWidgetSpace() == EWidgetSpace::World)
 	{
