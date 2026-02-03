@@ -73,4 +73,11 @@ protected:
 	// 현재 생존한 브롤러 수 (플레이어 + AI)
 	UPROPERTY(VisibleInstanceOnly, Category = "Brawl|Showdown")
 	int32 AliveBrawlerCount = 0;
+
+	// 쇼다운 모드 전용 AI 행동 트리
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|AI")
+	TObjectPtr<class UBehaviorTree> ShowdownAITree;
+
+	// AI 설정 (행동 트리 주입 등)
+	void ConfigureAI(class AController* AIController);
 };

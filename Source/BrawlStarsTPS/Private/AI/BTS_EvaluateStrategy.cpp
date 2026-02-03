@@ -73,8 +73,10 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 
 	// 타겟 체력 비율 계산
 	float TargetHealthRatio = 1.0f;
+	bool bIsTargetCharacter = false;
 	if (const ABrawlCharacter* TargetBrawlChar = Cast<ABrawlCharacter>(TargetActor))
 	{
+		bIsTargetCharacter = true;
 		if (UAbilitySystemComponent* TargetASC = TargetBrawlChar->GetAbilitySystemComponent())
 		{
 			if (const UBrawlAttributeSet* TargetAttribSet = TargetASC->GetSet<UBrawlAttributeSet>())
@@ -132,8 +134,8 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 		bool bTooClose = (Distance < Settings.MinCombatRange);
 
 		// (내 체력 낮음 AND 타겟 체력 안 낮음) OR (너무 가까움)
-		// 즉, 내 체력이 낮아도 타겟 체력이 충분히 낮으면(킬각) 도주하지 않고 맞서 싸움
-		if ((bMyHealthIsLow && !bTargetIsLow) || bTooClose)
+		// 단, 타겟이 캐릭터일 때만 도주 (상자는 위협이 아님)
+		if (bIsTargetCharacter && ((bMyHealthIsLow && !bTargetIsLow) || bTooClose))
 		{
 			bShouldFlee = true;
 			NewStrategy = EBrawlAIStrategy::Flee;

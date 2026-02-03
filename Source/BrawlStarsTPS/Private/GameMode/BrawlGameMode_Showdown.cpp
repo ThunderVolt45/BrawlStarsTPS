@@ -7,12 +7,11 @@
 #include "NavigationSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "BrawlCharacter.h"
-#include "AIController.h"
 #include "GameMode/BrawlSpawnPoint.h"
 #include "Data/BrawlSpawnPointType.h"
-#include "GameFramework/PlayerStart.h"
 #include "AbilitySystemBlueprintLibrary.h" // 추가
 #include "BrawlAttributeSet.h" // 추가
+#include "AI/BrawlAIController.h"
 
 ABrawlGameMode_Showdown::ABrawlGameMode_Showdown()
 {
@@ -142,6 +141,9 @@ void ABrawlGameMode_Showdown::SpawnBots()
 								// 컨트롤러가 안 되면 폰에 직접 설정 시도
 								PawnTeamAgent->SetGenericTeamId(FGenericTeamId(CurrentTeamID));
 							}
+
+							// AI 설정 (트리 주입)
+							ConfigureAI(BotController);
 						}
 
 						CurrentTeamID++;
@@ -153,6 +155,17 @@ void ABrawlGameMode_Showdown::SpawnBots()
 	}
 	
 	UE_LOG(LogTemp, Log, TEXT("Spawned %d Bots."), SpawnedBots);
+}
+
+void ABrawlGameMode_Showdown::ConfigureAI(AController* AIController)
+{
+	if (ABrawlAIController* BrawlAI = Cast<ABrawlAIController>(AIController))
+	{
+		if (ShowdownAITree)
+		{
+			BrawlAI->InjectGameModeSubtree(ShowdownAITree);
+		}
+	}
 }
 
 void ABrawlGameMode_Showdown::NotifyKill(AActor* Killer, AActor* Victim)
