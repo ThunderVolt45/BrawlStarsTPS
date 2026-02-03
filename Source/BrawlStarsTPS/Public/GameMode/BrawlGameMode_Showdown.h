@@ -33,6 +33,10 @@ public:
 	// 처치 발생 시 호출 (부모 클래스 오버라이드)
 	virtual void NotifyKill(AActor* Killer, AActor* Victim) override;
 
+	// 현재 생존 브롤러 수 반환
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Showdown")
+	int32 GetAliveBrawlerCount() const { return AliveBrawlerCount; }
+
 protected:
 	// 파워 큐브 상자 스폰 로직
 	void SpawnPowerCubeBoxes();

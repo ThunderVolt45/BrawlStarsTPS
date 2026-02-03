@@ -12,6 +12,7 @@
 #include "Data/BrawlSpawnPointType.h"
 #include "AbilitySystemBlueprintLibrary.h" 
 #include "BrawlAttributeSet.h" 
+#include "BrawlGameState.h"
 #include "AI/BrawlAIController.h"
 
 ABrawlGameMode_Showdown::ABrawlGameMode_Showdown()
@@ -37,6 +38,12 @@ void ABrawlGameMode_Showdown::BeginPlay()
 	AliveBrawlerCount = FoundBrawlers.Num();
 
 	UE_LOG(LogTemp, Log, TEXT("Showdown Mode Started. Alive Brawlers: %d"), AliveBrawlerCount);
+
+	// GameState 동기화
+	if (ABrawlGameState* BrawlGameState = GetGameState<ABrawlGameState>())
+	{
+		BrawlGameState->SetAliveBrawlerCount(AliveBrawlerCount);
+	}
 
 	// 독구름 로직 시작
 	StartPoisonLogic();
@@ -291,6 +298,12 @@ void ABrawlGameMode_Showdown::NotifyKill(AActor* Killer, AActor* Victim)
 
 	// 생존자 수 감소
 	AliveBrawlerCount--;
+	
+	// GameState 동기화
+	if (ABrawlGameState* BrawlGameState = GetGameState<ABrawlGameState>())
+	{
+		BrawlGameState->SetAliveBrawlerCount(AliveBrawlerCount);
+	}
 	
 	UE_LOG(LogTemp, Log, TEXT("Brawler Killed. Alive Brawlers: %d"), AliveBrawlerCount);
 

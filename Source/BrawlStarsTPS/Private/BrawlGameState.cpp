@@ -2,10 +2,26 @@
 
 
 #include "BrawlGameState.h"
+#include "Net/UnrealNetwork.h"
 
 void ABrawlGameState::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void ABrawlGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABrawlGameState, AliveBrawlerCount);
+}
+
+void ABrawlGameState::SetAliveBrawlerCount(int32 Count)
+{
+	if (HasAuthority())
+	{
+		AliveBrawlerCount = Count;
+	}
 }
 
 void ABrawlGameState::NotifyBrawlerKilled(AActor* Killer, AActor* Victim)

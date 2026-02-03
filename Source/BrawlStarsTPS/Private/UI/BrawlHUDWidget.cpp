@@ -12,6 +12,8 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "GameFramework/GameStateBase.h"
+#include "Components/PanelWidget.h"
+#include "GameFramework/GameModeBase.h"
 
 void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 {
@@ -76,6 +78,9 @@ void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 		HyperWidget->SetPercent(HyperCharge / MaxHyperCharge);
 		HyperWidget->SetIsReady(HyperCharge >= MaxHyperCharge);
 	}
+
+	// 게임 모드별 위젯 초기화
+	InitializeGameModeWidget();
 }
 
 void UBrawlHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -301,3 +306,44 @@ void UBrawlHUDWidget::OnMaxHyperChargeChanged(const FOnAttributeChangeData& Data
 		}
 	}
 }
+void UBrawlHUDWidget::InitializeGameModeWidget()
+{
+	if (ActiveGameModeWidget) return;
+
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	AGameStateBase* GameState = World->GetGameState();
+	if (!GameState) return;
+
+	TSubclassOf<AGameModeBase> CurrentGameModeClass = GameState->GameModeClass;
+	if (!CurrentGameModeClass) return;
+
+	TSubclassOf<UUserWidget> WidgetClassToSpawn = nullptr;
+
+	for (const auto& Pair : GameModeSpecificWidgets)
+	{
+		if (Pair.Key && CurrentGameModeClass->IsChildOf(Pair.Key))
+		{
+			WidgetClassToSpawn = Pair.Value;
+			break;
+		}
+	}
+
+	if (WidgetClassToSpawn)
+	{
+		ActiveGameModeWidget = CreateWidget<UUserWidget>(GetOwningPlayer(), WidgetClassToSpawn);
+		if (ActiveGameModeWidget)
+		{
+			if (GameModeWidgetContainer)
+			{
+				GameModeWidgetContainer->AddChild(ActiveGameModeWidget);
+			}
+			else
+			{
+				ActiveGameModeWidget->AddToViewport();
+			}
+		}
+	}
+}
+
