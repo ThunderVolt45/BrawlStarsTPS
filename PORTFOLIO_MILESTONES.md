@@ -110,7 +110,7 @@
         - [ ] **Bug:** AI Brawler fails to correctly aim/rotate towards PowerCube boxes (Pitch issue).
     - [ ] **Gem Grab:** Gem spawning mine, countdown logic, team scoring.
 - [ ] **Game Specific UI:**
-    - [ ] **Game Mode specific widgets:** Gem count, Players alive.
+    - [x] **Game Mode specific widgets:** Gem count, Players alive.
     - [ ] **Screens:** Death and Victory screens.
 
 ## Phase 5: Polish & Multiplayer (Bonus)

@@ -31,6 +31,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Jump")
 	float JumpForwardSpeed = 500.0f;
 
+	// 점프 전진 속도를 랜덤하게 설정할지 여부
+	UPROPERTY(EditAnywhere, Category = "Jump")
+	bool bRandomizeForwardSpeed = false;
+
+	// 최소 점프 전진 속도
+	UPROPERTY(EditAnywhere, Category = "Jump", meta = (EditCondition = "bRandomizeForwardSpeed"))
+	float JumpForwardSpeedMin = 300.0f;
+
+	// 최대 점프 전진 속도
+	UPROPERTY(EditAnywhere, Category = "Jump", meta = (EditCondition = "bRandomizeForwardSpeed"))
+	float JumpForwardSpeedMax = 700.0f;
+
 	// 타겟 반대 방향으로 점프할지 여부
 	UPROPERTY(EditAnywhere, Category = "Jump")
 	bool bJumpAway = false;
