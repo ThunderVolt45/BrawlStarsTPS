@@ -24,7 +24,8 @@ public class BrawlStarsTPS : ModuleRules
 			"GameplayTasks",
 			"GeometryCollectionEngine",
 			"ChaosSolverEngine",
-			"NavigationSystem"
+			"NavigationSystem",
+			"Niagara"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

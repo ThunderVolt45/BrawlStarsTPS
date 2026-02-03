@@ -113,16 +113,39 @@ void ABrawlGameMode_Showdown::CheckPoisonDamage()
 		{
 			if (Brawler->IsDead()) continue;
 
-			// 맵 중앙(0,0,0)으로부터의 거리 계산 (XY 평면 기준)
-			float Distance = Brawler->GetActorLocation().Size2D();
-
-			// 안전 구역 밖이라면 데미지
-			if (Distance > CurrentSafeZoneRadius)
+			// 맵 중앙(0,0,0) 기준 사각형 범위 체크
+			// 원작 브롤스타즈처럼 사각형으로 좁혀오게 하기 위해 X, Y 좌표 각각 비교
+			FVector Loc = Brawler->GetActorLocation();
+			float DistX = FMath::Abs(Loc.X);
+			float DistY = FMath::Abs(Loc.Y);
+			
+			if (!PoisonDamageEffectClass)
 			{
-				UGameplayStatics::ApplyDamage(Brawler, PoisonDamage, nullptr, PoisonZoneInstance, UDamageType::StaticClass());
-				
-				// Optional: 시각적 피드백 (화면 녹색 점멸 등)
-				// Brawler->OnPoisonDamage(); 
+				UE_LOG(LogTemp, Warning, TEXT("BrawlGameMode_Showdown: PoisonDamageEffectClass is null!"));
+				return;
+			}
+
+			// 안전 구역(Half-Extent) 밖이라면 데미지
+			if (DistX > CurrentSafeZoneRadius || DistY > CurrentSafeZoneRadius)
+			{
+				// GAS를 통한 데미지 적용
+				if (UAbilitySystemComponent* ASC = Brawler->GetAbilitySystemComponent())
+				{
+					FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+					ContextHandle.AddInstigator(PoisonZoneInstance, PoisonZoneInstance); // Instigator를 독구름으로 설정
+
+					FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+						PoisonDamageEffectClass, 1.0f, ContextHandle);
+					if (SpecHandle.IsValid())
+					{
+						// SetByCaller로 데미지 값 전달 (Tag: Data.Damage)
+						// GE_Poison 블루프린트에서 IncomingDamage의 Magnitude를 SetByCaller(Data.Damage)로 설정해야 함
+						SpecHandle.Data.Get()->SetSetByCallerMagnitude(
+							FGameplayTag::RequestGameplayTag(FName("Data.Damage")), PoisonDamage);
+
+						ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+					}
+				}
 			}
 		}
 	}

@@ -76,6 +76,11 @@ protected:
 	UPROPERTY()
 	TObjectPtr<class ABrawlPoisonZone> PoisonZoneInstance;
 
+	// 독구름 데미지 이펙트 (GE_Poison)
+	// SetByCaller로 데미지 량을 전달받을 수 있도록 구성된 GE 클래스를 할당해야 합니다.
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown|Poison")
+	TSubclassOf<class UGameplayEffect> PoisonDamageEffectClass;
+
 	// AI로 스폰할 브롤러 클래스 목록 (랜덤 선택)
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")
 	TArray<TSubclassOf<class ABrawlCharacter>> AICharacterClasses;
