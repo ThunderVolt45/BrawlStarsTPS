@@ -13,6 +13,7 @@ class UBrawlSkillWidget;
 class UBrawlGadgetWidget;
 class UBrawlSuperWidget;
 class UBrawlHyperWidget;
+class UPanelWidget; // 추가
 
 // 값이 변경되었을 때 블루프린트로 쏴줄 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAttributeChangedSignature, float, NewValue);
@@ -21,7 +22,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAttributeChangedSignature, float,
  * UBrawlHUDWidget
  * 
  * 메인 HUD 위젯 클래스입니다.
- * 캐릭터의 체력, 탄환, 궁극기 게이지 등의 변화를 감지하고 이벤트를 발생시킵니다.
+ * 캐릭터의 사용자의 체력, 탄환, 궁극기 게이지 등의 변화를 감지하고 이벤트를 발생시킵니다.
  */
 UCLASS()
 class BRAWLSTARSTPS_API UBrawlHUDWidget : public UBrawlUserWidget
@@ -32,6 +33,10 @@ public:
 	// 위젯 초기화 및 GAS 델리게이트 바인딩
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void BindAttributeCallbacks(class UAbilitySystemComponent* ASC);
+
+	// 게임 모드별 전용 위젯 초기화
+	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
+	void InitializeGameModeWidget();
 
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
@@ -76,6 +81,10 @@ public:
 	// 게임 남은 시간 (분:초)
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UTextBlock> MatchTimerText;
+
+	// 게임 모드별 추가 위젯을 담을 컨테이너 (CanvasPanel, Overlay 등)
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UPanelWidget> GameModeWidgetContainer;
 	
 	// 블루프린트에서 바인딩할 이벤트들
 	UPROPERTY(BlueprintAssignable, Category = "Brawl|UI|Attributes")
@@ -104,4 +113,12 @@ public:
 
 protected:
 	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
+
+	// 게임 모드 클래스별 위젯 클래스 매핑
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
+	TMap<TSubclassOf<class AGameModeBase>, TSubclassOf<UUserWidget>> GameModeSpecificWidgets;
+
+	// 현재 활성화된 게임 모드 위젯
+	UPROPERTY()
+	TObjectPtr<UUserWidget> ActiveGameModeWidget;
 };

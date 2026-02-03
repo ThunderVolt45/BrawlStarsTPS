@@ -52,6 +52,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "AI")
 	float MaxMoveDuration = 3.0f;
 
+	// 시야 확인 여부 (True일 경우 시야가 가려지면 거리와 상관없이 접근)
+	UPROPERTY(EditAnywhere, Category = "AI|LineOfSight")
+	bool bCheckLineOfSight = true;
+
+	// 시야 트레이스 채널
+	UPROPERTY(EditAnywhere, Category = "AI|LineOfSight")
+	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
+
 private:
 	// 다음 스트레이핑 이동 시간
 	float NextStrafeTime = 0.0f;

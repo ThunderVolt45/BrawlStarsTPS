@@ -46,6 +46,10 @@ protected:
 	// 서브 행동 트리 주입 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	FGameplayTag CombatSubtreeTag = FGameplayTag::RequestGameplayTag(FName("AI.Subtree.Combat"));
+
+	// 게임 모드 서브 행동 트리 주입 태그 (Showdown 등)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
+	FGameplayTag GameModeSubtreeTag = FGameplayTag::RequestGameplayTag(FName("AI.Subtree.GameMode"));
 	
 	// 목표 강제 망각 시간
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
@@ -64,6 +68,10 @@ private:
 	// Key: Enemy Actor, Value: Forget Timer Handle
 	UPROPERTY()
 	TMap<AActor*, FTimerHandle> DetectedEnemies;
+
+	// 감지된 아이템 목록 (파워 큐브 등)
+	UPROPERTY()
+	TMap<AActor*, FTimerHandle> DetectedItems;
 	
 public:
 	// 팀 ID 반환 (Pawn의 TeamID를 따라감)
@@ -92,4 +100,12 @@ private:
 
 	// 최적의 타겟 선정 함수
 	AActor* SelectBestTarget();
+	AActor* SelectBestItem();
+
+public:
+	// 감지된 아이템 존재 여부 확인
+	bool HasDetectedItems() const { return DetectedItems.Num() > 0; }
+
+	// 외부(GameMode)에서 서브 행동 트리 주입
+	void InjectGameModeSubtree(class UBehaviorTree* Subtree);
 };

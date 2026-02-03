@@ -106,7 +106,7 @@ void UBrawlGameplayAbility_AutoHeal::EnterCombatState()
 	UWorld* World = GetWorld();
 	check(World);
 	
-	UE_LOG(LogTemp, Warning, TEXT("AutoHeal: Actor %s EnterCombatState! Auto Heal Halted!"), *GetAvatarActorFromActorInfo()->GetName());
+	// UE_LOG(LogTemp, Warning, TEXT("AutoHeal: Actor %s EnterCombatState! Auto Heal Halted!"), *GetAvatarActorFromActorInfo()->GetName());
 
 	// 회복 중단
 	World->GetTimerManager().ClearTimer(TimerHandle_TickHeal);
@@ -120,7 +120,7 @@ void UBrawlGameplayAbility_AutoHeal::StartHealing()
 	UWorld* World = GetWorld();
 	check(World);
 	
-	UE_LOG(LogTemp, Warning, TEXT("AutoHeal: Actor %s ExitCombatState! Auto Heal Started!"), *GetAvatarActorFromActorInfo()->GetName());
+	// UE_LOG(LogTemp, Warning, TEXT("AutoHeal: Actor %s ExitCombatState! Auto Heal Started!"), *GetAvatarActorFromActorInfo()->GetName());
 
 	// 회복 틱 시작
 	World->GetTimerManager().SetTimer(TimerHandle_TickHeal, this, &UBrawlGameplayAbility_AutoHeal::TickHealing, HealInterval, true);
@@ -134,7 +134,7 @@ void UBrawlGameplayAbility_AutoHeal::TickHealing()
 	ABrawlCharacter* MyCharacter = Cast<ABrawlCharacter>(GetAvatarActorFromActorInfo());
 	if (!MyCharacter || MyCharacter->IsDead())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AutoHeal: Actor %s Is Dead! Auto Heal Halted!"), *MyCharacter->GetName());
+		// UE_LOG(LogTemp, Warning, TEXT("AutoHeal: Actor %s Is Dead! Auto Heal Halted!"), *MyCharacter->GetName());
 		
 		// 사망했거나 캐릭터가 유효하지 않으면 회복 중단
 		if (UWorld* World = GetWorld())

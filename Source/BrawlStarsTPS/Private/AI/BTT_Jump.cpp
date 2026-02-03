@@ -36,7 +36,8 @@ EBTNodeResult::Type UBTT_Jump::ExecuteTask(UBehaviorTreeComponent& OwnerComp, ui
 	FVector JumpDir = GetJumpDirection(OwnerComp, MyCharacter);
 
 	// 2. 최종 발사 벡터 계산
-	FVector LaunchVelocity = (JumpDir * JumpForwardSpeed) + FVector(0.0f, 0.0f, JumpZ);
+	float FinalForwardSpeed = bRandomizeForwardSpeed ? FMath::FRandRange(JumpForwardSpeedMin, JumpForwardSpeedMax) : JumpForwardSpeed;
+	FVector LaunchVelocity = (JumpDir * FinalForwardSpeed) + FVector(0.0f, 0.0f, JumpZ);
 
 	// 3. 캐릭터 발사 (Launch)
 	MyCharacter->LaunchCharacter(LaunchVelocity, true, false);

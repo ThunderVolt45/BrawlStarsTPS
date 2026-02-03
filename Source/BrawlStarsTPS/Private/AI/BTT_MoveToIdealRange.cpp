@@ -59,9 +59,43 @@ void UBTT_MoveToIdealRange::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 	FVector MyLoc = MyPawn->GetActorLocation();
 	FVector TargetLoc = TargetActor->GetActorLocation();
 
+	// 0. 시야 확인 (옵션)
+	bool bHasLoS = true;
+	if (bCheckLineOfSight)
+	{
+		FVector StartLocation = MyPawn->GetPawnViewLocation();
+		
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(MyPawn);
+
+		FHitResult HitResult;
+		bool bHit = GetWorld()->LineTraceSingleByChannel(
+			HitResult,
+			StartLocation,
+			TargetLoc,
+			TraceChannel,
+			Params
+		);
+
+		if (bHit && HitResult.GetActor() != TargetActor)
+		{
+			bHasLoS = false;
+		}
+	}
+
 	// 2. 이동 로직 결정
-	// A. 너무 가까움 -> 후퇴 (Retreat)
-	if (Distance < PreferredRange - AcceptanceRadius)
+	
+	// A. 시야가 가려짐 -> 무조건 접근 (Move to see)
+	if (!bHasLoS)
+	{
+		FAIMoveRequest MoveReq;
+		MoveReq.SetGoalActor(TargetActor);
+		MoveReq.SetAcceptanceRadius(50.0f); // 최대한 가까이 가서 시야 확보 시도
+		
+		AIController->MoveTo(MoveReq);
+	}
+	// B. 너무 가까움 -> 후퇴 (Retreat)
+	else if (Distance < PreferredRange - AcceptanceRadius)
 	{
 		// 타겟 반대 방향 벡터
 		FVector DirToMe = (MyLoc - TargetLoc).GetSafeNormal();

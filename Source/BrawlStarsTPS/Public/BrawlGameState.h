@@ -28,6 +28,19 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastOnBrawlerKilled(AActor* Killer, AActor* Victim);
 
+	// 생존자 수 설정 (서버만 호출)
+	void SetAliveBrawlerCount(int32 Count);
+
+	// 생존자 수 반환
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Game")
+	int32 GetAliveBrawlerCount() const { return AliveBrawlerCount; }
+
 protected:
 	virtual void BeginPlay() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+protected:
+	// 현재 생존한 브롤러 수 (Replicated)
+	UPROPERTY(Replicated, VisibleInstanceOnly, Category = "Brawl|Game")
+	int32 AliveBrawlerCount = 0;
 };

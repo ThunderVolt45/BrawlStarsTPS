@@ -3,6 +3,7 @@
 
 #include "AI/BrawlAIController.h"
 #include "BrawlCharacter.h"
+#include "Environment/BrawlPowerCube.h"
 #include "TimerManager.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -77,6 +78,16 @@ void ABrawlAIController::OnPossess(APawn* InPawn)
 					}
 					
 					BehaviorTreeComponent->SetDynamicSubtree(CombatSubtreeTag, CombatTree);
+				}
+			}
+
+			// 게임 모드별 트리 주입 (블랙보드에 GameModeTree가 설정되어 있다면)
+			if (UBehaviorTree* GameModeTree = Cast<UBehaviorTree>(BlackboardComponent->GetValueAsObject(FName("GameModeTree"))))
+			{
+				if (GameModeSubtreeTag.IsValid())
+				{
+					BehaviorTreeComponent->SetDynamicSubtree(GameModeSubtreeTag, GameModeTree);
+					UE_LOG(LogTemp, Log, TEXT("AI [%s] Set Dynamic Subtree [AI.Subtree.GameMode]: %s"), *GetName(), *GameModeTree->GetName());
 				}
 			}
 		}
@@ -210,9 +221,19 @@ void ABrawlAIController::Tick(float DeltaTime)
 			SetFocus(BestTarget);
 		}
 	}
-}
 
-AActor* ABrawlAIController::SelectBestTarget()
+		// 4. 아이템 목록 관리 및 최적 아이템 선정
+		if (DetectedItems.Num() > 0)
+		{
+			AActor* BestItem = SelectBestItem();
+			if (BestItem)
+			{
+				// 아이템이 있으면 위치 업데이트 (TargetItem 객체 키는 사용하지 않음)
+				BlackboardComponent->SetValueAsVector(FName("TargetLocation"), BestItem->GetActorLocation());
+			}
+		}
+	}
+	AActor* ABrawlAIController::SelectBestTarget()
 {
 	APawn* MyPawn = GetPawn();
 	if (!MyPawn) return nullptr;
@@ -249,6 +270,13 @@ AActor* ABrawlAIController::SelectBestTarget()
 		float DistanceScore = FMath::Clamp(1.0f - (Distance / 2000.0f), 0.0f, 1.0f) * 100.0f;
 		float MaintainScore = (Enemy == CurrentTarget) ? 20.0f : 0.0f;
 
+		// [추가] 캐릭터 우선순위 점수 (플레이어를 상자보다 훨씬 우선시)
+		float PriorityScore = 0.0f;
+		if (Enemy->IsA<ABrawlCharacter>())
+		{
+			PriorityScore = 500.0f; 
+		}
+
 		// 타겟의 체력 점수
 		float HealthScore = 0.0f;
 		if (IAbilitySystemInterface* ASCInterface = Cast<IAbilitySystemInterface>(Enemy))
@@ -267,7 +295,7 @@ AActor* ABrawlAIController::SelectBestTarget()
 			}
 		}
 
-		float TotalScore = DistanceScore + MaintainScore + HealthScore;
+		float TotalScore = DistanceScore + MaintainScore + HealthScore + PriorityScore;
 		
 		if (TotalScore > BestScore)
 		{
@@ -282,6 +310,39 @@ AActor* ABrawlAIController::SelectBestTarget()
 void ABrawlAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 {
 	if (!Actor || !Actor->IsValidLowLevel()) return;
+	
+	FTimerManager& TimerManager = GetWorld()->GetTimerManager();
+
+	// 0. 아이템(파워 큐브) 감지 처리
+	if (ABrawlPowerCube* PowerCube = Cast<ABrawlPowerCube>(Actor))
+	{
+		if (Stimulus.Type == UAISense::GetSenseID<UAISense_Sight>())
+		{
+			if (Stimulus.WasSuccessfullySensed())
+			{
+				if (!DetectedItems.Contains(Actor))
+				{
+					DetectedItems.Add(Actor, FTimerHandle());
+				}
+				if (DetectedItems[Actor].IsValid())
+				{
+					TimerManager.ClearTimer(DetectedItems[Actor]);
+				}
+			}
+			else
+			{
+				if (DetectedItems.Contains(Actor))
+				{
+					TimerManager.ClearTimer(DetectedItems[Actor]);
+					FTimerDelegate TimerDel;
+					TimerDel.BindUObject(this, &ABrawlAIController::ForceForgetTarget, Actor); // 재사용
+					TimerManager.SetTimer(DetectedItems[Actor], TimerDel, TimeToForgetTarget, false);
+				}
+			}
+		}
+		return; // 아이템은 적으로 처리하지 않음
+	}
+
 	if (GetTeamAttitudeTowards(*Actor) == ETeamAttitude::Friendly) return;
 
 	// 논리적 시야 확인 (물리적으로 보여도, 수풀 속에 숨어있으면 무시)
@@ -293,8 +354,6 @@ void ABrawlAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 			return;
 		}
 	}
-
-	FTimerManager& TimerManager = GetWorld()->GetTimerManager();
 
 	// 1. 피격 감지 (Damage)
 	if (Stimulus.Type == UAISense::GetSenseID<UAISense_Damage>())
@@ -396,20 +455,28 @@ void ABrawlAIController::OnTargetForgotten(AActor* Actor)
 
 void ABrawlAIController::ForceForgetTarget(AActor* TargetToForget)
 {
-	// 타이머 만료로 인한 강제 망각
+	FTimerManager& TimerManager = GetWorld()->GetTimerManager();
+
+	// 적 목록에서 제거
 	if (DetectedEnemies.Contains(TargetToForget))
 	{
-		// 맵에서 제거 (타이머 핸들은 이미 만료되었으므로 Clear 불필요하지만 안전하게)
-		GetWorld()->GetTimerManager().ClearTimer(DetectedEnemies[TargetToForget]);
+		TimerManager.ClearTimer(DetectedEnemies[TargetToForget]);
 		DetectedEnemies.Remove(TargetToForget);
-		
-		UE_LOG(LogTemp, Log, TEXT("AI [%s] Force Forgot [%s] (Timer Expired)."), *GetName(), *TargetToForget->GetName());
+		UE_LOG(LogTemp, Log, TEXT("AI [%s] Force Forgot Enemy [%s]."), *GetName(), *TargetToForget->GetName());
+	}
+	
+	// 아이템 목록에서 제거
+	if (DetectedItems.Contains(TargetToForget))
+	{
+		TimerManager.ClearTimer(DetectedItems[TargetToForget]);
+		DetectedItems.Remove(TargetToForget);
+		UE_LOG(LogTemp, Log, TEXT("AI [%s] Force Forgot Item [%s]."), *GetName(), *TargetToForget->GetName());
 	}
 
+	// 타겟 업데이트 (적)
 	AActor* CurrentTarget = Cast<AActor>(BlackboardComponent->GetValueAsObject(FName("TargetActor")));
 	if (CurrentTarget == TargetToForget)
 	{
-		// 현재 타겟을 잊었다면 다른 타겟 찾기
 		if (DetectedEnemies.Num() > 0)
 		{
 			AActor* NextBest = SelectBestTarget();
@@ -420,9 +487,18 @@ void ABrawlAIController::ForceForgetTarget(AActor* TargetToForget)
 				return;
 			}
 		}
-
 		UpdateTargetInBlackboard(nullptr);
 		SetFocus(nullptr);
+	}
+
+	// 타겟 업데이트 (아이템) - 무조건 갱신 시도
+	if (DetectedItems.Num() > 0)
+	{
+		AActor* NextBestItem = SelectBestItem();
+		if (NextBestItem)
+		{
+			BlackboardComponent->SetValueAsVector(FName("TargetLocation"), NextBestItem->GetActorLocation());
+		}
 	}
 }
 
@@ -431,5 +507,52 @@ void ABrawlAIController::UpdateTargetInBlackboard(AActor* TargetActor)
 	if (BlackboardComponent)
 	{
 		BlackboardComponent->SetValueAsObject(FName("TargetActor"), TargetActor);
+	}
+}
+
+AActor* ABrawlAIController::SelectBestItem()
+{
+	APawn* MyPawn = GetPawn();
+	if (!MyPawn) return nullptr;
+
+	AActor* BestItem = nullptr;
+	float MinDistanceSq = FLT_MAX;
+
+	for (auto It = DetectedItems.CreateIterator(); It; ++It)
+	{
+		AActor* Item = It->Key;
+
+		// 유효하지 않거나 이미 파괴된 아이템 제거
+		if (!Item || !Item->IsValidLowLevel() || Item->IsActorBeingDestroyed())
+		{
+			GetWorld()->GetTimerManager().ClearTimer(It->Value);
+			It.RemoveCurrent();
+			continue;
+		}
+
+		float DistSq = MyPawn->GetSquaredDistanceTo(Item);
+		if (DistSq < MinDistanceSq)
+		{
+			MinDistanceSq = DistSq;
+			BestItem = Item;
+		}
+	}
+
+	return BestItem;
+}
+
+void ABrawlAIController::InjectGameModeSubtree(UBehaviorTree* Subtree)
+{
+	if (!Subtree) return;
+	if (!BehaviorTreeComponent || !BlackboardComponent) return;
+
+	// 1. 블랙보드에 저장 (참조용)
+	BlackboardComponent->SetValueAsObject(FName("GameModeTree"), Subtree);
+
+	// 2. 동적 서브트리 주입
+	if (GameModeSubtreeTag.IsValid())
+	{
+		BehaviorTreeComponent->SetDynamicSubtree(GameModeSubtreeTag, Subtree);
+		UE_LOG(LogTemp, Log, TEXT("AI [%s] Injected GameMode Subtree: %s"), *GetName(), *Subtree->GetName());
 	}
 }

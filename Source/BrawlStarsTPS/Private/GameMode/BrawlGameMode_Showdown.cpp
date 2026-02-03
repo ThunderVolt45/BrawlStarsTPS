@@ -3,16 +3,17 @@
 
 #include "GameMode/BrawlGameMode_Showdown.h"
 #include "Environment/BrawlPowerCubeBox.h"
-#include "Environment/BrawlPowerCube.h" // 추가
+#include "Environment/BrawlPowerCube.h" 
+#include "Environment/BrawlPoisonZone.h" // 추가
 #include "NavigationSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "BrawlCharacter.h"
-#include "AIController.h"
 #include "GameMode/BrawlSpawnPoint.h"
 #include "Data/BrawlSpawnPointType.h"
-#include "GameFramework/PlayerStart.h"
-#include "AbilitySystemBlueprintLibrary.h" // 추가
-#include "BrawlAttributeSet.h" // 추가
+#include "AbilitySystemBlueprintLibrary.h" 
+#include "BrawlAttributeSet.h" 
+#include "BrawlGameState.h"
+#include "AI/BrawlAIController.h"
 
 ABrawlGameMode_Showdown::ABrawlGameMode_Showdown()
 {
@@ -37,7 +38,126 @@ void ABrawlGameMode_Showdown::BeginPlay()
 	AliveBrawlerCount = FoundBrawlers.Num();
 
 	UE_LOG(LogTemp, Log, TEXT("Showdown Mode Started. Alive Brawlers: %d"), AliveBrawlerCount);
+
+	// GameState 동기화
+	if (ABrawlGameState* BrawlGameState = GetGameState<ABrawlGameState>())
+	{
+		BrawlGameState->SetAliveBrawlerCount(AliveBrawlerCount);
+	}
+
+	// 독구름 로직 시작
+	StartPoisonLogic();
 }
+
+void ABrawlGameMode_Showdown::StartPoisonLogic()
+{
+	CurrentSafeZoneRadius = InitialSafeZoneRadius;
+
+	// 독구름 액터 스폰 (맵 중앙 0,0,0 가정)
+	if (PoisonZoneClass)
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		PoisonZoneInstance = GetWorld()->SpawnActor<ABrawlPoisonZone>(PoisonZoneClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+
+		if (PoisonZoneInstance)
+		{
+			PoisonZoneInstance->SetZoneRadius(CurrentSafeZoneRadius);
+		}
+	}
+
+	// 축소 및 데미지 타이머 설정
+	if (PoisonStartDelay > 0.0f)
+	{
+		FTimerHandle StartDelayHandle;
+		GetWorld()->GetTimerManager().SetTimer(StartDelayHandle, [this]()
+		{
+			// 0.1초마다 구역 축소 업데이트
+			GetWorld()->GetTimerManager().SetTimer(PoisonUpdateTimerHandle, this, &ABrawlGameMode_Showdown::UpdatePoisonZone, 0.1f, true);
+			
+			// 설정된 간격으로 데미지 체크
+			GetWorld()->GetTimerManager().SetTimer(PoisonDamageTimerHandle, this, &ABrawlGameMode_Showdown::CheckPoisonDamage, PoisonDamageInterval, true);
+			
+			UE_LOG(LogTemp, Log, TEXT("Poison Cloud Started Shrinking!"));
+
+		}, PoisonStartDelay, false);
+	}
+	else
+	{
+		GetWorld()->GetTimerManager().SetTimer(PoisonUpdateTimerHandle, this, &ABrawlGameMode_Showdown::UpdatePoisonZone, 0.1f, true);
+		GetWorld()->GetTimerManager().SetTimer(PoisonDamageTimerHandle, this, &ABrawlGameMode_Showdown::CheckPoisonDamage, PoisonDamageInterval, true);
+	}
+}
+
+void ABrawlGameMode_Showdown::UpdatePoisonZone()
+{
+	// 반지름 축소
+	float DeltaTime = 0.1f; // 타이머 주기와 일치시켜야 함
+	CurrentSafeZoneRadius -= PoisonShrinkSpeed * DeltaTime;
+
+	if (CurrentSafeZoneRadius < MinSafeZoneRadius)
+	{
+		CurrentSafeZoneRadius = MinSafeZoneRadius;
+		// 더 이상 줄어들지 않으면 타이머 멈출 수도 있지만, UI 업데이트 등을 위해 계속 돌릴 수도 있음.
+	}
+
+	// 비주얼 업데이트
+	if (PoisonZoneInstance)
+	{
+		PoisonZoneInstance->SetZoneRadius(CurrentSafeZoneRadius);
+	}
+}
+
+void ABrawlGameMode_Showdown::CheckPoisonDamage()
+{
+	// 모든 브롤러 검색
+	TArray<AActor*> FoundBrawlers;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlCharacter::StaticClass(), FoundBrawlers);
+
+	for (AActor* Actor : FoundBrawlers)
+	{
+		if (ABrawlCharacter* Brawler = Cast<ABrawlCharacter>(Actor))
+		{
+			if (Brawler->IsDead()) continue;
+
+			// 맵 중앙(0,0,0) 기준 사각형 범위 체크
+			// 원작 브롤스타즈처럼 사각형으로 좁혀오게 하기 위해 X, Y 좌표 각각 비교
+			FVector Loc = Brawler->GetActorLocation();
+			float DistX = FMath::Abs(Loc.X);
+			float DistY = FMath::Abs(Loc.Y);
+			
+			if (!PoisonDamageEffectClass)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("BrawlGameMode_Showdown: PoisonDamageEffectClass is null!"));
+				return;
+			}
+
+			// 안전 구역(Half-Extent) 밖이라면 데미지
+			if (DistX > CurrentSafeZoneRadius || DistY > CurrentSafeZoneRadius)
+			{
+				// GAS를 통한 데미지 적용
+				if (UAbilitySystemComponent* ASC = Brawler->GetAbilitySystemComponent())
+				{
+					FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+					ContextHandle.AddInstigator(PoisonZoneInstance, PoisonZoneInstance); // Instigator를 독구름으로 설정
+
+					FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+						PoisonDamageEffectClass, 1.0f, ContextHandle);
+					if (SpecHandle.IsValid())
+					{
+						// SetByCaller로 데미지 값 전달 (Tag: Data.Damage)
+						// GE_Poison 블루프린트에서 IncomingDamage의 Magnitude를 SetByCaller(Data.Damage)로 설정해야 함
+						SpecHandle.Data.Get()->SetSetByCallerMagnitude(
+							FGameplayTag::RequestGameplayTag(FName("Data.Damage")), PoisonDamage);
+
+						ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+					}
+				}
+			}
+		}
+	}
+}
+
 
 AActor* ABrawlGameMode_Showdown::ChoosePlayerStart_Implementation(AController* Player)
 {
@@ -142,6 +262,9 @@ void ABrawlGameMode_Showdown::SpawnBots()
 								// 컨트롤러가 안 되면 폰에 직접 설정 시도
 								PawnTeamAgent->SetGenericTeamId(FGenericTeamId(CurrentTeamID));
 							}
+
+							// AI 설정 (트리 주입)
+							ConfigureAI(BotController);
 						}
 
 						CurrentTeamID++;
@@ -155,6 +278,17 @@ void ABrawlGameMode_Showdown::SpawnBots()
 	UE_LOG(LogTemp, Log, TEXT("Spawned %d Bots."), SpawnedBots);
 }
 
+void ABrawlGameMode_Showdown::ConfigureAI(AController* AIController)
+{
+	if (ABrawlAIController* BrawlAI = Cast<ABrawlAIController>(AIController))
+	{
+		if (ShowdownAITree)
+		{
+			BrawlAI->InjectGameModeSubtree(ShowdownAITree);
+		}
+	}
+}
+
 void ABrawlGameMode_Showdown::NotifyKill(AActor* Killer, AActor* Victim)
 {
 	Super::NotifyKill(Killer, Victim);
@@ -164,6 +298,12 @@ void ABrawlGameMode_Showdown::NotifyKill(AActor* Killer, AActor* Victim)
 
 	// 생존자 수 감소
 	AliveBrawlerCount--;
+	
+	// GameState 동기화
+	if (ABrawlGameState* BrawlGameState = GetGameState<ABrawlGameState>())
+	{
+		BrawlGameState->SetAliveBrawlerCount(AliveBrawlerCount);
+	}
 	
 	UE_LOG(LogTemp, Log, TEXT("Brawler Killed. Alive Brawlers: %d"), AliveBrawlerCount);
 
@@ -308,6 +448,10 @@ void ABrawlGameMode_Showdown::CheckGameEndCondition()
 
 void ABrawlGameMode_Showdown::EndGame(bool bIsPlayerWinner)
 {
+	// 타이머 정리
+	GetWorld()->GetTimerManager().ClearTimer(PoisonUpdateTimerHandle);
+	GetWorld()->GetTimerManager().ClearTimer(PoisonDamageTimerHandle);
+
 	if (bIsPlayerWinner)
 	{
 		UE_LOG(LogTemp, Log, TEXT("GAME OVER! Player WINS!"));

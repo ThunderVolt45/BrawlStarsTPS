@@ -67,14 +67,14 @@ void UBrawlHealthWidget::OnTeamColorChanged(bool bIsEnemy)
 
 void UBrawlHealthWidget::HealthChanged(const FOnAttributeChangeData& Data)
 {
-	UE_LOG(LogTemp, Log, TEXT("BrawlHealthWidget::HealthChanged - New: %.1f"), Data.NewValue);
+	// UE_LOG(LogTemp, Log, TEXT("BrawlHealthWidget::HealthChanged - New: %.1f"), Data.NewValue);
 	CurrentHealth = Data.NewValue;
 	OnHealthChanged(CurrentHealth, CurrentMaxHealth);
 }
 
 void UBrawlHealthWidget::MaxHealthChanged(const FOnAttributeChangeData& Data)
 {
-	UE_LOG(LogTemp, Log, TEXT("BrawlHealthWidget::MaxHealthChanged - New: %.1f"), Data.NewValue);
+	// UE_LOG(LogTemp, Log, TEXT("BrawlHealthWidget::MaxHealthChanged - New: %.1f"), Data.NewValue);
 	CurrentMaxHealth = Data.NewValue;
 	OnHealthChanged(CurrentHealth, CurrentMaxHealth);
 }

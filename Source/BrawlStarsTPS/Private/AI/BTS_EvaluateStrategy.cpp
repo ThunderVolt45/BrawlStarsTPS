@@ -73,8 +73,10 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 
 	// 타겟 체력 비율 계산
 	float TargetHealthRatio = 1.0f;
+	bool bIsTargetCharacter = false;
 	if (const ABrawlCharacter* TargetBrawlChar = Cast<ABrawlCharacter>(TargetActor))
 	{
+		bIsTargetCharacter = true;
 		if (UAbilitySystemComponent* TargetASC = TargetBrawlChar->GetAbilitySystemComponent())
 		{
 			if (const UBrawlAttributeSet* TargetAttribSet = TargetASC->GetSet<UBrawlAttributeSet>())
@@ -102,7 +104,24 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 		bool bRecovered = (HealthRatio >= Settings.ResumeCombatHealthRatio);
 		bool bSafeDistance = (Distance > Settings.MinCombatRange * 1.5f); 
 
-		if (bRecovered && bSafeDistance)
+		// [추가] 시야가 가려지면(안전하면) 도주 중단
+		bool bLineOfSight = true;
+		{
+			FVector Start = MyPawn->GetPawnViewLocation();
+			FVector End = TargetActor->GetActorLocation();
+			FHitResult HitResult;
+			FCollisionQueryParams Params;
+			Params.AddIgnoredActor(MyPawn);
+
+			bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, TraceChannel, Params);
+			if (bHit && HitResult.GetActor() != TargetActor)
+			{
+				bLineOfSight = false; // 장애물에 가려짐
+			}
+		}
+
+		// 회복되었거나, 안전 거리이거나, *시야가 가려져서 숨었으면* 도주 종료
+		if ((bRecovered && bSafeDistance) || !bLineOfSight)
 		{
 			bShouldFlee = false;
 		}
@@ -115,8 +134,8 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 		bool bTooClose = (Distance < Settings.MinCombatRange);
 
 		// (내 체력 낮음 AND 타겟 체력 안 낮음) OR (너무 가까움)
-		// 즉, 내 체력이 낮아도 타겟 체력이 충분히 낮으면(킬각) 도주하지 않고 맞서 싸움
-		if ((bMyHealthIsLow && !bTargetIsLow) || bTooClose)
+		// 단, 타겟이 캐릭터일 때만 도주 (상자는 위협이 아님)
+		if (bIsTargetCharacter && ((bMyHealthIsLow && !bTargetIsLow) || bTooClose))
 		{
 			bShouldFlee = true;
 			NewStrategy = EBrawlAIStrategy::Flee;

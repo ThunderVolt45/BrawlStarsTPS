@@ -9,6 +9,8 @@
 #include "AbilitySystemComponent.h"
 #include "BrawlCharacter.h"
 #include "Kismet/GameplayStatics.h"
+#include "Perception/AIPerceptionStimuliSourceComponent.h"
+#include "Perception/AISense_Sight.h"
 
 ABrawlPowerCube::ABrawlPowerCube()
 {
@@ -34,6 +36,11 @@ ABrawlPowerCube::ABrawlPowerCube()
 
 	RotatingMovement = CreateDefaultSubobject<URotatingMovementComponent>(TEXT("RotatingMovement"));
 	RotatingMovement->RotationRate = FRotator(0.0f, 90.0f, 0.0f);
+
+	// AI 감지 소스 컴포넌트 추가
+	StimuliSourceComponent = CreateDefaultSubobject<UAIPerceptionStimuliSourceComponent>(TEXT("StimuliSourceComponent"));
+	StimuliSourceComponent->bAutoRegister = true;
+	StimuliSourceComponent->RegisterForSense(UAISense_Sight::StaticClass());
 }
 
 void ABrawlPowerCube::BeginPlay()

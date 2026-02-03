@@ -20,7 +20,7 @@ void UBrawlGameplayAbility_Colt_Fire::ActivateAbility(const FGameplayAbilitySpec
 	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
 	const FGameplayEventData* TriggerEventData)
 {
-	UE_LOG(LogTemp, Warning, TEXT("BrawlGameplayAbility_Colt_Fire::ActivateAbility Called!"));
+	// UE_LOG(LogTemp, Warning, TEXT("BrawlGameplayAbility_Colt_Fire::ActivateAbility Called!"));
 
 	FGameplayTagContainer RelevantTags;
 

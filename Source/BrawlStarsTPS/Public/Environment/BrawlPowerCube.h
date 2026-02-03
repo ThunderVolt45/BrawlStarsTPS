@@ -44,6 +44,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<URotatingMovementComponent> RotatingMovement;
 
+	// AI 감지용 소스 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|AI")
+	TObjectPtr<class UAIPerceptionStimuliSourceComponent> StimuliSourceComponent;
+
 	// 획득 시 적용할 이펙트 (GE_PowerCube)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
 	TSubclassOf<UGameplayEffect> PowerCubeEffectClass;
