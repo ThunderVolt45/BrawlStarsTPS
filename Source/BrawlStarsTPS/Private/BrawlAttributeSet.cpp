@@ -190,7 +190,7 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 		ABrawlCharacter* Character = Cast<ABrawlCharacter>(TargetActor);
 		if (!Character)
 		{
-			UE_LOG(LogTemp, Log, TEXT("BrawlAttributeSet: TargetActor is not ABrawlCharacter. Super/Hyper Charge Halted."));
+			// UE_LOG(LogTemp, Log, TEXT("BrawlAttributeSet: TargetActor is not ABrawlCharacter. Super/Hyper Charge Halted."));
 			return;
 		}
 		

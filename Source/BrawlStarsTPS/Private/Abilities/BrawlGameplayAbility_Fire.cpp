@@ -22,7 +22,7 @@ UBrawlGameplayAbility_Fire::UBrawlGameplayAbility_Fire()
 
 void UBrawlGameplayAbility_Fire::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
-	UE_LOG(LogTemp, Warning, TEXT("BrawlGameplayAbility_Fire::ActivateAbility Called!"));
+	// UE_LOG(LogTemp, Warning, TEXT("BrawlGameplayAbility_Fire::ActivateAbility Called!"));
 
 	// 1. 코스트 및 쿨다운 확인 및 지불
 	// CommitAbility는 Cost GE가 없으면 true를 반환하지만 ApplyCost를 부르지 않음.
