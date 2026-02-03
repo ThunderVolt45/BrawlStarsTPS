@@ -222,20 +222,18 @@ void ABrawlAIController::Tick(float DeltaTime)
 		}
 	}
 
-	// 4. 아이템 목록 관리 및 최적 아이템 선정
-	if (DetectedItems.Num() > 0)
-	{
-		AActor* BestItem = SelectBestItem();
-		AActor* CurrentItem = Cast<AActor>(BlackboardComponent->GetValueAsObject(FName("TargetItem")));
-
-		if (BestItem != CurrentItem)
+		// 4. 아이템 목록 관리 및 최적 아이템 선정
+		if (DetectedItems.Num() > 0)
 		{
-			UpdateItemTargetInBlackboard(BestItem);
+			AActor* BestItem = SelectBestItem();
+			if (BestItem)
+			{
+				// 아이템이 있으면 위치 업데이트 (TargetItem 객체 키는 사용하지 않음)
+				BlackboardComponent->SetValueAsVector(FName("TargetLocation"), BestItem->GetActorLocation());
+			}
 		}
 	}
-}
-
-AActor* ABrawlAIController::SelectBestTarget()
+	AActor* ABrawlAIController::SelectBestTarget()
 {
 	APawn* MyPawn = GetPawn();
 	if (!MyPawn) return nullptr;
@@ -493,20 +491,14 @@ void ABrawlAIController::ForceForgetTarget(AActor* TargetToForget)
 		SetFocus(nullptr);
 	}
 
-	// 타겟 업데이트 (아이템)
-	AActor* CurrentItem = Cast<AActor>(BlackboardComponent->GetValueAsObject(FName("TargetItem")));
-	if (CurrentItem == TargetToForget)
+	// 타겟 업데이트 (아이템) - 무조건 갱신 시도
+	if (DetectedItems.Num() > 0)
 	{
-		if (DetectedItems.Num() > 0)
+		AActor* NextBestItem = SelectBestItem();
+		if (NextBestItem)
 		{
-			AActor* NextBestItem = SelectBestItem();
-			if (NextBestItem)
-			{
-				UpdateItemTargetInBlackboard(NextBestItem);
-				return;
-			}
+			BlackboardComponent->SetValueAsVector(FName("TargetLocation"), NextBestItem->GetActorLocation());
 		}
-		UpdateItemTargetInBlackboard(nullptr);
 	}
 }
 
@@ -515,14 +507,6 @@ void ABrawlAIController::UpdateTargetInBlackboard(AActor* TargetActor)
 	if (BlackboardComponent)
 	{
 		BlackboardComponent->SetValueAsObject(FName("TargetActor"), TargetActor);
-	}
-}
-
-void ABrawlAIController::UpdateItemTargetInBlackboard(AActor* TargetItem)
-{
-	if (BlackboardComponent)
-	{
-		BlackboardComponent->SetValueAsObject(FName("TargetItem"), TargetItem);
 	}
 }
 

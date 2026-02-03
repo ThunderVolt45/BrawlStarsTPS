@@ -25,4 +25,8 @@ protected:
 	// 결과를 저장할 블랙보드 키 (Vector)
 	UPROPERTY(EditAnywhere, Category = "AI")
 	struct FBlackboardKeySelector TargetLocationKey;
+
+	// 중심으로부터의 랜덤 반경
+	UPROPERTY(EditAnywhere, Category = "AI")
+	float PatrolRadius = 2000.0f;
 };

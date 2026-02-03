@@ -93,7 +93,6 @@ protected:
 private:
 	// 감지된 타겟 관리
 	void UpdateTargetInBlackboard(AActor* TargetActor);
-	void UpdateItemTargetInBlackboard(AActor* TargetItem);
 
 	// 타이머에 의해 호출될 함수 (특정 액터 망각)
 	UFUNCTION()
@@ -104,6 +103,9 @@ private:
 	AActor* SelectBestItem();
 
 public:
+	// 감지된 아이템 존재 여부 확인
+	bool HasDetectedItems() const { return DetectedItems.Num() > 0; }
+
 	// 외부(GameMode)에서 서브 행동 트리 주입
 	void InjectGameModeSubtree(class UBehaviorTree* Subtree);
 };
