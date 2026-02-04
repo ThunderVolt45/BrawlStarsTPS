@@ -26,6 +26,7 @@ public:
 	ABrawlGameMode_Showdown();
 
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 
 	// 플레이어 시작 지점 선택 (부모 클래스 오버라이드)
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
@@ -50,8 +51,22 @@ protected:
 	// 남은 플레이어 수 확인 및 게임 종료 체크
 	void CheckGameEndCondition();
 
-	// 게임 종료 처리
-	void EndGame(bool bIsPlayerWinner);
+	// 게임 종료 처리 (승패 결정)
+	void EndGame(bool bIsPlayerWinner, int32 PlayerRank);
+
+	// 게임 시작 전 카운트다운 로직
+	void HandleMatchStartCountdown(float DeltaTime);
+
+protected:
+	// 시작 카운트다운 시간 (초)
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|GameMode")
+	float StartCountdownTime = 3.0f;
+
+	// 현재 카운트다운
+	float CurrentCountdownTime = 0.0f;
+
+	// 게임 시작되었는지 여부
+	bool bHasMatchStarted = false;
 
 protected:
 	// 독구름(자기장) 시작
