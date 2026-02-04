@@ -382,6 +382,18 @@ void ABrawlGameMode_Showdown::SpawnPowerCubeBoxes()
 	TArray<AActor*> FoundSpawnPoints;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlSpawnPoint::StaticClass(), FoundSpawnPoints);
 
+	// 1-1. 스폰 포인트 무작위 셔플
+	int32 LastIndex = FoundSpawnPoints.Num() - 1;
+	for (int32 i = 0; i <= LastIndex; ++i)
+	{
+		int32 Index = FMath::RandRange(i, LastIndex);
+		if (i != Index)
+		{
+			FoundSpawnPoints.Swap(i, Index);
+		}
+	}
+
+	// 1-2. 상자 스폰
 	for (AActor* Actor : FoundSpawnPoints)
 	{
 		if (ABrawlSpawnPoint* SpawnPoint = Cast<ABrawlSpawnPoint>(Actor))
@@ -394,7 +406,7 @@ void ABrawlGameMode_Showdown::SpawnPowerCubeBoxes()
 				FRotator SpawnRotation = SpawnPoint->GetActorRotation();
 
 				FActorSpawnParameters SpawnParams;
-				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
 				if (GetWorld()->SpawnActor<AActor>(PowerCubeBoxClass, SpawnLocation, SpawnRotation, SpawnParams))
 				{
