@@ -69,6 +69,61 @@ void UBrawlGameplayAbility::ApplyDamageEffect(AActor* TargetActor, TSubclassOf<U
 	}
 }
 
+void UBrawlGameplayAbility::PlayGameplayCue(FVector Location, FVector Normal, FGameplayTag CueTag, FRotator RotationOffset)
+{
+	FGameplayTag TagToUse = CueTag;
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	
+	if (!ASC) return;
+
+	// 매개변수 태그가 없으면 멤버 변수 사용
+	if (!TagToUse.IsValid())
+	{
+		TagToUse = AbilityGameplayCueTag;
+
+		// 하이퍼차지 상태이고, 하이퍼차지용 태그가 설정되어 있다면 교체
+		static FGameplayTag HyperStateTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
+		if (ASC->HasMatchingGameplayTag(HyperStateTag) && AbilityGameplayCueTag_Hyper.IsValid())
+		{
+			TagToUse = AbilityGameplayCueTag_Hyper;
+		}
+	}
+
+	if (!TagToUse.IsValid()) return;
+
+	{
+		FGameplayCueParameters Params;
+		
+		// 1. 회전 계산 (기본 Normal + BP 설정 오프셋 + 함수 인자 오프셋)
+		FRotator FinalRotation = Normal.Rotation();
+		
+		if (!GameplayCueRotationOffset.IsZero())
+		{
+			FinalRotation += GameplayCueRotationOffset;
+		}
+		
+		if (!RotationOffset.IsZero())
+		{
+			FinalRotation += RotationOffset;
+		}
+
+		Params.Normal = FinalRotation.Vector();
+
+		// 2. 위치 계산 (기본 Location + 회전된 오프셋)
+		// 오프셋을 현재 바라보는 방향(FinalRotation) 기준으로 회전시켜 적용
+		Params.Location = Location;
+		
+		if (!GameplayCueLocationOffset.IsZero())
+		{
+			Params.Location += FinalRotation.RotateVector(GameplayCueLocationOffset);
+		}
+		
+		Params.Instigator = GetAvatarActorFromActorInfo();
+
+		ASC->ExecuteGameplayCue(TagToUse, Params);
+	}
+}
+
 void UBrawlGameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, 
 	const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
