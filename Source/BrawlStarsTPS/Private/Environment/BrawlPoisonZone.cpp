@@ -138,3 +138,16 @@ bool ABrawlPoisonZone::IsPositionSafe(const FVector& InPosition) const
 
 	return bInX && bInY;
 }
+
+FVector ABrawlPoisonZone::GetClosestSafePosition(const FVector& InPosition) const
+{
+	FVector ZoneCenter = GetActorLocation();
+	// NavMargin만큼 더 안쪽으로 고정하여 확실한 안전 확보
+	float SafeRadius = FMath::Max(0.0f, CurrentRadius - NavMargin);
+
+	FVector ClampedPos = InPosition;
+	ClampedPos.X = FMath::Clamp(InPosition.X, ZoneCenter.X - SafeRadius, ZoneCenter.X + SafeRadius);
+	ClampedPos.Y = FMath::Clamp(InPosition.Y, ZoneCenter.Y - SafeRadius, ZoneCenter.Y + SafeRadius);
+
+	return ClampedPos;
+}

@@ -32,8 +32,12 @@ public:
 	float GetZoneRadius() const { return CurrentRadius; }
 
 	// 주어진 위치가 안전 구역 내부인지 확인합니다.
-	UFUNCTION(BlueprintCallable, Category = "Brawl|Poison")
+	UFUNCTION(BlueprintCallable, Category = "Poison")
 	bool IsPositionSafe(const FVector& InPosition) const;
+
+	// 주어진 위치를 안전 구역 내부(Margin 포함)로 고정하여 반환합니다.
+	UFUNCTION(BlueprintCallable, Category = "Poison")
+	FVector GetClosestSafePosition(const FVector& InPosition) const;
 
 protected:
 	// 네비게이션 장애물로 사용할 4개의 박스 (상, 하, 좌, 우)

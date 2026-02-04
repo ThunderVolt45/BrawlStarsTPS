@@ -80,16 +80,11 @@ void UBTT_RunFromTarget::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* Node
 		// 목표 지점 계산
 		FVector FleePos = MyLoc + FleeDir * FleeDistance;
 
-		// 독구름(안전 구역) 체크 및 보정
+		// 독구름(안전 구역) 체크 및 강제 고정
 		ABrawlPoisonZone* PoisonZone = Cast<ABrawlPoisonZone>(UGameplayStatics::GetActorOfClass(GetWorld(), ABrawlPoisonZone::StaticClass()));
-		if (PoisonZone && !PoisonZone->IsPositionSafe(FleePos))
+		if (PoisonZone)
 		{
-			// 도주 위치가 독구름 안이라면, 안전 구역 중심 방향으로 벡터 보정
-			FVector DirToSafe = (PoisonZone->GetActorLocation() - MyLoc).GetSafeNormal();
-			
-			// 원래 도주 방향과 안전 구역 중심 방향을 섞음 (가중치 0.6:0.4 정도)
-			FleeDir = (FleeDir * 0.6f + DirToSafe * 0.4f).GetSafeNormal();
-			FleePos = MyLoc + FleeDir * FleeDistance;
+			FleePos = PoisonZone->GetClosestSafePosition(FleePos);
 		}
 
 		// 네비게이션 시스템을 통해 유효한 위치인지 확인 및 보정
