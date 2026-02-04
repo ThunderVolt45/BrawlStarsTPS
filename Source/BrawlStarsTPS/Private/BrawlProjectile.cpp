@@ -170,6 +170,8 @@ void ABrawlProjectile::Tick(float DeltaTime)
 				
 				// 충돌 처리
 				// UE_LOG(LogTemp, Log, TEXT("Projectile Sweep Hit: %s"), *HitActor->GetName());
+				
+				PlayHitEffects(Result.ImpactPoint, Result.Normal);
 				ProcessHit(HitActor, Result.ImpactPoint);
 			}
 		}
@@ -198,6 +200,8 @@ void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherAct
 	
 	// 충돌 처리
 	// UE_LOG(LogTemp, Log, TEXT("Projectile HIT Block: %s"), *OtherActor->GetName());
+	
+	PlayHitEffects(Hit.ImpactPoint, Hit.Normal);
 	ProcessHit(OtherActor, Hit.ImpactPoint);
 }
 
@@ -220,7 +224,30 @@ void ABrawlProjectile::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, 
 	
 	// 충돌 처리
 	// UE_LOG(LogTemp, Log, TEXT("Projectile HIT Overlap: %s"), *OtherActor->GetName());
-	ProcessHit(OtherActor, GetActorLocation());
+	
+	// Overlap의 경우 Normal 정보를 정확히 알기 어려우므로 진행 방향의 반대를 사용하거나 SweepResult 활용
+	FVector Normal = bFromSweep ? FVector(SweepResult.Normal) : (GetActorRotation().Vector() * -1.0f);
+	FVector Location = bFromSweep ? FVector(SweepResult.ImpactPoint) : GetActorLocation();
+	
+	PlayHitEffects(Location, Normal);
+	ProcessHit(OtherActor, Location);
+}
+
+void ABrawlProjectile::PlayHitEffects(const FVector& HitLocation, const FVector& HitNormal)
+{
+	// 명중 효과 재생 (Gameplay Cue)
+	if (HitGameplayCueTag.IsValid())
+	{
+		if (UAbilitySystemComponent* SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetInstigator()))
+		{
+			FGameplayCueParameters Params;
+			Params.Location = HitLocation;
+			Params.Normal = HitNormal;
+			Params.Instigator = GetInstigator();
+
+			SourceASC->ExecuteGameplayCue(HitGameplayCueTag, Params);
+		}
+	}
 }
 
 void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation)

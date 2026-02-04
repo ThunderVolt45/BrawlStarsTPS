@@ -48,48 +48,54 @@ void ABrawlAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 
-	// Behavior Tree 실행
+	// Behavior Tree 및 Blackboard 초기화 (트리 시작은 SetAIActive에서)
 	if (DefaultBehaviorTree)
 	{
 		if (DefaultBehaviorTree->BlackboardAsset)
-		{
 			BlackboardComponent->InitializeBlackboard(*DefaultBehaviorTree->BlackboardAsset);
-			
-			// 트리 먼저 시작
-			BehaviorTreeComponent->StartTree(*DefaultBehaviorTree);
+	}
+}
 
-			// 브롤러별 고유 전투 트리(Combat Tree) 설정 (트리 시작 후 주입)
-			if (ABrawlCharacter* BrawlPawn = Cast<ABrawlCharacter>(InPawn))
+void ABrawlAIController::SetAIActive(bool bActive)
+{
+	bIsAIActive = bActive;
+
+	if (bIsAIActive)
+	{
+		if (DefaultBehaviorTree && BehaviorTreeComponent)
+		{
+			// 트리 시작
+			BehaviorTreeComponent->StartTree(*DefaultBehaviorTree);
+			
+			if (ABrawlCharacter* BrawlPawn = Cast<ABrawlCharacter>(GetPawn()))
 			{
+				// 브롤러별 고유 전투 트리(Combat Tree) 주입
 				if (UBehaviorTree* CombatTree = BrawlPawn->GetCombatBehaviorTree())
 				{
-					BlackboardComponent->SetValueAsObject(FName("CombatTree"), CombatTree);
-					
 					if (CombatSubtreeTag.IsValid())
 					{
-						// Run Behavior Dynamic 노드에서 사용할 수 있도록 등록
 						BehaviorTreeComponent->SetDynamicSubtree(CombatSubtreeTag, CombatTree);
-						UE_LOG(LogTemp, Log, TEXT("Success: Tag Valid. Subtree Set."));
-						UE_LOG(LogTemp, Log, TEXT("AI [%s] Set Dynamic Subtree [AI.Subtree.Combat]: %s"), *GetName(), *CombatTree->GetName());
 					}
-					else
-					{
-						UE_LOG(LogTemp, Error, TEXT("Error: Gameplay Tag [AI.Subtree.Combat] is INVALID! Register it in Project Settings."));
-					}
-					
-					BehaviorTreeComponent->SetDynamicSubtree(CombatSubtreeTag, CombatTree);
 				}
-			}
-
-			// 게임 모드별 트리 주입 (블랙보드에 GameModeTree가 설정되어 있다면)
-			if (UBehaviorTree* GameModeTree = Cast<UBehaviorTree>(BlackboardComponent->GetValueAsObject(FName("GameModeTree"))))
-			{
-				if (GameModeSubtreeTag.IsValid())
+				
+				// 게임 모드별 트리 주입 (블랙보드에 GameModeTree가 설정되어 있다면)
+				if (UBehaviorTree* GameModeTree = Cast<UBehaviorTree>(BlackboardComponent->GetValueAsObject(FName("GameModeTree"))))
 				{
-					BehaviorTreeComponent->SetDynamicSubtree(GameModeSubtreeTag, GameModeTree);
-					UE_LOG(LogTemp, Log, TEXT("AI [%s] Set Dynamic Subtree [AI.Subtree.GameMode]: %s"), *GetName(), *GameModeTree->GetName());
+					if (GameModeSubtreeTag.IsValid())
+					{
+						BehaviorTreeComponent->SetDynamicSubtree(GameModeSubtreeTag, GameModeTree);
+					}
 				}
 			}
+			
+		}
+	}
+	else
+	{
+		if (BehaviorTreeComponent)
+		{
+			// 트리 정지
+			BehaviorTreeComponent->StopTree();
 		}
 	}
 }

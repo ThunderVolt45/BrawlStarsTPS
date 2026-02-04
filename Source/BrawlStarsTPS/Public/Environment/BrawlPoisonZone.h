@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Components/BoxComponent.h"
 #include "BrawlPoisonZone.generated.h"
 
 /**
@@ -30,22 +31,41 @@ public:
 	// 현재 반지름 반환
 	float GetZoneRadius() const { return CurrentRadius; }
 
+	// 주어진 위치가 안전 구역 내부인지 확인합니다.
+	UFUNCTION(BlueprintCallable, Category = "Poison")
+	bool IsPositionSafe(const FVector& InPosition) const;
+
+	// 주어진 위치를 안전 구역 내부(Margin 포함)로 고정하여 반환합니다.
+	UFUNCTION(BlueprintCallable, Category = "Poison")
+	FVector GetClosestSafePosition(const FVector& InPosition) const;
+
 protected:
+	// 네비게이션 장애물로 사용할 4개의 박스 (상, 하, 좌, 우)
+	UPROPERTY(VisibleAnywhere, Category = "Brawl|Navigation")
+	TArray<TObjectPtr<UBoxComponent>> NavObstacles;
+
+	// 네비게이션 업데이트를 위한 헬퍼 함수
+	void UpdateNavObstacles();
+
 	// 독구름을 표현할 메쉬
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Visuals")
 	TObjectPtr<UStaticMeshComponent> FogMesh;
 
 	// 독구름을 표현할 파티클 (나이아가라)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Visuals")
 	TObjectPtr<class UNiagaraComponent> FogParticle;
 
 	// 현재 안전 구역의 반지름 (Half-Extent, Unreal Units)
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Poison")
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Brawl|Poison")
 	float CurrentRadius = 10000.0f;
 
 	// 메쉬 기본 크기 보정값
-	UPROPERTY(EditDefaultsOnly, Category = "Config")
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Config")
 	float BaseMeshRadius = 50.0f;
+
+	// 네비게이션 장애물이 실제 독구름보다 얼마나 더 안쪽으로 들어올지 결정하는 여유 거리
+	UPROPERTY(EditAnywhere, Category = "Brawl|Config")
+	float NavMargin = 150.0f;
 
 	// 동적 머티리얼 인스턴스 (파라미터 전달용)
 	UPROPERTY()

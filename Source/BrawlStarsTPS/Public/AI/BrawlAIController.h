@@ -106,6 +106,14 @@ public:
 	// 감지된 아이템 존재 여부 확인
 	bool HasDetectedItems() const { return DetectedItems.Num() > 0; }
 
+	// AI 로직 활성화/비활성화
+	UFUNCTION(BlueprintCallable, Category = "AI")
+	void SetAIActive(bool bActive);
+
 	// 외부(GameMode)에서 서브 행동 트리 주입
 	void InjectGameModeSubtree(class UBehaviorTree* Subtree);
+
+protected:
+	// 현재 AI 로직이 활성화되었는지 여부
+	bool bIsAIActive = false;
 };

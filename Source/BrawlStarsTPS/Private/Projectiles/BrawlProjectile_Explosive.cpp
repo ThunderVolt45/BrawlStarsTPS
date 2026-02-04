@@ -54,6 +54,9 @@ void ABrawlProjectile_Explosive::Explode(const FHitResult& HitResult)
 	if (bHasExploded) return;
 	bHasExploded = true;
 	
+	// 폭발 시각/청각 효과 재생 (부모 클래스 함수 활용)
+	PlayHitEffects(HitResult.Location, HitResult.Normal);
+
 	// 폭발 범위 데미지 처리
 	ExplodeDamage(HitResult.Location);
 

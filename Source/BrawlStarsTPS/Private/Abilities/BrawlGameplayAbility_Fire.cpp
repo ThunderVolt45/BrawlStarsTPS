@@ -283,6 +283,9 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 			UGameplayStatics::FinishSpawningActor(SpawnedActor, SpawnTransform);
 		}
 	}
+
+	// SFX/VFX 재생 (블루프린트에서 설정한 AbilityGameplayCueTag 사용)
+	PlayGameplayCue(MuzzleLocation, BaseRotation.Vector());
 }
 
 FGameplayAttribute UBrawlGameplayAbility_Fire::GetDamageAttribute() const

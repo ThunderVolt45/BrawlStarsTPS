@@ -48,7 +48,7 @@ ABrawlCharacter::ABrawlCharacter()
 	// 체력바 위젯 컴포넌트
 	HealthBarComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarComponent"));
 	HealthBarComponent->SetupAttachment(GetMesh());
-	HealthBarComponent->SetWorldLocation(FVector(0.0f, 0.0f, 100.0f)); // 머리 위 높이
+	HealthBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f)); // 머리 위 높이 (상대 좌표)
 	HealthBarComponent->SetWorldScale3D(FVector(0.5f, 0.5f, 0.5f));
 	HealthBarComponent->SetWidgetSpace(EWidgetSpace::World);
 	HealthBarComponent->SetDrawSize(FVector2D(200.0f, 50.0f));

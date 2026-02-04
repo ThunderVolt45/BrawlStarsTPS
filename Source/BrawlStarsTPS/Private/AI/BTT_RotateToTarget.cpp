@@ -74,7 +74,9 @@ void UBTT_RotateToTarget::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* Nod
 	{
 		if (AActor* TargetActor = Cast<AActor>(KeyObject))
 		{
-			TargetLocation = TargetActor->GetActorLocation();
+			// GetActorLocation() 대신 GetTargetLocation()을 사용하여
+			// 피벗이 바닥에 있는 액터(상자 등)도 중심을 바라보게 함
+			TargetLocation = TargetActor->GetTargetLocation();
 			bTargetValid = true;
 		}
 	}

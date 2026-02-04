@@ -137,9 +137,13 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 	{
 		// GAS 데미지 Spec 생성 및 주입
 		FGameplayEffectSpecHandle SpecHandle = MakeDamageSpecHandle(1.0f); // 1.0 Scale
-		if (SpecHandle.IsValid())
-		{
-			Projectile->InitializeProjectile(SpecHandle);
+				if (SpecHandle.IsValid())
+				{
+					Projectile->InitializeProjectile(SpecHandle);
+				}
+		
+				// SFX/VFX 재생 (블루프린트에서 설정한 AbilityGameplayCueTag 사용)
+				PlayGameplayCue(MuzzleLocation, ProjectileRotation.Vector());
+			}
 		}
-	}
-}
+		

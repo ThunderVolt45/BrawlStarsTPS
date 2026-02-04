@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "GameplayEffectTypes.h"
+#include "GameplayTagContainer.h"
 #include "BrawlProjectile.generated.h"
 
 class USphereComponent;
@@ -37,6 +38,9 @@ protected:
 	// 공통 처리 로직
 	virtual void ProcessHit(AActor* OtherActor, const FVector& HitLocation);
 	
+	// 명중 효과(SFX/VFX) 재생
+	virtual void PlayHitEffects(const FVector& HitLocation, const FVector& HitNormal);
+
 	// 장애물 파괴 로직
 	virtual void DestroyObstacle(AActor* OtherActor);
 
@@ -78,6 +82,10 @@ protected:
 	// 장애물 파괴 여부 (true면 벽 파괴 가능)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Projectile|Options")
 	bool bDestroyObstacles = false;
+
+	// 명중 시 재생할 Gameplay Cue 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Projectile|Effects")
+	FGameplayTag HitGameplayCueTag;
 
 private:
 	// 이미 피격된 액터 목록 (관통 시 다단히트 방지)

@@ -7,6 +7,8 @@
 #include "NavigationSystem.h"
 #include "GameFramework/Character.h"
 #include "AIController.h"
+#include "Environment/BrawlPoisonZone.h"
+#include "Kismet/GameplayStatics.h"
 
 UBTT_RunFromTarget::UBTT_RunFromTarget()
 {
@@ -78,6 +80,13 @@ void UBTT_RunFromTarget::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* Node
 		// 목표 지점 계산
 		FVector FleePos = MyLoc + FleeDir * FleeDistance;
 
+		// 독구름(안전 구역) 체크 및 강제 고정
+		ABrawlPoisonZone* PoisonZone = Cast<ABrawlPoisonZone>(UGameplayStatics::GetActorOfClass(GetWorld(), ABrawlPoisonZone::StaticClass()));
+		if (PoisonZone)
+		{
+			FleePos = PoisonZone->GetClosestSafePosition(FleePos);
+		}
+
 		// 네비게이션 시스템을 통해 유효한 위치인지 확인 및 보정
 		FNavLocation NavLoc;
 		UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
@@ -92,9 +101,6 @@ void UBTT_RunFromTarget::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* Node
 			else
 			{
 				// 정확한 반대 방향에 길이 없다면?
-				// 조금 덜 엄격하게, 반대 방향 기준 부채꼴 범위 등에서 랜덤 포인트를 찾을 수도 있지만
-				// 여기서는 단순히 현재 위치 근처에서 랜덤 도주를 시도하거나 멈추는 대신,
-				// 네비게이션 투영 범위를 좀 더 넓혀서 재시도
 				if (NavSys->ProjectPointToNavigation(FleePos, NavLoc, FVector(500, 500, 500)))
 				{
 					AIController->MoveToLocation(NavLoc.Location);

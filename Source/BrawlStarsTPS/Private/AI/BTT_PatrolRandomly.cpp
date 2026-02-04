@@ -8,6 +8,8 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Environment/BrawlPoisonZone.h"
+#include "Kismet/GameplayStatics.h"
 
 UBTT_PatrolRandomly::UBTT_PatrolRandomly()
 {
@@ -46,9 +48,50 @@ EBTNodeResult::Type UBTT_PatrolRandomly::ExecuteTask(UBehaviorTreeComponent& Own
 		return EBTNodeResult::Failed;
 	}
 
-	// 현재 위치 기준 랜덤 포인트 찾기
+	// 독구름(안전 구역) 액터 찾기
+	ABrawlPoisonZone* PoisonZone = Cast<ABrawlPoisonZone>(UGameplayStatics::GetActorOfClass(GetWorld(), ABrawlPoisonZone::StaticClass()));
+
 	FNavLocation RandomLocation;
-	bool bFound = NavSys->GetRandomReachablePointInRadius(MyPawn->GetActorLocation(), PatrolRadius, RandomLocation);
+	bool bFound = false;
+
+	// 안전 구역 내의 유효한 위치를 찾기 위해 최대 10번 시도
+	for (int32 i = 0; i < 10; ++i)
+	{
+		// 현재 위치 기준 랜덤 포인트 찾기
+		if (NavSys->GetRandomReachablePointInRadius(MyPawn->GetActorLocation(), PatrolRadius, RandomLocation))
+		{
+			// 독구름이 존재하면, 해당 위치가 안전 구역 내부인지 확인
+			if (PoisonZone)
+			{
+				if (PoisonZone->IsPositionSafe(RandomLocation.Location))
+				{
+					bFound = true;
+					break;
+				}
+			}
+			else
+			{
+				// 독구름이 없으면 그냥 통과
+				bFound = true;
+				break;
+			}
+		}
+	}
+
+	// 10번 시도해도 안전한 곳을 못 찾았다면 (예: 이미 독구름 근처거나 밖임)
+	// 안전 구역 센터 쪽으로 이동하도록 유도
+	if (!bFound && PoisonZone)
+	{
+		FVector DirectionToCenter = (PoisonZone->GetActorLocation() - MyPawn->GetActorLocation()).GetSafeNormal();
+		// 센터 쪽으로 약간 이동한 지점
+		FVector FallbackPos = MyPawn->GetActorLocation() + DirectionToCenter * 500.0f; 
+		
+		// 해당 지점이 네비게이션 위에 있는지 투영
+		if (NavSys->ProjectPointToNavigation(FallbackPos, RandomLocation))
+		{
+			bFound = true;
+		}
+	}
 
 	if (bFound)
 	{

@@ -3,6 +3,7 @@
 #include "BrawlAttributeSet.h"
 
 #include "BrawlCharacter.h"
+#include "Environment/BrawlPowerCubeBox.h"
 #include "GameplayEffectExtension.h"
 #include "Perception/AISense_Damage.h" // 추가
 #include "BrawlStarsTPSGameMode.h"
@@ -188,9 +189,9 @@ void UBrawlAttributeSet::OnGetIncomingDamage(const FGameplayEffectModCallbackDat
 	{
 		// 만약 브롤러가 아닌 목표를 공격한 것이라면 여기서 중단
 		ABrawlCharacter* Character = Cast<ABrawlCharacter>(TargetActor);
-		if (!Character)
+		if (!Character || Character->IsA<ABrawlPowerCubeBox>())
 		{
-			// UE_LOG(LogTemp, Log, TEXT("BrawlAttributeSet: TargetActor is not ABrawlCharacter. Super/Hyper Charge Halted."));
+			// UE_LOG(LogTemp, Log, TEXT("BrawlAttributeSet: TargetActor is not ABrawlCharacter or is a Box. Super/Hyper Charge Halted."));
 			return;
 		}
 		
