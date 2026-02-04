@@ -8,6 +8,8 @@
 #include "NavigationSystem.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "AIController.h"
+#include "Environment/BrawlPoisonZone.h"
+#include "Kismet/GameplayStatics.h"
 
 UBTT_MoveToIdealRange::UBTT_MoveToIdealRange()
 {
@@ -59,6 +61,9 @@ void UBTT_MoveToIdealRange::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 	FVector MyLoc = MyPawn->GetActorLocation();
 	FVector TargetLoc = TargetActor->GetActorLocation();
 
+	// 독구름(안전 구역) 정보 가져오기
+	ABrawlPoisonZone* PoisonZone = Cast<ABrawlPoisonZone>(UGameplayStatics::GetActorOfClass(GetWorld(), ABrawlPoisonZone::StaticClass()));
+
 	// 0. 시야 확인 (옵션)
 	bool bHasLoS = true;
 	if (bCheckLineOfSight)
@@ -88,11 +93,31 @@ void UBTT_MoveToIdealRange::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 	// A. 시야가 가려짐 -> 무조건 접근 (Move to see)
 	if (!bHasLoS)
 	{
-		FAIMoveRequest MoveReq;
-		MoveReq.SetGoalActor(TargetActor);
-		MoveReq.SetAcceptanceRadius(50.0f); // 최대한 가까이 가서 시야 확보 시도
-		
-		AIController->MoveTo(MoveReq);
+		// 만약 타겟이 독구름 안에 있다면, 무리하게 접근하지 않음
+		bool bIsTargetSafe = PoisonZone ? PoisonZone->IsPositionSafe(TargetLoc) : true;
+
+		if (bIsTargetSafe)
+		{
+			FAIMoveRequest MoveReq;
+			MoveReq.SetGoalActor(TargetActor);
+			MoveReq.SetAcceptanceRadius(50.0f); // 최대한 가까이 가서 시야 확보 시도
+			AIController->MoveTo(MoveReq);
+		}
+		else
+		{
+			// 타겟이 독에 있다면, 안전 구역 내에서 타겟과 가장 가까운 지점으로 이동 시도
+			FVector DirToTarget = (TargetLoc - MyLoc).GetSafeNormal();
+			FVector EdgePos = MyLoc + DirToTarget * 100.0f; // 조금씩 전진
+
+			if (PoisonZone && !PoisonZone->IsPositionSafe(EdgePos))
+			{
+				AIController->StopMovement();
+			}
+			else
+			{
+				AIController->MoveToLocation(EdgePos);
+			}
+		}
 	}
 	// B. 너무 가까움 -> 후퇴 (Retreat)
 	else if (Distance < PreferredRange - AcceptanceRadius)
@@ -109,6 +134,13 @@ void UBTT_MoveToIdealRange::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 		// 후퇴 목표 지점 계산
 		FVector RetreatPos = MyLoc + RotatedDir * 200.0f;
 		
+		// 독구름 체크: 후퇴 지점이 위험하다면 안전 구역 쪽으로 보정
+		if (PoisonZone && !PoisonZone->IsPositionSafe(RetreatPos))
+		{
+			FVector DirToSafe = (PoisonZone->GetActorLocation() - MyLoc).GetSafeNormal();
+			RetreatPos = MyLoc + (RotatedDir * 0.5f + DirToSafe * 0.5f).GetSafeNormal() * 200.0f;
+		}
+
 		// 네비게이션 메시 위에 투영
 		FNavLocation NavLoc;
 		UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
@@ -125,13 +157,31 @@ void UBTT_MoveToIdealRange::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 	// B. 너무 멈 -> 접근 (Approach)
 	else if (Distance > PreferredRange + AcceptanceRadius)
 	{
-		// 접근 시에는 확실하게 타겟을 향해 가되, 약간의 오차를 허용하여 자연스럽게 만듦
-		// (네비게이션이 알아서 경로를 찾으므로 과도한 랜덤성은 배제)
-		FAIMoveRequest MoveReq;
-		MoveReq.SetGoalActor(TargetActor);
-		MoveReq.SetAcceptanceRadius(PreferredRange);
+		// 접근 시 타겟이 독구름 안인지 체크
+		bool bIsTargetSafe = PoisonZone ? PoisonZone->IsPositionSafe(TargetLoc) : true;
 		
-		AIController->MoveTo(MoveReq);
+		if (bIsTargetSafe)
+		{
+			FAIMoveRequest MoveReq;
+			MoveReq.SetGoalActor(TargetActor);
+			MoveReq.SetAcceptanceRadius(PreferredRange);
+			AIController->MoveTo(MoveReq);
+		}
+		else
+		{
+			// 타겟이 독구름 안이면 안전 구역 경계까지만 접근
+			FVector DirToTarget = (TargetLoc - MyLoc).GetSafeNormal();
+			FVector MovePos = MyLoc + DirToTarget * 300.0f;
+
+			if (PoisonZone && !PoisonZone->IsPositionSafe(MovePos))
+			{
+				AIController->StopMovement();
+			}
+			else
+			{
+				AIController->MoveToLocation(MovePos);
+			}
+		}
 	}
 	// C. 적절한 거리 유지 중 -> 좌우 무빙 (Strafing)
 	else
@@ -150,11 +200,18 @@ void UBTT_MoveToIdealRange::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 			bool bGoRight = FMath::RandBool();
 			FVector StrafeDir = bGoRight ? RightDir : -RightDir;
 			
-			// 약간의 전진/후진 섞기 (완벽한 원운동보다는 타원형/불규칙)
+			// 약간의 전진/후진 섞기
 			float ForwardBias = FMath::RandRange(-0.5f, 0.5f);
 			FVector FinalDir = (StrafeDir + DirToTarget * ForwardBias).GetSafeNormal();
 			FVector StrafePos = MyLoc + FinalDir * StrafeRadius;
 			
+			// 독구름 체크
+			if (PoisonZone && !PoisonZone->IsPositionSafe(StrafePos))
+			{
+				FVector DirToSafe = (PoisonZone->GetActorLocation() - MyLoc).GetSafeNormal();
+				StrafePos = MyLoc + (FinalDir * 0.5f + DirToSafe * 0.5f).GetSafeNormal() * StrafeRadius;
+			}
+
 			// 이동 명령
 			FNavLocation NavLoc;
 			UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
@@ -167,11 +224,6 @@ void UBTT_MoveToIdealRange::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 			// 다음 무빙 시간 설정
 			NextStrafeTime = CurrentTime + FMath::RandRange(StrafeInterval * 0.8f, StrafeInterval * 1.2f);
 		}
-		
-		// 계속 무빙 중이므로 FinishLatentTask를 호출하지 않고 InProgress 유지
-		// 공격 Task 등으로 넘어가려면 데코레이터 조건(쿨다운 등)에 의해 중단되거나,
-		// 일정 시간 후 성공으로 리턴하는 로직을 추가할 수 있음.
-		// 여기서는 "위치 잡기" 자체가 목적이므로 계속 수행.
 	}
 }
 
