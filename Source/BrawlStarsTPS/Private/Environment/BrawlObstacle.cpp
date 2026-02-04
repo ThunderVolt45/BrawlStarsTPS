@@ -52,9 +52,7 @@ void ABrawlObstacle::OnDestruction(AActor* InstigatorActor)
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		
 		// 원본과 동일한 위치/회전/스케일에 스폰
-		AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(DestructionEffectClass, GetActorTransform(), SpawnParams);
-
-		if (SpawnedActor)
+		if (AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(DestructionEffectClass, GetActorTransform(), SpawnParams))
 		{
 			// 지오메트리 컬렉션 컴포넌트를 찾아 물리적 충격 가하기 (즉시 파괴 연출)
 			if (UGeometryCollectionComponent* GCComp = SpawnedActor->FindComponentByClass<UGeometryCollectionComponent>())

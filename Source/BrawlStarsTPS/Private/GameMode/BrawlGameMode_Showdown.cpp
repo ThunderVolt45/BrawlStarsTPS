@@ -32,10 +32,18 @@ void ABrawlGameMode_Showdown::BeginPlay()
 	// 봇 스폰
 	SpawnBots();
 
-	// 초기 생존자 수 계산 (플레이어 + AI)
+	// 초기 생존자 수 계산 (플레이어 + AI) - 상자는 제외
 	TArray<AActor*> FoundBrawlers;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlCharacter::StaticClass(), FoundBrawlers);
-	AliveBrawlerCount = FoundBrawlers.Num();
+	
+	AliveBrawlerCount = 0;
+	for (AActor* Actor : FoundBrawlers)
+	{
+		if (Actor && !Actor->IsA<ABrawlPowerCubeBox>())
+		{
+			AliveBrawlerCount++;
+		}
+	}
 
 	UE_LOG(LogTemp, Log, TEXT("Showdown Mode Started. Alive Brawlers: %d"), AliveBrawlerCount);
 
@@ -293,21 +301,29 @@ void ABrawlGameMode_Showdown::NotifyKill(AActor* Killer, AActor* Victim)
 {
 	Super::NotifyKill(Killer, Victim);
 
-	// 파워 큐브 드랍
-	DropPowerCubes(Victim);
-
-	// 생존자 수 감소
-	AliveBrawlerCount--;
-	
-	// GameState 동기화
-	if (ABrawlGameState* BrawlGameState = GetGameState<ABrawlGameState>())
+	// 상자가 아닌 경우에만 파워 큐브 추가 드랍 및 생존 카운트 감소
+	if (Victim && !Victim->IsA<ABrawlPowerCubeBox>())
 	{
-		BrawlGameState->SetAliveBrawlerCount(AliveBrawlerCount);
-	}
-	
-	UE_LOG(LogTemp, Log, TEXT("Brawler Killed. Alive Brawlers: %d"), AliveBrawlerCount);
+		// 브롤러가 죽었을 때만 큐브 드랍 (상자는 본인의 Die()에서 드랍)
+		DropPowerCubes(Victim);
 
-	CheckGameEndCondition();
+		// 생존자 수 감소
+		AliveBrawlerCount--;
+		
+		// GameState 동기화
+		if (ABrawlGameState* BrawlGameState = GetGameState<ABrawlGameState>())
+		{
+			BrawlGameState->SetAliveBrawlerCount(AliveBrawlerCount);
+		}
+		
+		UE_LOG(LogTemp, Log, TEXT("Brawler Killed. Alive Brawlers: %d"), AliveBrawlerCount);
+
+		CheckGameEndCondition();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("Power Cube Box Destroyed. Count not affected."));
+	}
 }
 
 void ABrawlGameMode_Showdown::DropPowerCubes(AActor* Victim)
@@ -380,8 +396,7 @@ void ABrawlGameMode_Showdown::SpawnPowerCubeBoxes()
 				FActorSpawnParameters SpawnParams;
 				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-				ABrawlPowerCubeBox* NewBox = GetWorld()->SpawnActor<ABrawlPowerCubeBox>(PowerCubeBoxClass, SpawnLocation, SpawnRotation, SpawnParams);
-				if (NewBox)
+				if (GetWorld()->SpawnActor<AActor>(PowerCubeBoxClass, SpawnLocation, SpawnRotation, SpawnParams))
 				{
 					SpawnedCount++;
 				}
@@ -411,8 +426,7 @@ void ABrawlGameMode_Showdown::SpawnPowerCubeBoxes()
 					FActorSpawnParameters SpawnParams;
 					SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 
-					ABrawlPowerCubeBox* NewBox = GetWorld()->SpawnActor<ABrawlPowerCubeBox>(PowerCubeBoxClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
-					if (NewBox)
+					if (GetWorld()->SpawnActor<AActor>(PowerCubeBoxClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams))
 					{
 						SpawnedCount++;
 					}

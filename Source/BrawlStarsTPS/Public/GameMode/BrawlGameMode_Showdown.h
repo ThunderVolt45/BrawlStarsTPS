@@ -66,11 +66,11 @@ protected:
 protected:
 	// 스폰할 상자 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")
-	TSubclassOf<ABrawlPowerCubeBox> PowerCubeBoxClass;
+	TSubclassOf<AActor> PowerCubeBoxClass;
 
 	// 드랍할 파워 큐브 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")
-	TSubclassOf<ABrawlPowerCube> PowerCubeClass;
+	TSubclassOf<AActor> PowerCubeClass;
 
 	// 독구름 액터 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown|Poison")

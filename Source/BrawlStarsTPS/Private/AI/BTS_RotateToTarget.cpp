@@ -66,10 +66,9 @@ void UBTS_RotateToTarget::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* Nod
 	{
 		if (AActor* TargetActor = Cast<AActor>(KeyObject))
 		{
-			// 타겟의 피벗(발밑)이 아닌 중심점을 바라보도록 보정 (떨림 방지)
-			FVector Origin, BoxExtent;
-			TargetActor->GetActorBounds(true, Origin, BoxExtent);
-			TargetLocation = Origin;
+			// GetTargetLocation()은 캐릭터의 경우 캡슐 중심, 
+			// 상자의 경우 오버라이드된 중심점을 반환하여 정확한 조준을 가능하게 함
+			TargetLocation = TargetActor->GetTargetLocation();
 			bTargetValid = true;
 		}
 	}

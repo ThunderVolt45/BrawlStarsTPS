@@ -4,151 +4,123 @@
 #include "Environment/BrawlPowerCubeBox.h"
 #include "BrawlAbilitySystemComponent.h"
 #include "BrawlAttributeSet.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Components/WidgetComponent.h"
-#include "GameplayEffectExtension.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "Perception/AISense_Sight.h"
 #include "Environment/BrawlPowerCube.h"
 #include "Kismet/GameplayStatics.h"
-#include "UI/BrawlHealthWidget.h" // 추가
+#include "UI/BrawlHealthWidget.h"
+#include "Camera/CameraComponent.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "GeometryCollection/GeometryCollectionComponent.h"
 
 ABrawlPowerCubeBox::ABrawlPowerCubeBox()
 {
+	// 체력바 빌보드(카메라 방향 회전)를 위해 Tick 활성화
 	PrimaryActorTick.bCanEverTick = true;
 
-	// GAS 컴포넌트 생성
-	AbilitySystemComponent = CreateDefaultSubobject<UBrawlAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
-	AbilitySystemComponent->SetIsReplicated(true);
-	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+	// 캐릭터 설정 조정
+	GetCapsuleComponent()->SetCapsuleSize(50.f, 50.f);
+	GetCapsuleComponent()->SetCollisionProfileName(FName("BlockAll"));
 
-	// 어트리뷰트 세트 생성
-	AttributeSet = CreateDefaultSubobject<UBrawlAttributeSet>(TEXT("AttributeSet"));
+	// 상자용 StaticMeshComponent 생성
+	BoxMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BoxMeshComponent"));
+	BoxMeshComponent->SetupAttachment(GetCapsuleComponent());
+	BoxMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	// 체력바 컴포넌트
-	HealthBarComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarComponent"));
-	HealthBarComponent->SetupAttachment(RootComponent);
-	HealthBarComponent->SetWidgetSpace(EWidgetSpace::Screen);
-	HealthBarComponent->SetDrawSize(FVector2D(100.0f, 20.0f));
-	HealthBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 150.0f)); // 박스 위로 띄움
+	// 불필요한 스켈레탈 메시 숨기기
+	if (GetMesh())
+	{
+		GetMesh()->SetHiddenInGame(true);
+	}
+
+	// 체력바 설정 수정
+	if (HealthBarComponent)
+	{
+		// 절대 좌표 사용을 명시적으로 끔
+		HealthBarComponent->SetUsingAbsoluteLocation(false);
+		HealthBarComponent->SetUsingAbsoluteRotation(false);
+		HealthBarComponent->SetUsingAbsoluteScale(false);
+
+		// 부착 지점을 캡슐로 변경
+		HealthBarComponent->SetupAttachment(GetCapsuleComponent());
+		
+		// 상대 좌표로 위치 설정
+		HealthBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f));
+		
+		HealthBarComponent->SetOwnerNoSee(false); 
+		HealthBarComponent->SetHiddenInGame(false);
+	}
+
+	// 불필요한 컴포넌트 비활성화
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->DisableMovement();
+		GetCharacterMovement()->GravityScale = 0.0f;
+	}
+
+	if (GetCameraBoom())
+	{
+		GetCameraBoom()->DestroyComponent();
+	}
+	if (GetFollowCamera())
+	{
+		GetFollowCamera()->DestroyComponent();
+	}
 
 	// AI 감지 소스 (시각)
 	StimuliSourceComponent = CreateDefaultSubobject<UAIPerceptionStimuliSourceComponent>(TEXT("StimuliSourceComponent"));
 	StimuliSourceComponent->bAutoRegister = true;
 	StimuliSourceComponent->RegisterForSense(UAISense_Sight::StaticClass());
-	
-	// ABrawlObstacle 설정
-	bIsDestructible = true; // OnDestruction 로직 수행을 위해 true로 유지 (IsDestructible() 함수 오버라이드로 외부에는 false로 속임)
-	bIsHardObstacle = true;
-}
 
-UAbilitySystemComponent* ABrawlPowerCubeBox::GetAbilitySystemComponent() const
-{
-	return AbilitySystemComponent;
-}
-
-void ABrawlPowerCubeBox::SetGenericTeamId(const FGenericTeamId& NewTeamID)
-{
-	TeamID = NewTeamID.GetId();
-}
-
-FGenericTeamId ABrawlPowerCubeBox::GetGenericTeamId() const
-{
-	return FGenericTeamId(TeamID);
-}
-
-bool ABrawlPowerCubeBox::IsDestructible() const
-{
-	// 발사체 등 외부 시스템에는 "파괴 불가능"으로 보이게 하여
-	// 즉사(Instant Kill)를 방지하고 GAS 데미지 시스템을 따르게 함
-	return false;
+	// 팀 ID 설정 (기본 중립)
+	TeamID = 255;
+	CharacterID = FName("PowerCubeBox");
 }
 
 void ABrawlPowerCubeBox::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
-
-	if (AbilitySystemComponent)
-	{
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
-
-		// 어트리뷰트 변경 콜백 등록
-		if (AttributeSet)
-		{
-			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute()).AddUObject(this, &ABrawlPowerCubeBox::OnHealthChanged);
-		}
-	}
+	
+	// 상자는 컨트롤러에 의해 Possess되지 않으므로 여기서 직접 GAS 및 위젯 초기화
+	InitAbilityActorInfo();
 }
 
 void ABrawlPowerCubeBox::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (AbilitySystemComponent && AttributeSet)
-	{
-		// 기본 체력 설정 (GameplayEffect 이용 또는 직접 설정)
-		// 여기서는 간단히 직접 설정 (서버 권한 필요)
-		if (HasAuthority())
-		{
-			// MaxHealth 설정
-			AbilitySystemComponent->ApplyModToAttributeUnsafe(AttributeSet->GetMaxHealthAttribute(), EGameplayModOp::Override, DefaultMaxHealth);
-			// Health 설정
-			AbilitySystemComponent->ApplyModToAttributeUnsafe(AttributeSet->GetHealthAttribute(), EGameplayModOp::Override, DefaultMaxHealth);
-		}
-	}
-
-	// 체력바 위젯 초기화
+	// 생성자에서 설정한 상대 위치가 덮어씌워지지 않도록 다시 한번 확인
 	if (HealthBarComponent)
 	{
-		// 위젯 컴포넌트가 위젯을 생성하도록 초기화
-		HealthBarComponent->InitWidget();
-		
-		if (UBrawlHealthWidget* HealthWidget = Cast<UBrawlHealthWidget>(HealthBarComponent->GetUserWidgetObject()))
-		{
-			HealthWidget->InitializeWithAbilitySystem(AbilitySystemComponent);
-		}
+		HealthBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f));
+		HealthBarComponent->SetHiddenInGame(false);
 	}
-}
 
-void ABrawlPowerCubeBox::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-	
-	// 체력바 빌보드 처리 (카메라 방향을 보게 함)
-	if (HealthBarComponent && HealthBarComponent->GetWidgetSpace() == EWidgetSpace::World)
+	// 수동으로 속성 초기화
+	if (AbilitySystemComponent && AttributeSet)
 	{
-		if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+		if (HasAuthority())
 		{
-			FVector CameraLocation;
-			FRotator CameraRotation;
-			PC->GetPlayerViewPoint(CameraLocation, CameraRotation);
-			
-			// 카메라의 전방 벡터를 가져와 반대로 뒤집는다
-			FVector CameraForward = CameraRotation.Vector() * -1.0f;
-			FRotator CameraRotator = CameraForward.Rotation();
-			
-			// UI가 기울어지지 않고 카메라와 마주볼 수 있다
-			HealthBarComponent->SetWorldRotation(CameraRotator);
+			AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxHealthAttribute(), DefaultMaxHealth);
+			AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHealthAttribute(), DefaultMaxHealth);
 		}
 	}
 }
 
 void ABrawlPowerCubeBox::OnHealthChanged(const FOnAttributeChangeData& Data)
 {
-	float NewHealth = Data.NewValue;
-
-	if (NewHealth <= 0.0f && !bIsDead)
-	{
-		AActor* Killer = nullptr;
-		// Data.EffectSpec.GetEffectContext().GetInstigator(); // 필요 시 가져옴
-		
-		Die(Killer);
-	}
+	// ABrawlCharacter의 OnHealthChanged는 사망 처리를 담당함
+	Super::OnHealthChanged(Data);
 }
 
-void ABrawlPowerCubeBox::Die(AActor* Killer)
+void ABrawlPowerCubeBox::Die()
 {
-	if (bIsDead) return;
-	bIsDead = true;
+	if (bIsDeadInternal) return;
+	bIsDeadInternal = true;
 
 	// 파워 큐브 드롭
 	if (PowerCubeClass)
@@ -156,13 +128,34 @@ void ABrawlPowerCubeBox::Die(AActor* Killer)
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-		// 살짝 위에서 스폰
-		FVector SpawnLocation = GetActorLocation() + FVector(0.0f, 0.0f, 50.0f);
-		FRotator SpawnRotation = FRotator::ZeroRotator;
-
-		GetWorld()->SpawnActor<ABrawlPowerCube>(PowerCubeClass, SpawnLocation, SpawnRotation, SpawnParams);
+		GetWorld()->SpawnActor<ABrawlPowerCube>(PowerCubeClass, GetActorTransform(), SpawnParams);
 	}
 
-	// 부모 클래스의 파괴 로직(파편 생성, 사운드 등) 실행
-	Super::OnDestruction(Killer);
+	// 파괴 연출 (ABrawlObstacle 로직 이식)
+	if (DestructionEffectClass)
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		
+		FVector SpawnLocation = GetActorLocation() + FVector(0.0f, 0.0f, -50.0f);
+		FRotator SpawnRotation = GetActorRotation();
+		
+		if (AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(DestructionEffectClass, SpawnLocation, SpawnRotation, SpawnParams))
+		{
+			// 지오메트리 컬렉션 컴포넌트를 찾아 물리적 충격 가하기 (즉시 파괴 연출)
+			if (UGeometryCollectionComponent* GCComp = SpawnedActor->FindComponentByClass<UGeometryCollectionComponent>())
+			{
+				GCComp->AddRadialImpulse(GetActorLocation(), 180, 1000, ERadialImpulseFalloff::RIF_Linear, true);
+			}
+		}
+	}
+
+	if (DestructionSFX)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, DestructionSFX, GetActorLocation());
+	}
+
+	// 캐릭터 사망 처리 (ABrawlCharacter::Die()는 랙돌 등을 처리하므로 여기서는 파괴 위주로)
+	// Super::Die()를 호출하면 랙돌이 되려 하므로, 직접 Destroy 처리
+	Destroy();
 }
