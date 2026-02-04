@@ -11,11 +11,19 @@
 #include "UI/BrawlHUDWidget.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
+#include "Components/AudioComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 void ABrawlStarsTPSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 오디오 컴포넌트 생성 (여기서 생성하거나 PlayBGM에서 생성)
+	if (!BGMComponent)
+	{
+		BGMComponent = UGameplayStatics::SpawnSound2D(this, nullptr);
+	}
+	
 	if (IsLocalPlayerController() && BrawlHUDClass)
 	{
 		// 위젯이 이미 있다면 생성하지 않음
@@ -112,4 +120,90 @@ bool ABrawlStarsTPSPlayerController::ShouldUseTouchControls() const
 {
 	// are we on a mobile platform? Should we force touch?
 	return SVirtualJoystick::ShouldDisplayTouchInterface() || bForceTouchControls;
+}
+
+void ABrawlStarsTPSPlayerController::ShowMatchStartUI()
+{
+	if (!IsLocalPlayerController()) return;
+	
+	PlayBGM(MatchStartBGM, 0.5f, 0.0f);
+	
+	if (MatchStartWidgetClass)
+	{
+		if (!MatchStartWidget)
+		{
+			MatchStartWidget = CreateWidget<UUserWidget>(this, MatchStartWidgetClass);
+		}
+		
+		if (MatchStartWidget && !MatchStartWidget->IsInViewport())
+		{
+			MatchStartWidget->AddToViewport(10);
+		}
+	}
+}
+
+void ABrawlStarsTPSPlayerController::StartGameplayBGM()
+{
+	PlayBGM(GameplayBGM, 0.5f, 0.5f);
+	
+	// 게임 시작 UI가 남아있다면 여기서 제거
+	if (MatchStartWidget && MatchStartWidget->IsInViewport())
+	{
+		MatchStartWidget->RemoveFromParent();
+	}
+}
+
+void ABrawlStarsTPSPlayerController::ShowMatchResultUI(bool bIsWinner, int32 Rank)
+{
+	if (!IsLocalPlayerController()) return;
+	
+	PlayBGM(bIsWinner ? WinBGM : LoseBGM, 1.0f, 0.5f);
+	
+	// HUD 숨김 처리
+	if (BrawlHUDWidget)
+	{
+		BrawlHUDWidget->SetVisibility(ESlateVisibility::Hidden);
+	}
+	
+	if (MatchResultWidgetClass)
+	{
+		if (!MatchResultWidget)
+		{
+			MatchResultWidget = CreateWidget<UUserWidget>(this, MatchResultWidgetClass);
+		}
+		
+		if (MatchResultWidget)
+		{
+			// TODO: 위젯에 승패 및 랭크 정보 전달
+			if (!MatchResultWidget->IsInViewport())
+			{
+				MatchResultWidget->AddToViewport(20);
+			}
+			
+			// 입력 모드 변경
+			FInputModeUIOnly InputMode;
+			InputMode.SetWidgetToFocus(MatchResultWidget->TakeWidget());
+			SetInputMode(InputMode);
+			bShowMouseCursor = true;
+		}
+	}
+}
+
+void ABrawlStarsTPSPlayerController::PlayBGM(USoundBase* NewBGM, float FadeOutDuration, float FadeInDuration)
+{
+	if (!NewBGM) return;
+	
+	if (BGMComponent && BGMComponent->IsPlaying())
+	{
+		if (BGMComponent->Sound == NewBGM) return;
+
+		BGMComponent->FadeOut(FadeOutDuration, 0.0f);
+	}
+	
+	BGMComponent = UGameplayStatics::SpawnSound2D(this, NewBGM);
+
+	if (BGMComponent)
+	{
+		BGMComponent->FadeIn(FadeInDuration);
+	}
 }
