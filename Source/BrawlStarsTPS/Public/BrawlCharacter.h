@@ -180,9 +180,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|GameplayCue")
 	FGameplayTag DeathCueTag = FGameplayTag::RequestGameplayTag(FName("GameplayCue.Common.Die"));;
 
-	// GameplayCue 태그: 하이퍼차지 발동
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|GameplayCue")
-	FGameplayTag HyperChargeCueTag = FGameplayTag::RequestGameplayTag(FName("GameplayCue.Common.HyperCharge"));
+	// 하이퍼차지 발동 시 생성할 이펙트 액터 클래스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Effects")
+	TSubclassOf<AActor> HyperChargeEffectClass;
+
+	// 현재 생성된 하이퍼차지 이펙트 인스턴스
+	UPROPERTY()
+	TObjectPtr<AActor> HyperChargeEffectInstance;
+
+	// 하이퍼차지 상태 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
+	FGameplayTag HyperChargeTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
 
 	// 전투 후 은신이 해제되는 시간 (초) - GE 지속시간으로 사용 (동적 GE 사용 시)
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Combat")
@@ -248,6 +256,9 @@ protected:
 	// 전투 은신 해제 태그(State.Combat.Revealed) 변경 시 호출
 	virtual void OnCombatRevealedTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
 
+	// 하이퍼차지 태그(State.Hypercharged) 변경 시 호출
+	virtual void OnHyperChargeTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
+
 private:
 	// 이동 속도 속성 변경 시 호출될 콜백
 	void OnMovementSpeedChanged(const FOnAttributeChangeData& Data);
@@ -279,6 +290,9 @@ private:
 
 	// 전투 상태 태그 변화 감지용 핸들 (공격 시 - Instant)
 	FDelegateHandle CombatStateTagDelegateHandle;
+
+	// 하이퍼차지 태그 변화 감지용 핸들
+	FDelegateHandle HyperChargeTagDelegateHandle;
 
 	// 사망 여부
 	bool bIsDead = false;
