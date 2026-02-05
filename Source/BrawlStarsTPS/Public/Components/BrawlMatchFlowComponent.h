@@ -64,6 +64,9 @@ public:
 	TSubclassOf<UUserWidget> FinalSummaryWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|Audio")
+	TObjectPtr<USoundBase> MatchReadyBGM;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|Audio")
 	TObjectPtr<USoundBase> MatchStartBGM;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|Audio")

@@ -101,7 +101,8 @@ void UBrawlMatchFlowComponent::StartIntroSequence()
 
 void UBrawlMatchFlowComponent::HandleIntroStarted()
 {
-	PlayBGM(MatchStartBGM, 0.5f, 0.0f);
+	// 준비 BGM 즉시 재생
+	PlayBGM(MatchReadyBGM, 0.5f, 0.0f);
 
 	if (MatchStartWidgetClass)
 	{
@@ -162,11 +163,15 @@ void UBrawlMatchFlowComponent::HandlePlayingStarted()
 		StartWidget->PlayStartAnimation();
 	}
 
-	PlayBGM(GameplayBGM, 0.5f, 0.5f);
+	// 1. "START" 사운드 즉시 재생
+	PlayBGM(MatchStartBGM, 0.1f, 0.0f);
 
-	// 1.5초 뒤 연출 종료
+	// 1.5초 뒤 연출 종료 시점에 실제 게임 BGM으로 전환
 	GetWorld()->GetTimerManager().SetTimer(SequenceTimerHandle, [this]()
 	{
+		// 2. 실제 게임플레이 BGM 즉시 재생 (페이드 인 없음)
+		PlayBGM(GameplayBGM, 0.0f, 0.0f);
+
 		if (MatchStartWidget)
 		{
 			MatchStartWidget->RemoveFromParent();
