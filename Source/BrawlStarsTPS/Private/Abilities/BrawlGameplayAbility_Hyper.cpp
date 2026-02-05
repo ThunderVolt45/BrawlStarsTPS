@@ -4,6 +4,7 @@
 #include "Abilities/BrawlGameplayAbility_Hyper.h"
 #include "AbilitySystemComponent.h"
 #include "BrawlAttributeSet.h"
+#include "BrawlCharacter.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 
 UBrawlGameplayAbility_Hyper::UBrawlGameplayAbility_Hyper()
@@ -47,6 +48,12 @@ void UBrawlGameplayAbility_Hyper::ActivateAbility(const FGameplayAbilitySpecHand
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
+	}
+
+	// 0. 캐릭터에게 하이퍼차지 발동 알림 (GameplayCue 트리거)
+	if (ABrawlCharacter* BrawlChar = Cast<ABrawlCharacter>(GetAvatarActorFromActorInfo()))
+	{
+		BrawlChar->NotifyHyperChargeActivated();
 	}
 
 	// 1. 버프 적용

@@ -24,6 +24,9 @@
 - **Localization:**
     - **Answer in Korean.**
     - **Code comments must be in Korean.**
+- **Error Handling:**
+    - **Do not "swallow" errors** when null checks or validations fail for essential objects.
+    - Use **`check()`** and **`CastChecked()`** proactively for objects that must exist to ensure early detection of failures.
 - **Input:** Use `EnhancedInput` with C++ bindings (Data Assets for Input Config).
 
 ## Key Documents

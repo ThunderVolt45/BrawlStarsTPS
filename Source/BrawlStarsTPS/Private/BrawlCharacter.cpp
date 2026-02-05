@@ -190,6 +190,16 @@ void ABrawlCharacter::InitAbilityActorInfo()
 	CombatRevealedTagDelegateHandle = AbilitySystemComponent->RegisterGameplayTagEvent(RevealedTag,
 		EGameplayTagEventType::NewOrRemoved).AddUObject(this, &ABrawlCharacter::OnCombatRevealedTagChanged);
 
+	// 하이퍼차지 태그(State.Hypercharged) 변화 감지 바인딩
+	HyperChargeTagDelegateHandle = AbilitySystemComponent->RegisterGameplayTagEvent(HyperChargeTag,
+		EGameplayTagEventType::NewOrRemoved).AddUObject(this, &ABrawlCharacter::OnHyperChargeTagChanged);
+
+	// 리스폰 GameplayCue 호출
+	if (RespawnCueTag.IsValid())
+	{
+		AbilitySystemComponent->ExecuteGameplayCue(RespawnCueTag);
+	}
+
 	// 머리 위 위젯 초기화
 	if (HealthBarComponent)
 	{
@@ -308,6 +318,12 @@ void ABrawlCharacter::NotifyCombatAction()
 	ApplyCombatRevealEffect();
 }
 
+void ABrawlCharacter::NotifyHyperChargeActivated()
+{
+	// 태그 기반 시스템(OnHyperChargeTagChanged)으로 이관됨
+	// 필요 시 즉발성 SFX 등은 여기서 처리 가능
+}
+
 void ABrawlCharacter::ApplyCombatRevealEffect()
 {
 	if (!AbilitySystemComponent) return;
@@ -344,6 +360,45 @@ void ABrawlCharacter::OnCombatRevealedTagChanged(const FGameplayTag CallbackTag,
 	}
 
 	UpdateMeshVisibility();
+}
+
+void ABrawlCharacter::OnHyperChargeTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
+{
+	if (NewCount > 0)
+	{
+		// 하이퍼차지 시작: 액터 스폰
+		if (HyperChargeEffectClass)
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = this;
+			SpawnParams.Instigator = this;
+
+			// 위치는 발 밑에서 시작
+			FVector SpawnLocation = GetActorLocation();
+			if (GetCapsuleComponent())
+			{
+				SpawnLocation.Z -= GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+			}
+
+			HyperChargeEffectInstance = GetWorld()->SpawnActor<AActor>(HyperChargeEffectClass, SpawnLocation, GetActorRotation(), SpawnParams);
+
+			if (HyperChargeEffectInstance)
+			{
+				// 메시의 Root에 부착 (블루프린트에서 위치/회전 조정 용이하도록)
+				HyperChargeEffectInstance->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale);
+			}
+		}
+	}
+	else
+	{
+		// 하이퍼차지 종료 상태
+		// 직접 제거하는 것도 가능하지만 일단 하이퍼차지 효과 블루프린트가 스스로 정리하게 둔다
+		// if (HyperChargeEffectInstance)
+		// {
+		// 	HyperChargeEffectInstance->Destroy();
+		// 	HyperChargeEffectInstance = nullptr;
+		// }
+	}
 }
 
 bool ABrawlCharacter::IsVisibleTo(const FGenericTeamId& ObserverTeam) const
@@ -496,6 +551,12 @@ void ABrawlCharacter::Die()
 	if (bIsDead) return;
 
 	bIsDead = true;
+
+	// 사망 GameplayCue 호출
+	if (AbilitySystemComponent && DeathCueTag.IsValid())
+	{
+		AbilitySystemComponent->ExecuteGameplayCue(DeathCueTag);
+	}
 
 	// 서버에서 GameMode에 사망 사실 알림 (GameState를 통해 클라이언트로 전파됨)
 	if (HasAuthority())

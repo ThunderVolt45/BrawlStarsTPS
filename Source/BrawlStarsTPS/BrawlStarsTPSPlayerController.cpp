@@ -1,71 +1,50 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-
 #include "BrawlStarsTPSPlayerController.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
 #include "InputMappingContext.h"
 #include "Blueprint/UserWidget.h"
-#include "BrawlStarsTPS.h"
-#include "Widgets/Input/SVirtualJoystick.h"
 #include "UI/BrawlHUDWidget.h"
+#include "Components/BrawlMatchFlowComponent.h"
 #include "AbilitySystemInterface.h"
-#include "AbilitySystemComponent.h"
-#include "Components/AudioComponent.h"
-#include "Kismet/GameplayStatics.h"
+
+ABrawlStarsTPSPlayerController::ABrawlStarsTPSPlayerController()
+{
+	PrimaryActorTick.bCanEverTick = true;
+
+	// 매치 흐름 컴포넌트 생성
+	MatchFlowComponent = CreateDefaultSubobject<UBrawlMatchFlowComponent>(TEXT("MatchFlowComponent"));
+}
 
 void ABrawlStarsTPSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 오디오 컴포넌트 생성 (여기서 생성하거나 PlayBGM에서 생성)
-	if (!BGMComponent)
-	{
-		BGMComponent = UGameplayStatics::SpawnSound2D(this, nullptr);
-	}
+	if (!IsLocalPlayerController()) return;
 	
-	if (IsLocalPlayerController() && BrawlHUDClass)
+	if (!BrawlHUDClass) return;
+
+	// 위젯이 없다면 새로 생성
+	if (!BrawlHUDWidget)
 	{
-		// 위젯이 이미 있다면 생성하지 않음
-		if (!BrawlHUDWidget)
+		BrawlHUDWidget = CreateWidget<UBrawlHUDWidget>(this, BrawlHUDClass);
+		if (BrawlHUDWidget)
 		{
-			BrawlHUDWidget = CreateWidget<UBrawlHUDWidget>(this, BrawlHUDClass);
+			BrawlHUDWidget->AddToViewport();
+		}
+	}
+
+	// Pawn이 있다면 연결 (이미 BeginPlay 시점에 Pawn이 있을 수 있음)
+	if (GetPawn())
+	{
+		if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(GetPawn()))
+		{
 			if (BrawlHUDWidget)
 			{
-				BrawlHUDWidget->AddToViewport();
+				BrawlHUDWidget->BindAttributeCallbacks(ASI->GetAbilitySystemComponent());
 			}
 		}
-		
-		// Pawn이 있다면 연결 (이미 BeginPlay 시점에 Pawn이 있을 수 있음)
-		if (GetPawn())
-		{
-			if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(GetPawn()))
-			{
-				if (BrawlHUDWidget)
-				{
-					BrawlHUDWidget->BindAttributeCallbacks(ASI->GetAbilitySystemComponent());
-				}
-			}
-		}
-	}
-
-	// only spawn touch controls on local player controllers
-	if (ShouldUseTouchControls() && IsLocalPlayerController())
-	{
-		// spawn the mobile controls widget
-		MobileControlsWidget = CreateWidget<UUserWidget>(this, MobileControlsWidgetClass);
-
-		if (MobileControlsWidget)
-		{
-			// add the controls to the player screen
-			MobileControlsWidget->AddToPlayerScreen(0);
-
-		} else {
-
-			UE_LOG(LogBrawlStarsTPS, Error, TEXT("Could not spawn mobile controls widget."));
-
-		}
-
 	}
 }
 
@@ -92,118 +71,42 @@ void ABrawlStarsTPSPlayerController::AcknowledgePossession(APawn* P)
 void ABrawlStarsTPSPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
-
+	
 	// only add IMCs for local player controllers
+	if (!IsLocalPlayerController()) return;
+
+	// Add Input Mapping Contexts
+	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = 
+		ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	{
+		for (UInputMappingContext* CurrentContext : DefaultMappingContexts)
+		{
+			Subsystem->AddMappingContext(CurrentContext, 0);
+		}
+	}
+}
+
+void ABrawlStarsTPSPlayerController::ShowMatchStartUI_Implementation()
+{
+	if (IsLocalPlayerController() && MatchFlowComponent)
+	{
+		MatchFlowComponent->StartIntroSequence();
+	}
+}
+
+void ABrawlStarsTPSPlayerController::ShowMatchResultUI_Implementation(bool bIsWinner, int32 Rank)
+{
+	UE_LOG(LogTemp, Warning, TEXT("PC: ShowMatchResultUI_Implementation RPC Received! Winner: %d, Rank: %d"), bIsWinner, Rank);
+
 	if (IsLocalPlayerController())
 	{
-		// Add Input Mapping Contexts
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+		if (MatchFlowComponent)
 		{
-			for (UInputMappingContext* CurrentContext : DefaultMappingContexts)
-			{
-				Subsystem->AddMappingContext(CurrentContext, 0);
-			}
-
-			// only add these IMCs if we're not using mobile touch input
-			if (!ShouldUseTouchControls())
-			{
-				for (UInputMappingContext* CurrentContext : MobileExcludedMappingContexts)
-				{
-					Subsystem->AddMappingContext(CurrentContext, 0);
-				}
-			}
+			MatchFlowComponent->StartOutroSequence(bIsWinner, Rank);
 		}
-	}
-}
-
-bool ABrawlStarsTPSPlayerController::ShouldUseTouchControls() const
-{
-	// are we on a mobile platform? Should we force touch?
-	return SVirtualJoystick::ShouldDisplayTouchInterface() || bForceTouchControls;
-}
-
-void ABrawlStarsTPSPlayerController::ShowMatchStartUI()
-{
-	if (!IsLocalPlayerController()) return;
-	
-	PlayBGM(MatchStartBGM, 0.5f, 0.0f);
-	
-	if (MatchStartWidgetClass)
-	{
-		if (!MatchStartWidget)
+		else
 		{
-			MatchStartWidget = CreateWidget<UUserWidget>(this, MatchStartWidgetClass);
+			UE_LOG(LogTemp, Error, TEXT("PC: MatchFlowComponent is NULL on local PC!"));
 		}
-		
-		if (MatchStartWidget && !MatchStartWidget->IsInViewport())
-		{
-			MatchStartWidget->AddToViewport(10);
-		}
-	}
-}
-
-void ABrawlStarsTPSPlayerController::StartGameplayBGM()
-{
-	PlayBGM(GameplayBGM, 0.5f, 0.5f);
-	
-	// 게임 시작 UI가 남아있다면 여기서 제거
-	if (MatchStartWidget && MatchStartWidget->IsInViewport())
-	{
-		MatchStartWidget->RemoveFromParent();
-	}
-}
-
-void ABrawlStarsTPSPlayerController::ShowMatchResultUI(bool bIsWinner, int32 Rank)
-{
-	if (!IsLocalPlayerController()) return;
-	
-	PlayBGM(bIsWinner ? WinBGM : LoseBGM, 1.0f, 0.5f);
-	
-	// HUD 숨김 처리
-	if (BrawlHUDWidget)
-	{
-		BrawlHUDWidget->SetVisibility(ESlateVisibility::Hidden);
-	}
-	
-	if (MatchResultWidgetClass)
-	{
-		if (!MatchResultWidget)
-		{
-			MatchResultWidget = CreateWidget<UUserWidget>(this, MatchResultWidgetClass);
-		}
-		
-		if (MatchResultWidget)
-		{
-			// TODO: 위젯에 승패 및 랭크 정보 전달
-			if (!MatchResultWidget->IsInViewport())
-			{
-				MatchResultWidget->AddToViewport(20);
-			}
-			
-			// 입력 모드 변경
-			FInputModeUIOnly InputMode;
-			InputMode.SetWidgetToFocus(MatchResultWidget->TakeWidget());
-			SetInputMode(InputMode);
-			bShowMouseCursor = true;
-		}
-	}
-}
-
-void ABrawlStarsTPSPlayerController::PlayBGM(USoundBase* NewBGM, float FadeOutDuration, float FadeInDuration)
-{
-	if (!NewBGM) return;
-	
-	if (BGMComponent && BGMComponent->IsPlaying())
-	{
-		if (BGMComponent->Sound == NewBGM) return;
-
-		BGMComponent->FadeOut(FadeOutDuration, 0.0f);
-	}
-	
-	BGMComponent = UGameplayStatics::SpawnSound2D(this, NewBGM);
-
-	if (BGMComponent)
-	{
-		BGMComponent->FadeIn(FadeInDuration);
 	}
 }

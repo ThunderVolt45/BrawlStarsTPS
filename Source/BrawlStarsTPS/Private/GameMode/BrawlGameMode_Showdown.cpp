@@ -28,14 +28,8 @@ void ABrawlGameMode_Showdown::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 게임 상태 초기화
-	bHasMatchStarted = false;
-	CurrentCountdownTime = StartCountdownTime;
-
-	// 상자 스폰
+	// 상자 및 봇 스폰
 	SpawnPowerCubeBoxes();
-
-	// 봇 스폰
 	SpawnBots();
 
 	// 초기 생존자 수 계산 (플레이어 + AI) - 상자는 제외
@@ -51,82 +45,46 @@ void ABrawlGameMode_Showdown::BeginPlay()
 		}
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("Showdown Mode Initialized. Waiting for Start. Alive Brawlers: %d"), AliveBrawlerCount);
-
-	// GameState 동기화
-	if (ABrawlGameState* BrawlGameState = GetGameState<ABrawlGameState>())
+	// GameState 동기화 및 매치 상태 설정
+	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
 	{
-		BrawlGameState->SetAliveBrawlerCount(AliveBrawlerCount);
-	}
+		GS->SetAliveBrawlerCount(AliveBrawlerCount);
 
-	// 플레이어 입력 차단
-	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
-	{
-		PC->SetIgnoreMoveInput(true);
-		PC->SetIgnoreLookInput(true);
-		
-		// 시작 UI 표시
-		if (ABrawlStarsTPSPlayerController* BrawlPC = Cast<ABrawlStarsTPSPlayerController>(PC))
-		{
-			BrawlPC->ShowMatchStartUI();
-		}
+		// 1. 인트로 단계 시작 (클라이언트로 전파되어 연출 트리거)
+		GS->SetMatchState(EBrawlMatchState::Intro);
+
+		// 2. 일정 시간 뒤 게임 시작 (연출 시간 확보)
+		FTimerHandle StartTimerHandle;
+		GetWorldTimerManager().SetTimer(StartTimerHandle, this, &ABrawlGameMode_Showdown::StartMatch, 5.0f, false);
 	}
 }
 
 void ABrawlGameMode_Showdown::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+}
 
-	if (!bHasMatchStarted)
+void ABrawlGameMode_Showdown::StartMatch()
+{
+	if (bHasMatchStarted) return;
+
+	bHasMatchStarted = true;
+
+	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
 	{
-		HandleMatchStartCountdown(DeltaSeconds);
+		// 상태를 Playing으로 변경 (AI 활성화 및 클라 연출 트리거)
+		GS->SetMatchState(EBrawlMatchState::Playing);
 	}
+
+	// 독구름 로직 시작
+	StartPoisonLogic();
+
+	UE_LOG(LogTemp, Log, TEXT("Showdown Match Officially Started!"));
 }
 
 void ABrawlGameMode_Showdown::HandleMatchStartCountdown(float DeltaTime)
 {
-	if (CurrentCountdownTime > 0.0f)
-	{
-		CurrentCountdownTime -= DeltaTime;
-
-		// GameState에 시간 동기화 (UI 표시용)
-		if (ABrawlGameState* BrawlGameState = GetGameState<ABrawlGameState>())
-		{
-			// BrawlGameState에 Countdown 변수 추가 필요
-			// BrawlGameState->UpdateCountdown(CurrentCountdownTime);
-		}
-
-		if (CurrentCountdownTime <= 0.0f)
-		{
-			// 게임 시작
-			bHasMatchStarted = true;
-			UE_LOG(LogTemp, Log, TEXT("Match Started!"));
-
-			// 플레이어 입력 허용 및 BGM 시작
-			if (ABrawlStarsTPSPlayerController* PC = Cast<ABrawlStarsTPSPlayerController>(
-				UGameplayStatics::GetPlayerController(this, 0)))
-			{
-				PC->SetIgnoreMoveInput(false);
-				PC->SetIgnoreLookInput(false);
-				PC->StartGameplayBGM();
-			}
-
-			// 모든 AI 활성화
-			TArray<AActor*> FoundAI;
-			UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlAIController::StaticClass(), FoundAI);
-
-			for (AActor* Actor : FoundAI)
-			{
-				if (ABrawlAIController* AIC = Cast<ABrawlAIController>(Actor))
-				{
-					AIC->SetAIActive(true);
-				}
-			}
-
-			// 독구름 로직 시작
-			StartPoisonLogic();
-		}
-	}
+	// MatchFlowComponent와 GameState의 상태 변화로 대체됨
 }
 
 void ABrawlGameMode_Showdown::StartPoisonLogic()
@@ -566,16 +524,15 @@ void ABrawlGameMode_Showdown::EndGame(bool bIsPlayerWinner, int32 PlayerRank)
 		UE_LOG(LogTemp, Log, TEXT("GAME OVER! Player LOST! Rank: %d"), PlayerRank);
 	}
 	
-	// 모든 입력 차단
-	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	// 1. GameState 상태 변경 (AI 자동 정지 및 전파)
+	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
 	{
-		PC->SetIgnoreMoveInput(true);
-		PC->SetIgnoreLookInput(true);
-		
-		// 결과 UI 표시
-		if (ABrawlStarsTPSPlayerController* BrawlPC = Cast<ABrawlStarsTPSPlayerController>(PC))
-		{
-			BrawlPC->ShowMatchResultUI(bIsPlayerWinner, PlayerRank);
-		}
+		GS->SetMatchState(EBrawlMatchState::GameOver);
+	}
+
+	// 2. 결과 UI 표시 (RPC 호출)
+	if (ABrawlStarsTPSPlayerController* PC = Cast<ABrawlStarsTPSPlayerController>(UGameplayStatics::GetPlayerController(this, 0)))
+	{
+		PC->ShowMatchResultUI(bIsPlayerWinner, PlayerRank);
 	}
 }
