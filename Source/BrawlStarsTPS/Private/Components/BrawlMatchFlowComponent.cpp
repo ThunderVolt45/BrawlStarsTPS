@@ -42,15 +42,26 @@ void UBrawlMatchFlowComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 오디오 컴포넌트 초기화
-	if (!BGMComponent)
+	// 로컬 플레이어의 컨트롤러에 붙은 컴포넌트일 때만 실행
+	APlayerController* PC = Cast<APlayerController>(GetOwner());
+	if (PC && PC->IsLocalPlayerController())
 	{
-		BGMComponent = UGameplayStatics::SpawnSound2D(this, nullptr);
-	}
+		// 오디오 컴포넌트 초기화
+		if (!BGMComponent)
+		{
+			BGMComponent = UGameplayStatics::SpawnSound2D(this, nullptr);
+		}
 
-	if (ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>())
-	{
-		GS->OnMatchStateChanged.AddDynamic(this, &UBrawlMatchFlowComponent::OnMatchStateChanged);
+		if (ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>())
+		{
+			GS->OnMatchStateChanged.AddDynamic(this, &UBrawlMatchFlowComponent::OnMatchStateChanged);
+			
+			// 초기 상태가 이미 시작되었다면 즉시 실행
+			if (GS->GetMatchState() != EBrawlMatchState::Waiting)
+			{
+				OnMatchStateChanged();
+			}
+		}
 	}
 }
 
@@ -60,7 +71,9 @@ void UBrawlMatchFlowComponent::OnMatchStateChanged()
 	if (!GS) return;
 
 	OwnerController = Cast<ABrawlStarsTPSPlayerController>(GetOwner());
-	if (!OwnerController) return;
+	if (!OwnerController || !OwnerController->IsLocalPlayerController()) return;
+
+	UE_LOG(LogTemp, Warning, TEXT("MatchFlow: OnMatchStateChanged called. NewState: %d"), (uint8)GS->GetMatchState());
 
 	switch (GS->GetMatchState())
 	{
@@ -108,8 +121,10 @@ void UBrawlMatchFlowComponent::HandleIntroStarted()
 	// 조작 차단 유지 및 UI 모드
 	if (OwnerController)
 	{
-		OwnerController->SetIgnoreMoveInput(true);
-		OwnerController->SetIgnoreLookInput(true);
+		if (APawn* MyPawn = OwnerController->GetPawn())
+		{
+			MyPawn->DisableInput(OwnerController);
+		}
 		OwnerController->SetInputMode(FInputModeUIOnly());
 		OwnerController->bShowMouseCursor = true;
 	}
@@ -130,6 +145,8 @@ void UBrawlMatchFlowComponent::HandleIntroStarted()
 
 void UBrawlMatchFlowComponent::HandlePlayingStarted()
 {
+	UE_LOG(LogTemp, Warning, TEXT("MatchFlow: HandlePlayingStarted. Input will be enabled shortly."));
+
 	bIsOrbiting = false;
 	OwnerController->SetViewTargetWithBlend(OwnerController->GetPawn(), 1.0f);
 
@@ -142,7 +159,8 @@ void UBrawlMatchFlowComponent::HandlePlayingStarted()
 	PlayBGM(GameplayBGM, 0.5f, 0.5f);
 
 	// 1.5초 뒤 연출 종료
-	GetWorld()->GetTimerManager().SetTimer(SequenceTimerHandle, [this]() {
+	GetWorld()->GetTimerManager().SetTimer(SequenceTimerHandle, [this]()
+	{
 		if (MatchStartWidget)
 		{
 			MatchStartWidget->RemoveFromParent();
@@ -151,9 +169,12 @@ void UBrawlMatchFlowComponent::HandlePlayingStarted()
 
 		if (OwnerController)
 		{
-			// 입력 차단 해제 및 게임 모드 전환
-			OwnerController->SetIgnoreMoveInput(false);
-			OwnerController->SetIgnoreLookInput(false);
+			UE_LOG(LogTemp, Warning, TEXT("MatchFlow: Enabling Input!"));
+
+			if (APawn* MyPawn = OwnerController->GetPawn())
+			{
+				MyPawn->EnableInput(OwnerController);
+			}
 			
 			FInputModeGameOnly InputMode;
 			OwnerController->SetInputMode(InputMode);

@@ -46,11 +46,11 @@ public:
 	ABrawlStarsTPSPlayerController();
 
 	// 매치 시작 UI 표시
-	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
+	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "Brawl|UI")
 	void ShowMatchStartUI();
 
 	// 매치 결과 UI 표시
-	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
+	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "Brawl|UI")
 	void ShowMatchResultUI(bool bIsWinner, int32 Rank);
 
 protected:

@@ -1,19 +1,13 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-
 #include "BrawlStarsTPSPlayerController.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
 #include "InputMappingContext.h"
 #include "Blueprint/UserWidget.h"
-#include "BrawlStarsTPS.h"
-#include "Widgets/Input/SVirtualJoystick.h"
 #include "UI/BrawlHUDWidget.h"
 #include "Components/BrawlMatchFlowComponent.h"
 #include "AbilitySystemInterface.h"
-#include "AbilitySystemComponent.h"
-#include "Components/AudioComponent.h"
-#include "Kismet/GameplayStatics.h"
 
 ABrawlStarsTPSPlayerController::ABrawlStarsTPSPlayerController()
 {
@@ -28,10 +22,6 @@ void ABrawlStarsTPSPlayerController::BeginPlay()
 	Super::BeginPlay();
 
 	if (!IsLocalPlayerController()) return;
-	
-	// 게임 시작 전까지 입력 차단
-	SetIgnoreMoveInput(true);
-	SetIgnoreLookInput(true);
 	
 	if (!BrawlHUDClass) return;
 
@@ -96,17 +86,17 @@ void ABrawlStarsTPSPlayerController::SetupInputComponent()
 	}
 }
 
-void ABrawlStarsTPSPlayerController::ShowMatchStartUI()
+void ABrawlStarsTPSPlayerController::ShowMatchStartUI_Implementation()
 {
-	if (MatchFlowComponent)
+	if (IsLocalPlayerController() && MatchFlowComponent)
 	{
 		MatchFlowComponent->StartIntroSequence();
 	}
 }
 
-void ABrawlStarsTPSPlayerController::ShowMatchResultUI(bool bIsWinner, int32 Rank)
+void ABrawlStarsTPSPlayerController::ShowMatchResultUI_Implementation(bool bIsWinner, int32 Rank)
 {
-	if (MatchFlowComponent)
+	if (IsLocalPlayerController() && MatchFlowComponent)
 	{
 		MatchFlowComponent->StartOutroSequence(bIsWinner, Rank);
 	}
