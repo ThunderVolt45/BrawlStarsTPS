@@ -10,6 +10,7 @@
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "UI/BrawlHUDWidget.h"
 #include "UI/BrawlMatchResultWidget.h"
+#include "UI/BrawlFinalSummaryWidget.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
 #include "Components/AudioComponent.h"
@@ -158,6 +159,9 @@ void ABrawlStarsTPSPlayerController::ShowMatchResultUI(bool bIsWinner, int32 Ran
 {
 	if (!IsLocalPlayerController()) return;
 	
+	// 나중에 사용하기 위해 순위 저장
+	SavedRank = Rank;
+
 	PlayBGM(bIsWinner ? WinBGM : LoseBGM, 1.0f, 0.5f);
 	
 	// HUD 숨김 처리
@@ -170,14 +174,19 @@ void ABrawlStarsTPSPlayerController::ShowMatchResultUI(bool bIsWinner, int32 Ran
 	{
 		if (!MatchResultWidget)
 		{
-			UUserWidget* NewWidget = CreateWidget<UUserWidget>(this, MatchResultWidgetClass);
-			MatchResultWidget = Cast<UBrawlMatchResultWidget>(NewWidget);
+			MatchResultWidget = CreateWidget<UUserWidget>(this, MatchResultWidgetClass);
 		}
 		
 		if (MatchResultWidget)
 		{
-			// 위젯에 승패 및 랭크 정보 전달
-			MatchResultWidget->SetupResult(bIsWinner, Rank);
+			// 직접 캐스팅하여 위젯 설정
+			if (UBrawlMatchResultWidget* ResultWidget = Cast<UBrawlMatchResultWidget>(MatchResultWidget))
+			{
+				ResultWidget->SetupResult(bIsWinner, Rank);
+				
+				// 나가기 버튼 클릭 이벤트 바인딩
+				ResultWidget->OnExitClicked.AddDynamic(this, &ABrawlStarsTPSPlayerController::OnMatchExitClicked);
+			}
 
 			if (!MatchResultWidget->IsInViewport())
 			{
@@ -189,6 +198,85 @@ void ABrawlStarsTPSPlayerController::ShowMatchResultUI(bool bIsWinner, int32 Ran
 			InputMode.SetWidgetToFocus(MatchResultWidget->TakeWidget());
 			SetInputMode(InputMode);
 			bShowMouseCursor = true;
+		}
+	}
+}
+
+void ABrawlStarsTPSPlayerController::OnMatchExitClicked()
+{
+	StartFinalResultSequence();
+}
+
+void ABrawlStarsTPSPlayerController::StartFinalResultSequence()
+{
+	// 1. 첫 번째 결과 위젯(승패 메시지) 제거
+	if (MatchResultWidget)
+	{
+		MatchResultWidget->RemoveFromParent();
+		MatchResultWidget = nullptr;
+	}
+
+	// 2. 설정된 태그 목록을 순회하며 액터 파괴
+	TArray<AActor*> ActorsToDestroy;
+	for (const FName& Tag : TagsToDestroy)
+	{
+		TArray<AActor*> Temp;
+		UGameplayStatics::GetAllActorsWithTag(GetWorld(), Tag, Temp);
+		ActorsToDestroy.Append(Temp);
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("BrawlStarsTPSPlayerController::StartFinalResultSequence - Found %d Actors to Destroy..."), ActorsToDestroy.Num());
+	
+	for (AActor* Actor : ActorsToDestroy)
+	{
+		// 자기 자신(Pawn)은 제외
+		if (Actor && Actor != GetPawn())
+		{
+			Actor->Destroy();
+		}
+	}
+
+	// 3. 플레이어 브롤러 및 카메라 배치
+	TArray<AActor*> Spots;
+	UGameplayStatics::GetAllActorsWithTag(GetWorld(), EndGameSpotTag, Spots);
+	
+	if (Spots.Num() > 0)
+	{
+		AActor* TargetSpot = Spots[0];
+		if (APawn* MyPawn = GetPawn())
+		{
+			MyPawn->SetActorLocationAndRotation(TargetSpot->GetActorLocation(), TargetSpot->GetActorRotation());
+			MyPawn->DisableInput(this);
+		}
+		
+		// 카메라 전환 (연출용 카메라가 있다면)
+		SetViewTargetWithBlend(TargetSpot, 0.5f);
+	}
+
+	// 4. 최종 요약 위젯 표시
+	if (FinalSummaryWidgetClass)
+	{
+		if (!FinalSummaryWidget)
+		{
+			FinalSummaryWidget = CreateWidget<UUserWidget>(this, FinalSummaryWidgetClass);
+		}
+
+		if (FinalSummaryWidget)
+		{
+			if (UBrawlFinalSummaryWidget* SummaryWidget = Cast<UBrawlFinalSummaryWidget>(FinalSummaryWidget))
+			{
+				SummaryWidget->SetupFinalSummary(SavedRank);
+			}
+
+			if (!FinalSummaryWidget->IsInViewport())
+			{
+				FinalSummaryWidget->AddToViewport(30);
+			}
+
+			// 입력 모드 유지 및 포커스 전환
+			FInputModeUIOnly InputMode;
+			InputMode.SetWidgetToFocus(FinalSummaryWidget->TakeWidget());
+			SetInputMode(InputMode);
 		}
 	}
 }

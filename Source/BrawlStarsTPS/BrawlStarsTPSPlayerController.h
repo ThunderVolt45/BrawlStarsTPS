@@ -10,6 +10,7 @@ class UInputMappingContext;
 class UUserWidget;
 class UBrawlHUDWidget;
 class UBrawlMatchResultWidget;
+class UBrawlFinalSummaryWidget;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -106,9 +107,37 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
 	TSubclassOf<UUserWidget> MatchResultWidgetClass;
 
+	// 최종 결과 요약 위젯 클래스 (레벨 정리 후)
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
+	TSubclassOf<UUserWidget> FinalSummaryWidgetClass;
+
+	// 게임 시작 시 띄울 위젯 클래스
 	UPROPERTY()
 	TObjectPtr<UUserWidget> MatchStartWidget;
 
+	// 게임 종료시 띄울 위젯 클래스
 	UPROPERTY()
-	TObjectPtr<UBrawlMatchResultWidget> MatchResultWidget;
+	TObjectPtr<UUserWidget> MatchResultWidget;
+
+	// 최종 게임 결과 (등수 등) 을 표시할 위젯 클래스
+	UPROPERTY()
+	TObjectPtr<UUserWidget> FinalSummaryWidget;
+
+	// 결과 화면 전환용 임시 저장 랭크
+	int32 SavedRank = 0;
+
+	// 게임 종료 시 제거할 액터들의 태그 목록 (상자, 적, 장애물 등)
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|EndGame")
+	TArray<FName> TagsToDestroy;
+
+	// 게임 종료 후 플레이어와 카메라가 이동할 지점의 태그
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|EndGame")
+	FName EndGameSpotTag = FName("EndGameSpot");
+
+	// 나가기 버튼 클릭 시 호출
+	UFUNCTION()
+	void OnMatchExitClicked();
+
+	// 레벨 정리 및 최종 연출 시작
+	void StartFinalResultSequence();
 };
