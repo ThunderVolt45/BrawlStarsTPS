@@ -206,7 +206,7 @@ void UBrawlMatchFlowComponent::StartOutroSequence(bool bIsWinner, int32 Rank)
 	SavedRank = Rank;
 
 	// 1. BGM 재생
-	PlayBGM(bIsWinner ? WinBGM : LoseBGM, 1.0f, 0.5f);
+	PlayBGM(bIsWinner ? WinBGM : LoseBGM, 0.0f, 0.0f);
 
 	if (APawn* MyPawn = OwnerController->GetPawn())
 	{
