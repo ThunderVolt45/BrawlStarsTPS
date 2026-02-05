@@ -190,6 +190,12 @@ void ABrawlCharacter::InitAbilityActorInfo()
 	CombatRevealedTagDelegateHandle = AbilitySystemComponent->RegisterGameplayTagEvent(RevealedTag,
 		EGameplayTagEventType::NewOrRemoved).AddUObject(this, &ABrawlCharacter::OnCombatRevealedTagChanged);
 
+	// 리스폰 GameplayCue 호출
+	if (RespawnCueTag.IsValid())
+	{
+		AbilitySystemComponent->ExecuteGameplayCue(RespawnCueTag);
+	}
+
 	// 머리 위 위젯 초기화
 	if (HealthBarComponent)
 	{
@@ -306,6 +312,14 @@ void ABrawlCharacter::SetRevealed(bool bRevealed)
 void ABrawlCharacter::NotifyCombatAction()
 {
 	ApplyCombatRevealEffect();
+}
+
+void ABrawlCharacter::NotifyHyperChargeActivated()
+{
+	if (AbilitySystemComponent && HyperChargeCueTag.IsValid())
+	{
+		AbilitySystemComponent->ExecuteGameplayCue(HyperChargeCueTag);
+	}
 }
 
 void ABrawlCharacter::ApplyCombatRevealEffect()
@@ -496,6 +510,12 @@ void ABrawlCharacter::Die()
 	if (bIsDead) return;
 
 	bIsDead = true;
+
+	// 사망 GameplayCue 호출
+	if (AbilitySystemComponent && DeathCueTag.IsValid())
+	{
+		AbilitySystemComponent->ExecuteGameplayCue(DeathCueTag);
+	}
 
 	// 서버에서 GameMode에 사망 사실 알림 (GameState를 통해 클라이언트로 전파됨)
 	if (HasAuthority())

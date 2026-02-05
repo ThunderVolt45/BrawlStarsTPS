@@ -172,6 +172,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
 	FGameplayTag RevealedTag = FGameplayTag::RequestGameplayTag(FName("State.Combat.Revealed"));
 
+	// GameplayCue 태그: 리스폰
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Cues")
+	FGameplayTag RespawnCueTag;
+
+	// GameplayCue 태그: 사망
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Cues")
+	FGameplayTag DeathCueTag;
+
+	// GameplayCue 태그: 하이퍼차지 발동
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Cues")
+	FGameplayTag HyperChargeCueTag;
+
 	// 전투 후 은신이 해제되는 시간 (초) - GE 지속시간으로 사용 (동적 GE 사용 시)
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Combat")
 	float CombatRevealDuration = 1.0f;
@@ -208,6 +220,10 @@ public:
 	// 전투 행위(피격, 공격) 발생 시 호출하여 은신 해제 (내부적으로 태그 부여)
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
 	void NotifyCombatAction();
+
+	// 하이퍼차지 발동 시 호출
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
+	void NotifyHyperChargeActivated();
 
 	// 특정 팀에게 이 캐릭터가 보이는지 확인
 	// 수풀에 없거나, 같은 팀이거나, 발각된 상태면 true
