@@ -9,8 +9,7 @@
 class UInputMappingContext;
 class UUserWidget;
 class UBrawlHUDWidget;
-class UBrawlMatchResultWidget;
-class UBrawlFinalSummaryWidget;
+class UBrawlMatchFlowComponent;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -63,6 +62,10 @@ protected:
 	bool ShouldUseTouchControls() const;
 
 public:
+	ABrawlStarsTPSPlayerController();
+
+	virtual void Tick(float DeltaTime) override;
+
 	// 매치 시작 UI 표시
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void ShowMatchStartUI();
@@ -79,6 +82,10 @@ public:
 	void StartGameplayBGM();
 
 protected:
+	/** 매치 흐름(Intro/Outro) 제어 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Components")
+	TObjectPtr<UBrawlMatchFlowComponent> MatchFlowComponent;
+
 	// 매치 시작(카운트다운) BGM
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Audio")
 	TObjectPtr<USoundBase> MatchStartBGM;
@@ -98,46 +105,4 @@ protected:
 	// BGM 재생용 컴포넌트
 	UPROPERTY()
 	TObjectPtr<UAudioComponent> BGMComponent;
-
-	// 매치 시작 위젯 클래스 (카운트다운)
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
-	TSubclassOf<UUserWidget> MatchStartWidgetClass;
-
-	// 매치 결과 위젯 클래스 (승리/패배)
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
-	TSubclassOf<UUserWidget> MatchResultWidgetClass;
-
-	// 최종 결과 요약 위젯 클래스 (레벨 정리 후)
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
-	TSubclassOf<UUserWidget> FinalSummaryWidgetClass;
-
-	// 게임 시작 시 띄울 위젯 클래스
-	UPROPERTY()
-	TObjectPtr<UUserWidget> MatchStartWidget;
-
-	// 게임 종료시 띄울 위젯 클래스
-	UPROPERTY()
-	TObjectPtr<UUserWidget> MatchResultWidget;
-
-	// 최종 게임 결과 (등수 등) 을 표시할 위젯 클래스
-	UPROPERTY()
-	TObjectPtr<UUserWidget> FinalSummaryWidget;
-
-	// 결과 화면 전환용 임시 저장 랭크
-	int32 SavedRank = 0;
-
-	// 게임 종료 시 제거할 액터들의 태그 목록 (상자, 적, 장애물 등)
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|EndGame")
-	TArray<FName> TagsToDestroy;
-
-	// 게임 종료 후 플레이어와 카메라가 이동할 지점의 태그
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|EndGame")
-	FName EndGameSpotTag = FName("EndGameSpot");
-
-	// 나가기 버튼 클릭 시 호출
-	UFUNCTION()
-	void OnMatchExitClicked();
-
-	// 레벨 정리 및 최종 연출 시작
-	void StartFinalResultSequence();
 };
