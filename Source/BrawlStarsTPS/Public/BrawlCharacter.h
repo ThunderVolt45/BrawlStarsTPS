@@ -173,16 +173,16 @@ protected:
 	FGameplayTag RevealedTag = FGameplayTag::RequestGameplayTag(FName("State.Combat.Revealed"));
 
 	// GameplayCue 태그: 리스폰
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Cues")
-	FGameplayTag RespawnCueTag;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|GameplayCue")
+	FGameplayTag RespawnCueTag = FGameplayTag::RequestGameplayTag(FName("GameplayCue.Common.Respawn"));
 
 	// GameplayCue 태그: 사망
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Cues")
-	FGameplayTag DeathCueTag;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|GameplayCue")
+	FGameplayTag DeathCueTag = FGameplayTag::RequestGameplayTag(FName("GameplayCue.Common.Die"));;
 
 	// GameplayCue 태그: 하이퍼차지 발동
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Cues")
-	FGameplayTag HyperChargeCueTag;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|GameplayCue")
+	FGameplayTag HyperChargeCueTag = FGameplayTag::RequestGameplayTag(FName("GameplayCue.Common.HyperCharge"));
 
 	// 전투 후 은신이 해제되는 시간 (초) - GE 지속시간으로 사용 (동적 GE 사용 시)
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Combat")
