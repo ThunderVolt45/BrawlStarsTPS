@@ -96,8 +96,17 @@ void ABrawlStarsTPSPlayerController::ShowMatchStartUI_Implementation()
 
 void ABrawlStarsTPSPlayerController::ShowMatchResultUI_Implementation(bool bIsWinner, int32 Rank)
 {
-	if (IsLocalPlayerController() && MatchFlowComponent)
+	UE_LOG(LogTemp, Warning, TEXT("PC: ShowMatchResultUI_Implementation RPC Received! Winner: %d, Rank: %d"), bIsWinner, Rank);
+
+	if (IsLocalPlayerController())
 	{
-		MatchFlowComponent->StartOutroSequence(bIsWinner, Rank);
+		if (MatchFlowComponent)
+		{
+			MatchFlowComponent->StartOutroSequence(bIsWinner, Rank);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("PC: MatchFlowComponent is NULL on local PC!"));
+		}
 	}
 }

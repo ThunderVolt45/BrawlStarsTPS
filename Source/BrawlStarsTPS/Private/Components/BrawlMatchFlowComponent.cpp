@@ -42,25 +42,30 @@ void UBrawlMatchFlowComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 로컬 플레이어의 컨트롤러에 붙은 컴포넌트일 때만 실행
-	APlayerController* PC = Cast<APlayerController>(GetOwner());
-	if (PC && PC->IsLocalPlayerController())
+	// 소유자는 반드시 PlayerController여야 함
+	APlayerController* PC = CastChecked<APlayerController>(GetOwner());
+
+	if (PC->IsLocalPlayerController())
 	{
-		// 오디오 컴포넌트 초기화
+		// 오디오 컴포넌트 생성 및 등록 (실패 시 즉시 감지)
 		if (!BGMComponent)
 		{
-			BGMComponent = UGameplayStatics::SpawnSound2D(this, nullptr);
+			BGMComponent = NewObject<UAudioComponent>(GetOwner(), UAudioComponent::StaticClass());
+			check(BGMComponent);
+			BGMComponent->RegisterComponent();
+			BGMComponent->bAutoDestroy = false;
+			BGMComponent->bStopWhenOwnerDestroyed = true;
 		}
 
-		if (ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>())
+		ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>();
+		check(GS); // GameState는 반드시 존재해야 함
+
+		GS->OnMatchStateChanged.AddDynamic(this, &UBrawlMatchFlowComponent::OnMatchStateChanged);
+		
+		// 초기 상태 체크
+		if (GS->GetMatchState() != EBrawlMatchState::Waiting)
 		{
-			GS->OnMatchStateChanged.AddDynamic(this, &UBrawlMatchFlowComponent::OnMatchStateChanged);
-			
-			// 초기 상태가 이미 시작되었다면 즉시 실행
-			if (GS->GetMatchState() != EBrawlMatchState::Waiting)
-			{
-				OnMatchStateChanged();
-			}
+			OnMatchStateChanged();
 		}
 	}
 }
@@ -68,10 +73,10 @@ void UBrawlMatchFlowComponent::BeginPlay()
 void UBrawlMatchFlowComponent::OnMatchStateChanged()
 {
 	ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>();
-	if (!GS) return;
+	check(GS);
 
-	OwnerController = Cast<ABrawlStarsTPSPlayerController>(GetOwner());
-	if (!OwnerController || !OwnerController->IsLocalPlayerController()) return;
+	OwnerController = CastChecked<ABrawlStarsTPSPlayerController>(GetOwner());
+	if (!OwnerController->IsLocalPlayerController()) return;
 
 	UE_LOG(LogTemp, Warning, TEXT("MatchFlow: OnMatchStateChanged called. NewState: %d"), (uint8)GS->GetMatchState());
 
@@ -84,6 +89,7 @@ void UBrawlMatchFlowComponent::OnMatchStateChanged()
 		HandlePlayingStarted();
 		break;
 	case EBrawlMatchState::GameOver:
+		UE_LOG(LogTemp, Warning, TEXT("MatchFlow: GameOver state detected. Waiting for RPC..."));
 		break;
 	}
 }
@@ -185,61 +191,80 @@ void UBrawlMatchFlowComponent::HandlePlayingStarted()
 
 void UBrawlMatchFlowComponent::StartOutroSequence(bool bIsWinner, int32 Rank)
 {
-	OwnerController = Cast<ABrawlStarsTPSPlayerController>(GetOwner());
-	if (!OwnerController) return;
+	// 소유자 검사 (절대 NULL일 수 없으며 우리 클래스여야 함)
+	OwnerController = CastChecked<ABrawlStarsTPSPlayerController>(GetOwner());
+
+	if (!OwnerController->IsLocalPlayerController()) return;
+
+	UE_LOG(LogTemp, Warning, TEXT("MatchFlow: StartOutroSequence PROCEEDING. Winner: %d, Rank: %d"), bIsWinner, Rank);
 
 	SavedRank = Rank;
 
-	// BGM 재생 및 HUD 숨김
+	// 1. BGM 재생
 	PlayBGM(bIsWinner ? WinBGM : LoseBGM, 1.0f, 0.5f);
-	
-	// HUD 위젯 접근을 위해 Controller의 멤버에 접근 (필요 시 HUD 관련 로직도 이관 가능)
-	// 여기서는 일단 직접 캐스팅하여 처리
-	if (OwnerController->GetHUD()) 
-	{
-		// ...
-	}
 
-	if (MatchResultWidgetClass)
+	if (APawn* MyPawn = OwnerController->GetPawn())
 	{
-		if (!MatchResultWidget)
+		MyPawn->DisableInput(OwnerController);
+	}
+	
+	// 위젯 클래스 검사 (블루프린트 설정 누락 방지)
+	checkf(MatchResultWidgetClass, TEXT("MatchResultWidgetClass is NOT set in MatchFlowComponent! Set it in BP."));
+
+	UE_LOG(LogTemp, Log, TEXT("MatchFlow: Creating Widget with class: %s"), *MatchResultWidgetClass->GetName());
+	
+	if (!MatchResultWidget)
+	{
+		MatchResultWidget = CreateWidget<UUserWidget>(OwnerController, MatchResultWidgetClass);
+	}
+	
+	if (MatchResultWidget)
+	{
+		UE_LOG(LogTemp, Log, TEXT("MatchFlow: Widget Created Successfully."));
+
+		if (UBrawlMatchResultWidget* ResultWidget = Cast<UBrawlMatchResultWidget>(MatchResultWidget))
 		{
-			MatchResultWidget = CreateWidget<UUserWidget>(OwnerController, MatchResultWidgetClass);
-		}
-		
-		if (MatchResultWidget)
-		{
-			if (UBrawlMatchResultWidget* ResultWidget = Cast<UBrawlMatchResultWidget>(MatchResultWidget))
+			ResultWidget->SetupResult(bIsWinner, Rank);
+			if (!ResultWidget->OnExitClicked.IsBound())
 			{
-				ResultWidget->SetupResult(bIsWinner, Rank);
 				ResultWidget->OnExitClicked.AddDynamic(this, &UBrawlMatchFlowComponent::HandleMatchExitClicked);
 			}
-
-			if (!MatchResultWidget->IsInViewport())
-			{
-				MatchResultWidget->AddToViewport(20);
-			}
-			
-			FInputModeUIOnly InputMode;
-			InputMode.SetWidgetToFocus(MatchResultWidget->TakeWidget());
-			OwnerController->SetInputMode(InputMode);
-			OwnerController->bShowMouseCursor = true;
 		}
+
+		if (!MatchResultWidget->IsInViewport())
+		{
+			MatchResultWidget->AddToViewport(20);
+			UE_LOG(LogTemp, Log, TEXT("MatchFlow: Widget Added to Viewport."));
+		}
+		
+		// 입력 모드 전환
+		FInputModeUIOnly InputMode;
+		OwnerController->SetInputMode(InputMode);
+		OwnerController->bShowMouseCursor = true;
+	}
+	else
+	{
+		// 위젯 인스턴스 생성 실패 시 크래시 (시스템상 발생하면 안 되는 상황)
+		checkf(false, TEXT("MatchFlow: FAILED to create widget instance from class %s"), *MatchResultWidgetClass->GetName());
 	}
 }
 
 void UBrawlMatchFlowComponent::PlayBGM(USoundBase* NewBGM, float FadeOutDuration, float FadeInDuration)
 {
-	if (!NewBGM) return;
+	if (!NewBGM || !BGMComponent) return;
 	
-	if (BGMComponent && BGMComponent->IsPlaying())
+	// 이미 같은 사운드가 재생 중이면 무시
+	if (BGMComponent->IsPlaying() && BGMComponent->Sound == NewBGM) return;
+
+	// 기존 사운드 페이드 아웃
+	if (BGMComponent->IsPlaying())
 	{
-		if (BGMComponent->Sound == NewBGM) return;
 		BGMComponent->FadeOut(FadeOutDuration, 0.0f);
 	}
-	
-	BGMComponent = UGameplayStatics::SpawnSound2D(this, NewBGM);
-	if (BGMComponent) BGMComponent->FadeIn(FadeInDuration);
+
+	// 새 사운드 설정 및 페이드 인
+	BGMComponent->SetSound(NewBGM);
+	BGMComponent->FadeIn(FadeInDuration, 1.0f);
 }
 
 void UBrawlMatchFlowComponent::HandleMatchExitClicked()

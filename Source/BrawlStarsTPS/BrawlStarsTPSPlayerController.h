@@ -16,7 +16,7 @@ class UBrawlMatchFlowComponent;
  *  Manages input mappings
  */
 UCLASS(abstract)
-class ABrawlStarsTPSPlayerController : public APlayerController
+class BRAWLSTARSTPS_API ABrawlStarsTPSPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 	
@@ -55,6 +55,6 @@ public:
 
 protected:
 	/** 매치 흐름(Intro/Outro) 제어 컴포넌트 */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Components")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UBrawlMatchFlowComponent> MatchFlowComponent;
 };

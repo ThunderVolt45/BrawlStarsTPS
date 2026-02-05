@@ -524,16 +524,15 @@ void ABrawlGameMode_Showdown::EndGame(bool bIsPlayerWinner, int32 PlayerRank)
 		UE_LOG(LogTemp, Log, TEXT("GAME OVER! Player LOST! Rank: %d"), PlayerRank);
 	}
 	
-	// 모든 입력 차단
-	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	// 1. GameState 상태 변경 (AI 자동 정지 및 전파)
+	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
 	{
-		PC->SetIgnoreMoveInput(true);
-		PC->SetIgnoreLookInput(true);
-		
-		// 결과 UI 표시
-		if (ABrawlStarsTPSPlayerController* BrawlPC = Cast<ABrawlStarsTPSPlayerController>(PC))
-		{
-			BrawlPC->ShowMatchResultUI(bIsPlayerWinner, PlayerRank);
-		}
+		GS->SetMatchState(EBrawlMatchState::GameOver);
+	}
+
+	// 2. 결과 UI 표시 (RPC 호출)
+	if (ABrawlStarsTPSPlayerController* PC = Cast<ABrawlStarsTPSPlayerController>(UGameplayStatics::GetPlayerController(this, 0)))
+	{
+		PC->ShowMatchResultUI(bIsPlayerWinner, PlayerRank);
 	}
 }

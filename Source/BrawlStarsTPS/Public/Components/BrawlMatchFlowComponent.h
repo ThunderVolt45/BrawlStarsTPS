@@ -52,39 +52,39 @@ protected:
 	/** 레벨 정리 및 최종 결과 표시 */
 	void Outro_StartFinalSummary();
 
-protected:
+public:
 	/** 설정값들 (BP에서 설정 가능) */
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|UI")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|UI")
 	TSubclassOf<UUserWidget> MatchStartWidgetClass;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|UI")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|UI")
 	TSubclassOf<UUserWidget> MatchResultWidgetClass;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|UI")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|UI")
 	TSubclassOf<UUserWidget> FinalSummaryWidgetClass;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|Audio")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|Audio")
 	TObjectPtr<USoundBase> MatchStartBGM;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|Audio")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|Audio")
 	TObjectPtr<USoundBase> GameplayBGM;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|Audio")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|Audio")
 	TObjectPtr<USoundBase> WinBGM;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|Audio")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|Audio")
 	TObjectPtr<USoundBase> LoseBGM;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|Camera")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|Camera")
 	FName OrbitCameraTag = FName("OrbitCamera");
 
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|Camera")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|Camera")
 	float OrbitSpeed = 15.0f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|Cleanup")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|Cleanup")
 	TArray<FName> TagsToDestroy;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|Cleanup")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|Cleanup")
 	FName EndGameSpotTag = FName("EndGameSpot");
 
 private:
