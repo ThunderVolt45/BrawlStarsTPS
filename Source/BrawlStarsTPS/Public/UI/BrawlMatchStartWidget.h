@@ -21,10 +21,12 @@ class BRAWLSTARSTPS_API UBrawlMatchStartWidget : public UBrawlUserWidget
 	GENERATED_BODY()
 
 public:
-	/** 1단계: 정보 설정 */
+	// 1단계: 정보 설정
 	void SetupMatchInfo(FText ModeName, FText Description);
 
-	/** 3단계: 텍스트 숨기기 */
+	// 2단계는 여기서 해당 없음
+	
+	// 3단계: 텍스트 숨기기
 	void HideInfoText();
 
 	/** 4단계: "START" 로고 연출 */
@@ -32,16 +34,22 @@ public:
 	void PlayStartAnimation();
 
 protected:
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UTextBlock> TextBlock_ModeName;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UTextBlock> TextBlock_Description;
+	TObjectPtr<UTextBlock> TextModeName;
 
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UImage> Image_StartLogo;
+	TObjectPtr<UTextBlock> TextDescription;
 
-	/** 위젯 블루프린트에서 만든 'StartLogoAnim' 애니메이션과 자동 바인딩 */
-	UPROPERTY(Transient, meta = (BindWidgetAnim))
-	TObjectPtr<UWidgetAnimation> StartLogoAnim;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> ImageStartLogo;
+
+private:
+	/** 절차적 애니메이션을 위한 상태 변수 */
+	bool bIsAnimatingLogo = false;
+	float AnimationProgress = 0.0f;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI|Animation")
+	float AnimationDuration = 0.5f;
 };
