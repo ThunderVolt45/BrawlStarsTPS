@@ -9,6 +9,7 @@
 #include "BrawlStarsTPS.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "UI/BrawlHUDWidget.h"
+#include "UI/BrawlMatchResultWidget.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
 #include "Components/AudioComponent.h"
@@ -169,12 +170,15 @@ void ABrawlStarsTPSPlayerController::ShowMatchResultUI(bool bIsWinner, int32 Ran
 	{
 		if (!MatchResultWidget)
 		{
-			MatchResultWidget = CreateWidget<UUserWidget>(this, MatchResultWidgetClass);
+			UUserWidget* NewWidget = CreateWidget<UUserWidget>(this, MatchResultWidgetClass);
+			MatchResultWidget = Cast<UBrawlMatchResultWidget>(NewWidget);
 		}
 		
 		if (MatchResultWidget)
 		{
-			// TODO: 위젯에 승패 및 랭크 정보 전달
+			// 위젯에 승패 및 랭크 정보 전달
+			MatchResultWidget->SetupResult(bIsWinner, Rank);
+
 			if (!MatchResultWidget->IsInViewport())
 			{
 				MatchResultWidget->AddToViewport(20);

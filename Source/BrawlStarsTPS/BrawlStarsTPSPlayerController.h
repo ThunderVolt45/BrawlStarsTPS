@@ -9,6 +9,7 @@
 class UInputMappingContext;
 class UUserWidget;
 class UBrawlHUDWidget;
+class UBrawlMatchResultWidget;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -109,5 +110,5 @@ protected:
 	TObjectPtr<UUserWidget> MatchStartWidget;
 
 	UPROPERTY()
-	TObjectPtr<UUserWidget> MatchResultWidget;
+	TObjectPtr<UBrawlMatchResultWidget> MatchResultWidget;
 };
