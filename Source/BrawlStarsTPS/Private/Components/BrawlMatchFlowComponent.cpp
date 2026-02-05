@@ -3,12 +3,14 @@
 
 #include "Components/BrawlMatchFlowComponent.h"
 #include "BrawlStarsTPSPlayerController.h"
+#include "BrawlGameState.h"
 #include "Blueprint/UserWidget.h"
 #include "UI/BrawlMatchStartWidget.h"
 #include "UI/BrawlMatchResultWidget.h"
 #include "UI/BrawlFinalSummaryWidget.h"
 #include "UI/BrawlHUDWidget.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/AudioComponent.h"
 #include "GameFramework/Pawn.h"
 #include "Camera/CameraActor.h"
 #include "TimerManager.h"
@@ -36,10 +38,128 @@ void UBrawlMatchFlowComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 	}
 }
 
+void UBrawlMatchFlowComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// 오디오 컴포넌트 초기화
+	if (!BGMComponent)
+	{
+		BGMComponent = UGameplayStatics::SpawnSound2D(this, nullptr);
+	}
+
+	if (ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>())
+	{
+		GS->OnMatchStateChanged.AddDynamic(this, &UBrawlMatchFlowComponent::OnMatchStateChanged);
+	}
+}
+
+void UBrawlMatchFlowComponent::OnMatchStateChanged()
+{
+	ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>();
+	if (!GS) return;
+
+	OwnerController = Cast<ABrawlStarsTPSPlayerController>(GetOwner());
+	if (!OwnerController) return;
+
+	switch (GS->GetMatchState())
+	{
+	case EBrawlMatchState::Intro:
+		HandleIntroStarted();
+		break;
+	case EBrawlMatchState::Playing:
+		HandlePlayingStarted();
+		break;
+	case EBrawlMatchState::GameOver:
+		break;
+	}
+}
+
 void UBrawlMatchFlowComponent::StartIntroSequence()
 {
-	OwnerController = Cast<ABrawlStarsTPSPlayerController>(GetOwner());
-	IntroStep1_ShowInfo();
+	// GameState의 상태 변화로 자동 처리됨
+}
+
+void UBrawlMatchFlowComponent::HandleIntroStarted()
+{
+	PlayBGM(MatchStartBGM, 0.5f, 0.0f);
+
+	if (MatchStartWidgetClass)
+	{
+		if (!MatchStartWidget)
+		{
+			MatchStartWidget = CreateWidget<UUserWidget>(OwnerController, MatchStartWidgetClass);
+		}
+
+		if (MatchStartWidget)
+		{
+			if (UBrawlMatchStartWidget* StartWidget = Cast<UBrawlMatchStartWidget>(MatchStartWidget))
+			{
+				StartWidget->SetupMatchInfo(FText::FromString(TEXT("SHOWDOWN")), FText::FromString(TEXT("DEFEAT ALL OTHER BRAWLERS")));
+			}
+
+			if (!MatchStartWidget->IsInViewport())
+			{
+				MatchStartWidget->AddToViewport(10);
+			}
+		}
+	}
+
+	// 조작 차단 유지 및 UI 모드
+	if (OwnerController)
+	{
+		OwnerController->SetIgnoreMoveInput(true);
+		OwnerController->SetIgnoreLookInput(true);
+		OwnerController->SetInputMode(FInputModeUIOnly());
+		OwnerController->bShowMouseCursor = true;
+	}
+
+	// 2초 뒤 궤도 카메라 시작
+	GetWorld()->GetTimerManager().SetTimer(SequenceTimerHandle, [this]() {
+		TArray<AActor*> FoundActors;
+		UGameplayStatics::GetAllActorsWithTag(GetWorld(), OrbitCameraTag, FoundActors);
+
+		if (FoundActors.Num() > 0)
+		{
+			OrbitCameraActor = FoundActors[0];
+			OwnerController->SetViewTargetWithBlend(OrbitCameraActor, 1.0f);
+			bIsOrbiting = true;
+		}
+	}, 2.0f, false);
+}
+
+void UBrawlMatchFlowComponent::HandlePlayingStarted()
+{
+	bIsOrbiting = false;
+	OwnerController->SetViewTargetWithBlend(OwnerController->GetPawn(), 1.0f);
+
+	if (UBrawlMatchStartWidget* StartWidget = Cast<UBrawlMatchStartWidget>(MatchStartWidget))
+	{
+		StartWidget->HideInfoText();
+		StartWidget->PlayStartAnimation();
+	}
+
+	PlayBGM(GameplayBGM, 0.5f, 0.5f);
+
+	// 1.5초 뒤 연출 종료
+	GetWorld()->GetTimerManager().SetTimer(SequenceTimerHandle, [this]() {
+		if (MatchStartWidget)
+		{
+			MatchStartWidget->RemoveFromParent();
+			MatchStartWidget = nullptr;
+		}
+
+		if (OwnerController)
+		{
+			// 입력 차단 해제 및 게임 모드 전환
+			OwnerController->SetIgnoreMoveInput(false);
+			OwnerController->SetIgnoreLookInput(false);
+			
+			FInputModeGameOnly InputMode;
+			OwnerController->SetInputMode(InputMode);
+			OwnerController->bShowMouseCursor = false;
+		}
+	}, 1.5f, false);
 }
 
 void UBrawlMatchFlowComponent::StartOutroSequence(bool bIsWinner, int32 Rank)
@@ -50,7 +170,7 @@ void UBrawlMatchFlowComponent::StartOutroSequence(bool bIsWinner, int32 Rank)
 	SavedRank = Rank;
 
 	// BGM 재생 및 HUD 숨김
-	OwnerController->PlayBGM(bIsWinner ? WinBGM : LoseBGM, 1.0f, 0.5f);
+	PlayBGM(bIsWinner ? WinBGM : LoseBGM, 1.0f, 0.5f);
 	
 	// HUD 위젯 접근을 위해 Controller의 멤버에 접근 (필요 시 HUD 관련 로직도 이관 가능)
 	// 여기서는 일단 직접 캐스팅하여 처리
@@ -87,105 +207,23 @@ void UBrawlMatchFlowComponent::StartOutroSequence(bool bIsWinner, int32 Rank)
 	}
 }
 
+void UBrawlMatchFlowComponent::PlayBGM(USoundBase* NewBGM, float FadeOutDuration, float FadeInDuration)
+{
+	if (!NewBGM) return;
+	
+	if (BGMComponent && BGMComponent->IsPlaying())
+	{
+		if (BGMComponent->Sound == NewBGM) return;
+		BGMComponent->FadeOut(FadeOutDuration, 0.0f);
+	}
+	
+	BGMComponent = UGameplayStatics::SpawnSound2D(this, NewBGM);
+	if (BGMComponent) BGMComponent->FadeIn(FadeInDuration);
+}
+
 void UBrawlMatchFlowComponent::HandleMatchExitClicked()
 {
 	Outro_StartFinalSummary();
-}
-
-void UBrawlMatchFlowComponent::IntroStep1_ShowInfo()
-{
-	if (!OwnerController) return;
-
-	OwnerController->PlayBGM(MatchStartBGM, 0.5f, 0.0f);
-
-	if (MatchStartWidgetClass)
-	{
-		if (!MatchStartWidget)
-		{
-			MatchStartWidget = CreateWidget<UUserWidget>(OwnerController, MatchStartWidgetClass);
-		}
-
-		if (MatchStartWidget)
-		{
-			if (UBrawlMatchStartWidget* StartWidget = Cast<UBrawlMatchStartWidget>(MatchStartWidget))
-			{
-				StartWidget->SetupMatchInfo(FText::FromString(TEXT("SHOWDOWN")), FText::FromString(TEXT("DEFEAT ALL OTHER BRAWLERS")));
-			}
-
-			if (!MatchStartWidget->IsInViewport())
-			{
-				MatchStartWidget->AddToViewport(10);
-			}
-		}
-	}
-
-	if (APawn* MyPawn = OwnerController->GetPawn())
-	{
-		MyPawn->DisableInput(OwnerController);
-	}
-
-	GetWorld()->GetTimerManager().SetTimer(SequenceTimerHandle, this, &UBrawlMatchFlowComponent::IntroStep2_OrbitCamera, 2.0f, false);
-}
-
-void UBrawlMatchFlowComponent::IntroStep2_OrbitCamera()
-{
-	TArray<AActor*> FoundActors;
-	UGameplayStatics::GetAllActorsWithTag(GetWorld(), OrbitCameraTag, FoundActors);
-
-	if (FoundActors.Num() > 0)
-	{
-		OrbitCameraActor = FoundActors[0];
-		OwnerController->SetViewTargetWithBlend(OrbitCameraActor, 1.0f);
-		bIsOrbiting = true;
-	}
-
-	GetWorld()->GetTimerManager().SetTimer(SequenceTimerHandle, this, &UBrawlMatchFlowComponent::IntroStep3_ReturnToPawn, 3.0f, false);
-}
-
-void UBrawlMatchFlowComponent::IntroStep3_ReturnToPawn()
-{
-	bIsOrbiting = false;
-	if (OwnerController)
-	{
-		OwnerController->SetViewTargetWithBlend(OwnerController->GetPawn(), 1.0f);
-	}
-
-	if (UBrawlMatchStartWidget* StartWidget = Cast<UBrawlMatchStartWidget>(MatchStartWidget))
-	{
-		StartWidget->HideInfoText();
-	}
-
-	GetWorld()->GetTimerManager().SetTimer(SequenceTimerHandle, this, &UBrawlMatchFlowComponent::IntroStep4_ShowStartLogo, 1.0f, false);
-}
-
-void UBrawlMatchFlowComponent::IntroStep4_ShowStartLogo()
-{
-	if (UBrawlMatchStartWidget* StartWidget = Cast<UBrawlMatchStartWidget>(MatchStartWidget))
-	{
-		StartWidget->PlayStartAnimation();
-	}
-
-	if (OwnerController) OwnerController->StartGameplayBGM();
-
-	GetWorld()->GetTimerManager().SetTimer(SequenceTimerHandle, this, &UBrawlMatchFlowComponent::IntroStep5_BeginPlay, 1.5f, false);
-}
-
-void UBrawlMatchFlowComponent::IntroStep5_BeginPlay()
-{
-	if (MatchStartWidget)
-	{
-		MatchStartWidget->RemoveFromParent();
-		MatchStartWidget = nullptr;
-	}
-
-	if (OwnerController && OwnerController->GetPawn())
-	{
-		OwnerController->GetPawn()->EnableInput(OwnerController);
-		
-		FInputModeGameOnly InputMode;
-		OwnerController->SetInputMode(InputMode);
-		OwnerController->bShowMouseCursor = false;
-	}
 }
 
 void UBrawlMatchFlowComponent::Outro_StartFinalSummary()

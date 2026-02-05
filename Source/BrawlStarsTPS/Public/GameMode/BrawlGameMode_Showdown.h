@@ -34,6 +34,10 @@ public:
 	// 처치 발생 시 호출 (부모 클래스 오버라이드)
 	virtual void NotifyKill(AActor* Killer, AActor* Victim) override;
 
+	/** 게임 시작 실행 (Intro 연출 종료 후 호출) */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Showdown")
+	void StartMatch();
+
 	// 현재 생존 브롤러 수 반환
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Showdown")
 	int32 GetAliveBrawlerCount() const { return AliveBrawlerCount; }

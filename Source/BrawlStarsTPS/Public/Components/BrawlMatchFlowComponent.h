@@ -24,6 +24,7 @@ class BRAWLSTARSTPS_API UBrawlMatchFlowComponent : public UActorComponent
 public:	
 	UBrawlMatchFlowComponent();
 
+	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	/** 게임 시작 연출 시작 */
@@ -36,13 +37,17 @@ public:
 	UFUNCTION()
 	void HandleMatchExitClicked();
 
+	/** BGM 재생 (기존 BGM은 FadeOut) */
+	void PlayBGM(class USoundBase* NewBGM, float FadeOutDuration = 1.0f, float FadeInDuration = 1.0f);
+
 protected:
-	/** 1~5단계: 게임 시작 시퀀스 */
-	void IntroStep1_ShowInfo();
-	void IntroStep2_OrbitCamera();
-	void IntroStep3_ReturnToPawn();
-	void IntroStep4_ShowStartLogo();
-	void IntroStep5_BeginPlay();
+	/** 상태 변경 이벤트 핸들러 */
+	UFUNCTION()
+	void OnMatchStateChanged();
+
+	/** 각 상태별 연출 시작 함수 */
+	void HandleIntroStarted();
+	void HandlePlayingStarted();
 
 	/** 레벨 정리 및 최종 결과 표시 */
 	void Outro_StartFinalSummary();
@@ -60,6 +65,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|Audio")
 	TObjectPtr<USoundBase> MatchStartBGM;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|Audio")
+	TObjectPtr<USoundBase> GameplayBGM;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Flow|Audio")
 	TObjectPtr<USoundBase> WinBGM;
@@ -83,6 +91,9 @@ private:
 	/** 내부 상태 및 관리 변수 */
 	UPROPERTY()
 	TObjectPtr<ABrawlStarsTPSPlayerController> OwnerController;
+
+	UPROPERTY()
+	TObjectPtr<UAudioComponent> BGMComponent;
 
 	UPROPERTY()
 	TObjectPtr<UUserWidget> MatchStartWidget;

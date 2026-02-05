@@ -15,58 +15,46 @@
 #include "Components/AudioComponent.h"
 #include "Kismet/GameplayStatics.h"
 
+ABrawlStarsTPSPlayerController::ABrawlStarsTPSPlayerController()
+{
+	PrimaryActorTick.bCanEverTick = true;
+
+	// 매치 흐름 컴포넌트 생성
+	MatchFlowComponent = CreateDefaultSubobject<UBrawlMatchFlowComponent>(TEXT("MatchFlowComponent"));
+}
+
 void ABrawlStarsTPSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 오디오 컴포넌트 생성 (여기서 생성하거나 PlayBGM에서 생성)
-	if (!BGMComponent)
-	{
-		BGMComponent = UGameplayStatics::SpawnSound2D(this, nullptr);
-	}
+	if (!IsLocalPlayerController()) return;
 	
-	if (IsLocalPlayerController() && BrawlHUDClass)
+	// 게임 시작 전까지 입력 차단
+	SetIgnoreMoveInput(true);
+	SetIgnoreLookInput(true);
+	
+	if (!BrawlHUDClass) return;
+
+	// 위젯이 없다면 새로 생성
+	if (!BrawlHUDWidget)
 	{
-		// 위젯이 이미 있다면 생성하지 않음
-		if (!BrawlHUDWidget)
+		BrawlHUDWidget = CreateWidget<UBrawlHUDWidget>(this, BrawlHUDClass);
+		if (BrawlHUDWidget)
 		{
-			BrawlHUDWidget = CreateWidget<UBrawlHUDWidget>(this, BrawlHUDClass);
+			BrawlHUDWidget->AddToViewport();
+		}
+	}
+
+	// Pawn이 있다면 연결 (이미 BeginPlay 시점에 Pawn이 있을 수 있음)
+	if (GetPawn())
+	{
+		if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(GetPawn()))
+		{
 			if (BrawlHUDWidget)
 			{
-				BrawlHUDWidget->AddToViewport();
+				BrawlHUDWidget->BindAttributeCallbacks(ASI->GetAbilitySystemComponent());
 			}
 		}
-		
-		// Pawn이 있다면 연결 (이미 BeginPlay 시점에 Pawn이 있을 수 있음)
-		if (GetPawn())
-		{
-			if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(GetPawn()))
-			{
-				if (BrawlHUDWidget)
-				{
-					BrawlHUDWidget->BindAttributeCallbacks(ASI->GetAbilitySystemComponent());
-				}
-			}
-		}
-	}
-
-	// only spawn touch controls on local player controllers
-	if (ShouldUseTouchControls() && IsLocalPlayerController())
-	{
-		// spawn the mobile controls widget
-		MobileControlsWidget = CreateWidget<UUserWidget>(this, MobileControlsWidgetClass);
-
-		if (MobileControlsWidget)
-		{
-			// add the controls to the player screen
-			MobileControlsWidget->AddToPlayerScreen(0);
-
-		} else {
-
-			UE_LOG(LogBrawlStarsTPS, Error, TEXT("Could not spawn mobile controls widget."));
-
-		}
-
 	}
 }
 
@@ -93,47 +81,19 @@ void ABrawlStarsTPSPlayerController::AcknowledgePossession(APawn* P)
 void ABrawlStarsTPSPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
-
+	
 	// only add IMCs for local player controllers
-	if (IsLocalPlayerController())
-	{
-		// Add Input Mapping Contexts
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
-		{
-			for (UInputMappingContext* CurrentContext : DefaultMappingContexts)
-			{
-				Subsystem->AddMappingContext(CurrentContext, 0);
-			}
+	if (!IsLocalPlayerController()) return;
 
-			// only add these IMCs if we're not using mobile touch input
-			if (!ShouldUseTouchControls())
-			{
-				for (UInputMappingContext* CurrentContext : MobileExcludedMappingContexts)
-				{
-					Subsystem->AddMappingContext(CurrentContext, 0);
-				}
-			}
+	// Add Input Mapping Contexts
+	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = 
+		ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	{
+		for (UInputMappingContext* CurrentContext : DefaultMappingContexts)
+		{
+			Subsystem->AddMappingContext(CurrentContext, 0);
 		}
 	}
-}
-
-bool ABrawlStarsTPSPlayerController::ShouldUseTouchControls() const
-{
-	// are we on a mobile platform? Should we force touch?
-	return SVirtualJoystick::ShouldDisplayTouchInterface() || bForceTouchControls;
-}
-
-ABrawlStarsTPSPlayerController::ABrawlStarsTPSPlayerController()
-{
-	PrimaryActorTick.bCanEverTick = true;
-
-	// 매치 흐름 컴포넌트 생성
-	MatchFlowComponent = CreateDefaultSubobject<UBrawlMatchFlowComponent>(TEXT("MatchFlowComponent"));
-}
-
-void ABrawlStarsTPSPlayerController::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
 }
 
 void ABrawlStarsTPSPlayerController::ShowMatchStartUI()
@@ -144,34 +104,10 @@ void ABrawlStarsTPSPlayerController::ShowMatchStartUI()
 	}
 }
 
-void ABrawlStarsTPSPlayerController::StartGameplayBGM()
-{
-	PlayBGM(GameplayBGM, 0.5f, 0.5f);
-}
-
 void ABrawlStarsTPSPlayerController::ShowMatchResultUI(bool bIsWinner, int32 Rank)
 {
 	if (MatchFlowComponent)
 	{
 		MatchFlowComponent->StartOutroSequence(bIsWinner, Rank);
-	}
-}
-
-void ABrawlStarsTPSPlayerController::PlayBGM(USoundBase* NewBGM, float FadeOutDuration, float FadeInDuration)
-{
-	if (!NewBGM) return;
-	
-	if (BGMComponent && BGMComponent->IsPlaying())
-	{
-		if (BGMComponent->Sound == NewBGM) return;
-
-		BGMComponent->FadeOut(FadeOutDuration, 0.0f);
-	}
-	
-	BGMComponent = UGameplayStatics::SpawnSound2D(this, NewBGM);
-
-	if (BGMComponent)
-	{
-		BGMComponent->FadeIn(FadeInDuration);
 	}
 }

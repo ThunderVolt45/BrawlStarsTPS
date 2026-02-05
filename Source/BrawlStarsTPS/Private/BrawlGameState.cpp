@@ -3,10 +3,28 @@
 
 #include "BrawlGameState.h"
 #include "Net/UnrealNetwork.h"
+#include "AI/BrawlAIController.h"
+#include "Kismet/GameplayStatics.h"
 
 void ABrawlGameState::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// 서버에서만 AI 컨트롤러들을 미리 캐싱해둠
+	if (HasAuthority())
+	{
+		TArray<AActor*> FoundAI;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlAIController::StaticClass(), FoundAI);
+		for (AActor* Actor : FoundAI)
+		{
+			if (ABrawlAIController* AIC = Cast<ABrawlAIController>(Actor))
+			{
+				CachedAIControllers.Add(AIC);
+				// 시작 시에는 AI를 꺼둠
+				AIC->SetAIActive(false);
+			}
+		}
+	}
 }
 
 void ABrawlGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -14,6 +32,41 @@ void ABrawlGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABrawlGameState, AliveBrawlerCount);
+	DOREPLIFETIME(ABrawlGameState, MatchState);
+}
+
+void ABrawlGameState::SetMatchState(EBrawlMatchState NewState)
+{
+	if (HasAuthority() && MatchState != NewState)
+	{
+		MatchState = NewState;
+		
+		// AI 활성화 제어 (Playing 상태일 때만 켬)
+		SetAllAIActive(MatchState == EBrawlMatchState::Playing);
+
+		// 서버에서 즉시 브로드캐스트
+		OnMatchStateChanged.Broadcast();
+	}
+}
+
+void ABrawlGameState::OnRep_MatchState()
+{
+	// 클라이언트에서 연출 트리거를 위해 브로드캐스트
+	OnMatchStateChanged.Broadcast();
+}
+
+void ABrawlGameState::SetAllAIActive(bool bActive)
+{
+	if (HasAuthority())
+	{
+		for (ABrawlAIController* AIC : CachedAIControllers)
+		{
+			if (AIC)
+			{
+				AIC->SetAIActive(bActive);
+			}
+		}
+	}
 }
 
 void ABrawlGameState::SetAliveBrawlerCount(int32 Count)
