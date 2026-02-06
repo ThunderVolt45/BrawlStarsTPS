@@ -109,15 +109,22 @@
 - [x] **Game Modes:**
     - [x] **Showdown:** Free-for-all logic, Power Cube spawning, Poison clouds.
         - [x] **Survivor Count:** Correctly filters out Power Cube Boxes from the brawler count.
+        - [x] **Match Flow:** Implemented server-authoritative `EBrawlMatchState` (Intro, Playing, GameOver).
     - [ ] **Gem Grab:** Gem spawning mine, countdown logic, team scoring.
-- [ ] **Game Specific UI:**
+- [x] **Game Specific UI:**
     - [x] **Game Mode specific widgets:** Gem count, Players alive.
-    - [ ] **Screens:** Death and Victory screens.
+    - [x] **Screens:** Implemented two-stage Match Result system (`Victory/Defeat` -> `Final Summary`).
+    - [x] **Procedural UI:** C++ based procedural animation for "START" logo in `BrawlMatchStartWidget`.
 
 ## Phase 5: Polish & Multiplayer (Bonus)
-- [ ] **Polish:**
+- [x] **Polish & Flow Control:**
+    - [x] **Architecture Refactor:** Decoupled `PlayerController` logic into `UBrawlMatchFlowComponent` for better maintainability.
+    - [x] **BGM Management:** Integrated state-based BGM switching (`Ready`, `Start`, `Gameplay`, `Win/Lose`).
+    - [x] **Camera Transitions:** Implemented Orbiting camera for Intro and smooth blends using `SetViewTargetWithBlend`.
+    - [x] **Level Cleanup:** Automatic cleanup of destructibles and brawlers upon match end.
+    - [x] **Robustness:** Implemented strict error handling policy using `check()`, `CastChecked()`, and `checkf()`.
+- [ ] **Polish (Remaining):**
     - [ ] Hit markers, Kill feed.
-    - [ ] Smooth camera transitions.
 - [ ] **Multiplayer:** 
-    - [ ] *Low Priority:* Refactor for replication if time permits.
+    - [x] **Synchronization:** Implemented replicated match states and Client RPCs for UI flow.
     - [ ] Network Optimization.
