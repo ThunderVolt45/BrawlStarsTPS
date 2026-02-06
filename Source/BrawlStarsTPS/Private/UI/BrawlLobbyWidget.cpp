@@ -30,10 +30,22 @@ void UBrawlLobbyWidget::NativeConstruct()
 	// 델리게이트 바인딩 및 초기 UI 설정
 	if (UBrawlGameInstance* GI = Cast<UBrawlGameInstance>(GetGameInstance()))
 	{
+		// 중복 바인딩 방지를 위해 먼저 제거 시도
+		GI->OnBrawlerChanged.RemoveDynamic(this, &UBrawlLobbyWidget::UpdateSelectedBrawlerUI);
 		GI->OnBrawlerChanged.AddDynamic(this, &UBrawlLobbyWidget::UpdateSelectedBrawlerUI);
 		
 		// 초기값으로 UI 업데이트
 		UpdateSelectedBrawlerUI(GI->SelectedBrawlerRowName);
+	}
+}
+
+void UBrawlLobbyWidget::NativeDestruct()
+{
+	Super::NativeDestruct();
+
+	if (UBrawlGameInstance* GI = Cast<UBrawlGameInstance>(GetGameInstance()))
+	{
+		GI->OnBrawlerChanged.RemoveDynamic(this, &UBrawlLobbyWidget::UpdateSelectedBrawlerUI);
 	}
 }
 
