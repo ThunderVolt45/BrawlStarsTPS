@@ -39,7 +39,6 @@
     - [x] **Death & Recovery:** Disabled `AutoHeal` ability upon death (`IsDead` check).
 - [x] **Ability Implementation (C++):**
     - [x] **Primary Fire:** `UBrawlGameplayAbility_Fire` (Tag-based interaction with Reload).
-        - [x] **Bug Fix:** Resolved double ammo consumption issue by removing redundant `ApplyCost` calls.
         - [x] **SFX/VFX:** Integrated `PlayGameplayCue` with Blueprint-configurable offsets and Hypercharge support.
     - [x] **Reload:** `UBrawlGameplayAbility_Reload` (Auto-replenish loop with **Pause/Resume** logic during fire).
     - [x] **Super:** `UBrawlGameplayAbility_Super` (Gauge check & consume).
@@ -116,7 +115,21 @@
     - [x] **Screens:** Implemented two-stage Match Result system (`Victory/Defeat` -> `Final Summary`).
     - [x] **Procedural UI:** C++ based procedural animation for "START" logo in `BrawlMatchStartWidget`.
 
-## Phase 5: Polish & Multiplayer (Bonus)
+## Phase 5: Polish & Out-Game Systems (Major Update)
+- [x] **Out-Game UI (Lobby System):**
+    - [x] **State Management:** Implemented `UBrawlGameInstance` to persist `SelectedBrawler` and `SelectedMode` across level transitions.
+    - [x] **Modular Lobby UI:** 
+        - [x] `UBrawlLobbyWidget`: Main hub for navigation and character/mode preview.
+        - [x] `UBrawlBrawlerSelectWidget`: Full-screen selection interface with return logic.
+        - [x] `UBrawlBrawlerButton`: Highly customizable C++ UI component supporting dynamic icon, name, size, and color injection via `ExposeOnSpawn`.
+    - [x] **Transition Logic:** `ABrawlLobbyPlayerController` manages seamless widget switching and Z-Order layering.
+    - [x] **3D Brawler Preview:**
+        - [x] **Architecture:** `ABrawlBrawlerPreview` actor spawns data-driven brawler blueprints in the lobby world.
+        - [x] **SceneCapture2D Rendering:** Implemented 3D-to-UI pipeline using **Render Targets** and **Alpha-masked Materials** to overlay 3D characters onto 2D UI.
+        - [x] **Dynamic Capture:** Automated `ShowOnlyActors` updates to ensure new spawns are correctly captured by the lobby camera.
+    - [x] **Visual Polish:**
+        - [x] **Scrolling Background:** `UBrawlLobbyBackgroundWidget` with C++ driven UV-offset scrolling for a fluid aesthetic.
+        - [x] **Aspect Ratio Correction:** Real-time UV scaling in materials based on viewport size to prevent texture stretching.
 - [x] **Polish & Flow Control:**
     - [x] **Architecture Refactor:** Decoupled `PlayerController` logic into `UBrawlMatchFlowComponent` for better maintainability.
     - [x] **BGM Management:** Integrated state-based BGM switching (`Ready`, `Start`, `Gameplay`, `Win/Lose`).
@@ -124,7 +137,8 @@
     - [x] **Level Cleanup:** Automatic cleanup of destructibles and brawlers upon match end.
     - [x] **Robustness:** Implemented strict error handling policy using `check()`, `CastChecked()`, and `checkf()`.
 - [ ] **Polish (Remaining):**
-    - [ ] Hit markers, Kill feed.
+    - [ ] Hit markers
+    - [ ] Refine Aim assist
 - [ ] **Multiplayer:** 
     - [x] **Synchronization:** Implemented replicated match states and Client RPCs for UI flow.
     - [ ] Network Optimization.
