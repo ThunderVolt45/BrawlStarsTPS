@@ -17,7 +17,11 @@ struct BRAWLSTARSTPS_API FBrawlerClassData : public FTableRowBase
 	GENERATED_BODY()
 
 public:
-	// 실제 생성할 브롤러 클래스 (Blueprint)
+	// 실제 게임에서 생성할 브롤러 클래스
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawler")
 	TSubclassOf<class ABrawlCharacter> BrawlerClass;
+
+	// 로비 프리뷰용 액터 클래스
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawler|Preview")
+	TSubclassOf<AActor> PreviewActorClass;
 };
