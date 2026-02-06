@@ -23,10 +23,11 @@ void ABrawlLobbyPlayerController::BeginPlay()
 	// 로비 위젯 생성 및 표시
 	if (LobbyWidgetClass)
 	{
-		LobbyWidget = CreateWidget<UBrawlLobbyWidget>(this, LobbyWidgetClass);
-		if (LobbyWidget)
+		UUserWidget* CreatedWidget = CreateWidget<UUserWidget>(this, LobbyWidgetClass);
+		if (UBrawlLobbyWidget* BrawlLobbyWidget = Cast<UBrawlLobbyWidget>(CreatedWidget))
 		{
-			LobbyWidget->AddToViewport();
+			BrawlLobbyWidget->AddToViewport();
+			LobbyWidget = BrawlLobbyWidget;
 		}
 	}
 }

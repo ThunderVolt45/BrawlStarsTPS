@@ -25,8 +25,8 @@ protected:
 	virtual void BeginPlay() override;
 
 	/** 로비 위젯 클래스 */
-	UPROPERTY(EditAnywhere, Category = "Brawl|UI")
-	TSubclassOf<UBrawlLobbyWidget> LobbyWidgetClass;
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
+	TSubclassOf<UUserWidget> LobbyWidgetClass;
 
 	/** 생성된 로비 위젯 인스턴스 */
 	UPROPERTY()

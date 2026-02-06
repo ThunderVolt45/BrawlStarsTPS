@@ -6,6 +6,8 @@
 #include "UI/BrawlUserWidget.h"
 #include "BrawlLobbyWidget.generated.h"
 
+class UTextBlock;
+class UButton;
 /**
  * UBrawlLobbyWidget
  * 
@@ -15,6 +17,22 @@ UCLASS()
 class BRAWLSTARSTPS_API UBrawlLobbyWidget : public UBrawlUserWidget
 {
 	GENERATED_BODY()
+	
+protected:
+	UPROPERTY(meta=(BindWidget))
+	UButton* ButtonPlay;
+	
+	UPROPERTY(meta=(BindWidget))
+	UButton* ButtonSelectBrawler;
+	
+	UPROPERTY(meta=(BindWidget))
+	UButton* ButtonSelectMode;
+	
+	UPROPERTY(meta=(BindWidget))
+	UTextBlock* TextModeName;
+	
+	UPROPERTY(meta=(BindWidget))
+	UTextBlock* TextMapName;
 
 public:
 	/** 브롤러 선택 버튼 클릭 시 */
