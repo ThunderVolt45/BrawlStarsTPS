@@ -3,6 +3,9 @@
 #include "BrawlStarsTPSGameMode.h"
 #include "UObject/ConstructorHelpers.h"
 #include "BrawlGameState.h"
+#include "BrawlGameInstance.h"
+#include "BrawlCharacter.h"
+#include "Data/BrawlerClassData.h"
 
 ABrawlStarsTPSGameMode::ABrawlStarsTPSGameMode()
 {
@@ -15,6 +18,30 @@ ABrawlStarsTPSGameMode::ABrawlStarsTPSGameMode()
 	{
 		DefaultPawnClass = PlayerPawnBPClass.Class;
 	}
+}
+
+UClass* ABrawlStarsTPSGameMode::GetDefaultPawnClassForController_Implementation(AController* InController)
+{
+	// 플레이어 컨트롤러인 경우 GameInstance에서 선택한 브롤러 확인
+	if (APlayerController* PC = Cast<APlayerController>(InController))
+	{
+		if (UBrawlGameInstance* GI = Cast<UBrawlGameInstance>(GetGameInstance()))
+		{
+			if (BrawlerClassDataTable)
+			{
+				FName RowName = GI->SelectedBrawlerRowName;
+				static const FString ContextString(TEXT("GetDefaultPawnClass"));
+				FBrawlerClassData* Row = BrawlerClassDataTable->FindRow<FBrawlerClassData>(RowName, ContextString);
+
+				if (Row && Row->BrawlerClass)
+				{
+					return Row->BrawlerClass;
+				}
+			}
+		}
+	}
+
+	return Super::GetDefaultPawnClassForController_Implementation(InController);
 }
 
 void ABrawlStarsTPSGameMode::NotifyKill(AActor* Killer, AActor* Victim)
