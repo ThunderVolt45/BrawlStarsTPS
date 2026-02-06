@@ -8,6 +8,8 @@
 
 class UTextBlock;
 class UButton;
+class UImage;
+
 /**
  * UBrawlLobbyWidget
  * 
@@ -17,8 +19,10 @@ UCLASS()
 class BRAWLSTARSTPS_API UBrawlLobbyWidget : public UBrawlUserWidget
 {
 	GENERATED_BODY()
-	
+
 protected:
+	virtual void NativeConstruct() override;
+	
 	UPROPERTY(meta=(BindWidget))
 	UButton* ButtonPlay;
 	
@@ -48,11 +52,16 @@ public:
 	void OnPlayClicked();
 
 protected:
-	/** 현재 선택된 브롤러 정보 업데이트 */
-	UFUNCTION(BlueprintImplementableEvent, Category = "Brawl|Lobby")
-	void UpdateSelectedBrawlerUI();
+	/** 현재 선택된 브롤러 정보 업데이트 (델리게이트 콜백) */
+	UFUNCTION()
+	void UpdateSelectedBrawlerUI(FName NewRowName);
 
 	/** 현재 선택된 모드 정보 업데이트 */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Brawl|Lobby")
 	void UpdateSelectedModeUI();
+
+protected:
+	/** 브롤러 선택 팝업 위젯 클래스 */
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
+	TSubclassOf<UUserWidget> BrawlerSelectWidgetClass;
 };

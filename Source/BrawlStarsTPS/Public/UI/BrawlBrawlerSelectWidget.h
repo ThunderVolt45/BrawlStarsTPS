@@ -6,6 +6,7 @@
 #include "UI/BrawlUserWidget.h"
 #include "BrawlBrawlerSelectWidget.generated.h"
 
+class UButton;
 /**
  * UBrawlBrawlerSelectWidget
  * 
@@ -21,12 +22,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void SelectBrawler(FName BrawlerRowName);
 
+	/** 나가기 버튼 클릭 시 호출 */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
+	void OnExitClicked();
+
 	/** 브롤러가 최종적으로 선택되었을 때(버튼 클릭 등) 발생하는 이벤트 */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Brawl|UI")
 	void OnBrawlerSelected();
 
 protected:
-	/** 브롤러 리스트를 가져올 데이터 테이블 */
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Data")
-	TObjectPtr<UDataTable> BrawlerDataTable;
+	virtual void NativeConstruct() override;
+	
+	
+	UPROPERTY(meta=(BindWidget))
+	UButton* ButtonExit;
 };

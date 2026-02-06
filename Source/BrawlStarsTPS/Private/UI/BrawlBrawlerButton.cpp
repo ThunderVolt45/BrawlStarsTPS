@@ -8,6 +8,7 @@
 #include "Components/SizeBox.h"
 #include "BrawlGameInstance.h"
 #include "Components/CanvasPanelSlot.h"
+#include "UI/BrawlLobbyPlayerController.h"
 
 void UBrawlBrawlerButton::NativeConstruct()
 {
@@ -75,9 +76,15 @@ void UBrawlBrawlerButton::OnButtonClicked()
 {
 	if (UBrawlGameInstance* GI = Cast<UBrawlGameInstance>(GetGameInstance()))
 	{
-		// GameInstance에 선택된 브롤러 ID 저장
-		GI->SelectedBrawlerRowName = BrawlerRowId;
+		// GameInstance에 선택된 브롤러 ID 저장 및 이벤트 전파
+		GI->SetSelectedBrawler(BrawlerRowId);
 		
 		UE_LOG(LogTemp, Log, TEXT("Brawler Selected: %s"), *BrawlerRowId.ToString());
+
+		// 로비 화면으로 복귀
+		if (ABrawlLobbyPlayerController* PC = Cast<ABrawlLobbyPlayerController>(GetOwningPlayer()))
+		{
+			PC->ShowLobby();
+		}
 	}
 }

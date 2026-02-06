@@ -8,6 +8,15 @@ UBrawlGameInstance::UBrawlGameInstance()
 {
 }
 
+void UBrawlGameInstance::SetSelectedBrawler(FName NewRowName)
+{
+	if (SelectedBrawlerRowName != NewRowName)
+	{
+		SelectedBrawlerRowName = NewRowName;
+		OnBrawlerChanged.Broadcast(SelectedBrawlerRowName);
+	}
+}
+
 void UBrawlGameInstance::StartGame()
 {
 	if (SelectedMapName.IsNone())

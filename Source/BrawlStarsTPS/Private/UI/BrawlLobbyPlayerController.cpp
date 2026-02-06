@@ -19,24 +19,54 @@ void ABrawlLobbyPlayerController::BeginPlay()
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	SetInputMode(InputMode);
 
-	// 1. 배경 위젯 생성 및 표시 (가장 먼저 추가하여 밑에 깔리게 함)
+	// 배경 위젯 생성 (항상 밑에 유지)
 	if (BackgroundWidgetClass)
 	{
 		BackgroundWidget = CreateWidget<UUserWidget>(this, BackgroundWidgetClass);
 		if (BackgroundWidget)
 		{
-			// ZOrder를 -100 정도로 낮게 주어 확실히 뒤에 배치 (동일 레이어라면 추가 순서대로 쌓임)
 			BackgroundWidget->AddToViewport(-100);
 		}
 	}
 
-	// 2. 로비 메인 위젯 생성 및 표시
+	// 처음에 로비 표시
+	ShowLobby();
+}
+
+void ABrawlLobbyPlayerController::ShowLobby()
+{
+	// 기존 위젯 제거
+	if (CurrentMainWidget)
+	{
+		CurrentMainWidget->RemoveFromParent();
+		CurrentMainWidget = nullptr;
+	}
+
 	if (LobbyWidgetClass)
 	{
-		LobbyWidget = CreateWidget<UUserWidget>(this, LobbyWidgetClass);
-		if (LobbyWidget)
+		CurrentMainWidget = CreateWidget<UUserWidget>(this, LobbyWidgetClass);
+		if (CurrentMainWidget)
 		{
-			LobbyWidget->AddToViewport(0);
+			CurrentMainWidget->AddToViewport();
+		}
+	}
+}
+
+void ABrawlLobbyPlayerController::ShowBrawlerSelect()
+{
+	// 기존 위젯 제거
+	if (CurrentMainWidget)
+	{
+		CurrentMainWidget->RemoveFromParent();
+		CurrentMainWidget = nullptr;
+	}
+
+	if (BrawlerSelectWidgetClass)
+	{
+		CurrentMainWidget = CreateWidget<UUserWidget>(this, BrawlerSelectWidgetClass);
+		if (CurrentMainWidget)
+		{
+			CurrentMainWidget->AddToViewport();
 		}
 	}
 }
