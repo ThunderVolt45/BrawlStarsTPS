@@ -28,7 +28,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
 	TSubclassOf<UUserWidget> LobbyWidgetClass;
 
+	/** 배경 위젯 클래스 */
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
+	TSubclassOf<UUserWidget> BackgroundWidgetClass;
+
 	/** 생성된 로비 위젯 인스턴스 */
 	UPROPERTY()
-	TObjectPtr<UBrawlLobbyWidget> LobbyWidget;
+	TObjectPtr<UUserWidget> LobbyWidget;
+
+	/** 생성된 배경 위젯 인스턴스 */
+	UPROPERTY()
+	TObjectPtr<UUserWidget> BackgroundWidget;
 };

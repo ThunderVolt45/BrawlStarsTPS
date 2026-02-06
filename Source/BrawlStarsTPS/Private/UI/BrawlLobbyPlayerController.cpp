@@ -2,7 +2,6 @@
 
 
 #include "UI/BrawlLobbyPlayerController.h"
-#include "UI/BrawlLobbyWidget.h"
 #include "Blueprint/UserWidget.h"
 
 ABrawlLobbyPlayerController::ABrawlLobbyPlayerController()
@@ -20,14 +19,24 @@ void ABrawlLobbyPlayerController::BeginPlay()
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	SetInputMode(InputMode);
 
-	// 로비 위젯 생성 및 표시
+	// 1. 배경 위젯 생성 및 표시 (가장 먼저 추가하여 밑에 깔리게 함)
+	if (BackgroundWidgetClass)
+	{
+		BackgroundWidget = CreateWidget<UUserWidget>(this, BackgroundWidgetClass);
+		if (BackgroundWidget)
+		{
+			// ZOrder를 -100 정도로 낮게 주어 확실히 뒤에 배치 (동일 레이어라면 추가 순서대로 쌓임)
+			BackgroundWidget->AddToViewport(-100);
+		}
+	}
+
+	// 2. 로비 메인 위젯 생성 및 표시
 	if (LobbyWidgetClass)
 	{
-		UUserWidget* CreatedWidget = CreateWidget<UUserWidget>(this, LobbyWidgetClass);
-		if (UBrawlLobbyWidget* BrawlLobbyWidget = Cast<UBrawlLobbyWidget>(CreatedWidget))
+		LobbyWidget = CreateWidget<UUserWidget>(this, LobbyWidgetClass);
+		if (LobbyWidget)
 		{
-			BrawlLobbyWidget->AddToViewport();
-			LobbyWidget = BrawlLobbyWidget;
+			LobbyWidget->AddToViewport(0);
 		}
 	}
 }
