@@ -12,7 +12,7 @@ void UBrawlGameInstance::StartGame()
 {
 	if (SelectedMapName.IsNone())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("SelectedMapName is None! Cannot start game."));
+		UE_LOG(LogTemp, Error, TEXT("BrawlGameInstance: SelectedMapName is None! Cannot start game."));
 		return;
 	}
 
