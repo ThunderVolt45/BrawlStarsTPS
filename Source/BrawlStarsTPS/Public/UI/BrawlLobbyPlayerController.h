@@ -44,6 +44,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
 	TSubclassOf<UUserWidget> BrawlerSelectWidgetClass;
 
+	// 로비 배경 음악 오브젝트
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Brawl|BGM")
+	TObjectPtr<class USoundBase> LobbyBGM;
+	
 	/** 현재 표시 중인 메인 위젯 (로비 또는 선택창) */
 	UPROPERTY()
 	TObjectPtr<UUserWidget> CurrentMainWidget;
@@ -51,4 +55,8 @@ protected:
 	/** 생성된 배경 위젯 인스턴스 */
 	UPROPERTY()
 	TObjectPtr<UUserWidget> BackgroundWidget;
+
+private:
+	UPROPERTY()
+	TObjectPtr<UAudioComponent> BGMComponent;
 };
