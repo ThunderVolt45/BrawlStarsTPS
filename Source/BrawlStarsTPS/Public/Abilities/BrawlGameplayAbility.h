@@ -58,6 +58,7 @@ protected:
 	// Gameplay Cue 재생 회전 오프셋 (기본 방향에서 추가 회전)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities|Effects")
 	FRotator GameplayCueRotationOffset = FRotator::ZeroRotator;
+	
 	// 어빌리티 활성화 시 실행될 로직 (C++에서 오버라이드하거나 블루프린트에서 이벤트 그래프 사용)
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, 
 		const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
