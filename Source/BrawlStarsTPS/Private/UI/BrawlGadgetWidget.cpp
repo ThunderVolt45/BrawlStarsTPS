@@ -19,7 +19,7 @@ void UBrawlGadgetWidget::NativeConstruct()
 			
 			if (ActiveMaterialDynamic)
 			{
-				ActiveMaterialDynamic->SetTextureParameterValue(MaterialMaskTextureParameterName, TextureCooldownMask);
+				ActiveMaterialDynamic->SetTextureParameterValue(MaterialPercentParameterName, TextureCooldownMask);
 			}
 		}
 	}
