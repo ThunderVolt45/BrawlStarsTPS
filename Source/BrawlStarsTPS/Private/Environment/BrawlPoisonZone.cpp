@@ -99,7 +99,7 @@ void ABrawlPoisonZone::SetZoneRadius(float NewRadius)
 	CurrentRadius = NewRadius;
 
 	// 1. 디버그 드로잉 (안전지대 경계 표시 - 사각형)
-	DrawDebugBox(GetWorld(), GetActorLocation(), FVector(CurrentRadius, CurrentRadius, 500.0f), FColor::Green, false, 0.2f, 0, 10.0f);
+	// DrawDebugBox(GetWorld(), GetActorLocation(), FVector(CurrentRadius, CurrentRadius, 500.0f), FColor::Green, false, 0.2f, 0, 10.0f);
 
 	// 2. 머티리얼 파라미터 업데이트
 	if (DynamicMaterial)
