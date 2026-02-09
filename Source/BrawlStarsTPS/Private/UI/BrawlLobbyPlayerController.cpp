@@ -3,6 +3,7 @@
 
 #include "UI/BrawlLobbyPlayerController.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/AudioComponent.h"
 
 ABrawlLobbyPlayerController::ABrawlLobbyPlayerController()
 {
@@ -28,6 +29,18 @@ void ABrawlLobbyPlayerController::BeginPlay()
 			BackgroundWidget->AddToViewport(-100);
 		}
 	}
+	
+	// 오디오 컴포넌트 생성 및 등록 (실패 시 즉시 감지)
+	if (!BGMComponent)
+	{
+		BGMComponent = NewObject<UAudioComponent>(this, UAudioComponent::StaticClass());
+		check(BGMComponent);
+		BGMComponent->RegisterComponent();
+	}
+	
+	// 사운드 설정 및 재생
+	BGMComponent->SetSound(LobbyBGM);
+	BGMComponent->Play();
 
 	// 처음에 로비 표시
 	ShowLobby();
@@ -64,6 +77,25 @@ void ABrawlLobbyPlayerController::ShowBrawlerSelect()
 	if (BrawlerSelectWidgetClass)
 	{
 		CurrentMainWidget = CreateWidget<UUserWidget>(this, BrawlerSelectWidgetClass);
+		if (CurrentMainWidget)
+		{
+			CurrentMainWidget->AddToViewport();
+		}
+	}
+}
+
+void ABrawlLobbyPlayerController::ShowGameModeSelect()
+{
+	// 기존 위젯 제거
+	if (CurrentMainWidget)
+	{
+		CurrentMainWidget->RemoveFromParent();
+		CurrentMainWidget = nullptr;
+	}
+
+	if (GameModeSelectWidgetClass)
+	{
+		CurrentMainWidget = CreateWidget<UUserWidget>(this, GameModeSelectWidgetClass);
 		if (CurrentMainWidget)
 		{
 			CurrentMainWidget->AddToViewport();

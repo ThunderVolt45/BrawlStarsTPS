@@ -8,6 +8,7 @@
 #include "BrawlGameInstance.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBrawlerChanged, FName, NewBrawlerRowName);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameModeChanged, FName, NewModeRowName);
 
 /**
  * UBrawlGameInstance
@@ -31,7 +32,15 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Brawl|Event")
 	FOnBrawlerChanged OnBrawlerChanged;
 
-	/** 선택된 게임 모드 정보 */
+	/** 선택된 게임 모드의 RowName (DT_GameMode 기준) */
+	UPROPERTY(BlueprintReadWrite, Category = "Brawl|State")
+	FName SelectedGameModeRowName = TEXT("StormyPlains");
+
+	/** 게임 모드 변경 시 알림을 위한 델리게이트 */
+	UPROPERTY(BlueprintAssignable, Category = "Brawl|Event")
+	FOnGameModeChanged OnGameModeChanged;
+
+	/** 선택된 게임 모드 정보 (구버전 호환용 또는 단순 타입 체크용) */
 	UPROPERTY(BlueprintReadWrite, Category = "Brawl|State")
 	EBrawlGameModeType SelectedGameModeType = EBrawlGameModeType::Showdown;
 
@@ -43,7 +52,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|State")
 	void SetSelectedBrawler(FName NewRowName);
 
+	/** 게임 모드 설정 및 이벤트 전파 */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|State")
+	void SetSelectedGameMode(FName NewRowName);
+
 	/** 게임 시작 (선택된 맵으로 이동) */
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Game")
 	void StartGame();
+
+	/** 게임 모드 데이터 테이블 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Data")
+	TObjectPtr<UDataTable> GameModeDataTable;
 };

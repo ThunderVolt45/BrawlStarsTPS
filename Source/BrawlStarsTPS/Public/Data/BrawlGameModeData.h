@@ -18,25 +18,29 @@ struct BRAWLSTARSTPS_API FBrawlGameModeData : public FTableRowBase
 	GENERATED_BODY()
 
 public:
+	// 게임 모드 타입
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|GameMode")
+	EBrawlGameModeType GameModeType = EBrawlGameModeType::Showdown;
+	
+	// 게임 모드 아이콘
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|GameMode")
+	TSoftObjectPtr<UTexture2D> ModeIcon;
+	
 	// 게임 모드 이름
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|GameMode")
 	FText ModeName;
 
-	// 게임 모드 설명
+	// 테마 아이콘 (배경 이미지 등)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|GameMode")
-	FText Description;
+	TSoftObjectPtr<UTexture2D> ThemeIcon;
 
-	// 게임 모드 아이콘
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|GameMode")
-	TSoftObjectPtr<UTexture2D> ModeIcon;
-
-	// 로드할 맵 이름 (예: LV_StormyPlains)
+	// 로드할 맵의 기술적 이름 (예: LV_StormyPlains)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|GameMode")
 	FName MapName;
 
-	// 게임 모드 타입
+	// 화면에 표시될 맵 이름 (예: Stormy Plains)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|GameMode")
-	EBrawlGameModeType GameModeType = EBrawlGameModeType::Showdown;
+	FText MapDisplayName;
 
 	// 게임 모드 클래스 (필요한 경우)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|GameMode")

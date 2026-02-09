@@ -2,6 +2,7 @@
 
 
 #include "GameMode/BrawlLobbyGameMode.h"
+
 #include "UI/BrawlLobbyPlayerController.h"
 
 ABrawlLobbyGameMode::ABrawlLobbyGameMode()

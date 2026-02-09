@@ -10,23 +10,19 @@ void UBrawlGadgetWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	// Active 이미지의 다이내믹 머티리얼 생성
-	if (ImageProgress)
-	{
-		if (ImageProgress->GetBrush().GetResourceObject())
-		{
-			ActiveMaterialDynamic = ImageProgress->GetDynamicMaterial();
-			
-			if (ActiveMaterialDynamic)
-			{
-				ActiveMaterialDynamic->SetTextureParameterValue(MaterialMaskTextureParameterName, TextureCooldownMask);
-			}
-		}
-	}
-	
 	if (TextCooldown)
 	{
 		TextCooldown->SetVisibility(ESlateVisibility::Hidden);
+	}
+}
+
+void UBrawlGadgetWidget::SetSkillIcon(UTexture2D* InIcon)
+{
+	Super::SetSkillIcon(InIcon);
+	
+	if (ProgressMaterialDynamic && InIcon)
+	{
+		ProgressMaterialDynamic->SetTextureParameterValue(GadgetTextureParameterName, InIcon);
 	}
 }
 

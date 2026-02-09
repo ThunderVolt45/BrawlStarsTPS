@@ -74,6 +74,9 @@ void UBrawlBrawlerButton::RefreshWidget()
 
 void UBrawlBrawlerButton::OnButtonClicked()
 {
+	// 클릭 사운드 재생 (베이스 클래스 함수 호출)
+	PlayClickSFX();
+
 	if (UBrawlGameInstance* GI = Cast<UBrawlGameInstance>(GetGameInstance()))
 	{
 		// GameInstance에 선택된 브롤러 ID 저장 및 이벤트 전파

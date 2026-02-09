@@ -40,16 +40,20 @@ public:
 	FVector GetClosestSafePosition(const FVector& InPosition) const;
 
 protected:
-	// 네비게이션 장애물로 사용할 4개의 박스 (상, 하, 좌, 우)
-	UPROPERTY(VisibleAnywhere, Category = "Brawl|Navigation")
-	TArray<TObjectPtr<UBoxComponent>> NavObstacles;
+	// 네비게이션 및 시각적 업데이트를 위한 통합 함수
+	void UpdateFogWalls();
 
-	// 네비게이션 업데이트를 위한 헬퍼 함수
-	void UpdateNavObstacles();
+	// 네비게이션 장애물용 투명 박스 (두께를 가짐)
+	UPROPERTY(VisibleAnywhere, Category = "Brawl|Navigation")
+	TArray<TObjectPtr<class UBoxComponent>> NavObstacles;
 
 	// 독구름을 표현할 메쉬
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Visuals")
 	TObjectPtr<UStaticMeshComponent> FogMesh;
+
+	// 독구름 벽면을 표현할 4개의 메쉬 (상, 하, 좌, 우)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Visuals")
+	TArray<TObjectPtr<UStaticMeshComponent>> FogWallMeshes;
 
 	// 독구름을 표현할 파티클 (나이아가라)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Visuals")

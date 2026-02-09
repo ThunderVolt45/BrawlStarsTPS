@@ -171,7 +171,7 @@ void ABrawlProjectile::Tick(float DeltaTime)
 				// 충돌 처리
 				// UE_LOG(LogTemp, Log, TEXT("Projectile Sweep Hit: %s"), *HitActor->GetName());
 				
-				PlayHitEffects(Result.ImpactPoint, Result.Normal);
+				PlayHitEffects(Result.ImpactPoint, Result.Normal, HitActor);
 				ProcessHit(HitActor, Result.ImpactPoint);
 			}
 		}
@@ -201,7 +201,7 @@ void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherAct
 	// 충돌 처리
 	// UE_LOG(LogTemp, Log, TEXT("Projectile HIT Block: %s"), *OtherActor->GetName());
 	
-	PlayHitEffects(Hit.ImpactPoint, Hit.Normal);
+	PlayHitEffects(Hit.ImpactPoint, Hit.Normal, OtherActor);
 	ProcessHit(OtherActor, Hit.ImpactPoint);
 }
 
@@ -229,21 +229,28 @@ void ABrawlProjectile::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, 
 	FVector Normal = bFromSweep ? FVector(SweepResult.Normal) : (GetActorRotation().Vector() * -1.0f);
 	FVector Location = bFromSweep ? FVector(SweepResult.ImpactPoint) : GetActorLocation();
 	
-	PlayHitEffects(Location, Normal);
+	PlayHitEffects(Location, Normal, OtherActor);
 	ProcessHit(OtherActor, Location);
 }
 
-void ABrawlProjectile::PlayHitEffects(const FVector& HitLocation, const FVector& HitNormal)
+void ABrawlProjectile::PlayHitEffects(const FVector& HitLocation, const FVector& HitNormal, AActor* HitActor)
 {
 	// 명중 효과 재생 (Gameplay Cue)
 	if (HitGameplayCueTag.IsValid())
 	{
-		if (UAbilitySystemComponent* SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetInstigator()))
+		AActor* SourceActor = GetInstigator();
+		if (!SourceActor) SourceActor = GetOwner();
+		
+		if (UAbilitySystemComponent* SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(SourceActor))
 		{
 			FGameplayCueParameters Params;
 			Params.Location = HitLocation;
 			Params.Normal = HitNormal;
-			Params.Instigator = GetInstigator();
+			Params.Instigator = SourceActor;
+			
+			// TargetActor가 null이면 ensure가 발생할 수 있으므로, 
+			// EffectCauser를 통해 명시적으로 HitActor 혹은 SourceActor를 넘겨준다
+			Params.EffectCauser = HitActor ? HitActor : SourceActor;
 
 			SourceASC->ExecuteGameplayCue(HitGameplayCueTag, Params);
 		}

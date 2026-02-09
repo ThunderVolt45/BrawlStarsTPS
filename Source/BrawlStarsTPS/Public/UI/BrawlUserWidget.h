@@ -22,10 +22,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void SetWidgetController(UObject* InWidgetController);
 
+	/** 클릭 사운드 재생 */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
+	void PlayClickSFX();
+
 protected:
 	// 위젯의 주인이 되는 캐릭터나 데이터 객체
 	UPROPERTY(BlueprintReadOnly, Category = "Brawl|UI")
 	TObjectPtr<UObject> WidgetController;
+
+	/** 버튼 클릭 시 재생할 SFX */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|UI")
+	TObjectPtr<USoundBase> ClickSFX;
 
 	// 위젯 초기화 시 호출되는 이벤트
 	UFUNCTION(BlueprintImplementableEvent, Category = "Brawl|UI")

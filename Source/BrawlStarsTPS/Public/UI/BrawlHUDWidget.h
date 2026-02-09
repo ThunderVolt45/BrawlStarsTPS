@@ -34,6 +34,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void BindAttributeCallbacks(class UAbilitySystemComponent* ASC);
 
+	// 캐릭터 데이터를 기반으로 스킬 아이콘 등을 초기화
+	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
+	void InitializeBrawlerUI(class ABrawlCharacter* Character);
+
 	// 게임 모드별 전용 위젯 초기화
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void InitializeGameModeWidget();
@@ -85,6 +89,18 @@ public:
 	// 게임 모드별 추가 위젯을 담을 컨테이너 (CanvasPanel, Overlay 등)
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UPanelWidget> GameModeWidgetContainer;
+
+	// 조준 보조 리틱클 (원형 감지 영역)
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<class UImage> ReticleCircle;
+
+	// 조준 보조 감지 반경 (시각화용)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Aim")
+	float ReticleCircleRadius = 100.0f;
+
+	// 현재 조준된 대상을 따라다니는 보조 이미지
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<class UImage> TargetIndicator;
 	
 	// 블루프린트에서 바인딩할 이벤트들
 	UPROPERTY(BlueprintAssignable, Category = "Brawl|UI|Attributes")

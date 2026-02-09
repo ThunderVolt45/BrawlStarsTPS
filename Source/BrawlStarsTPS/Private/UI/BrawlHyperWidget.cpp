@@ -64,7 +64,7 @@ void UBrawlHyperWidget::SetIsActive(bool bNewIsActive)
 		// 발동 해제: 다시 Ready 상태나 일반 상태로 복귀
 		if (ImageHyperActive) ImageHyperActive->SetVisibility(ESlateVisibility::Hidden);
 		
-		// 원래 상태 복원]
+		// 원래 상태 복원
 		SetIsReady(bIsReady); // bIsReady 값에 따라 Ready 이미지 가시성 재설정
 	}
 }
@@ -72,6 +72,26 @@ void UBrawlHyperWidget::SetIsActive(bool bNewIsActive)
 void UBrawlHyperWidget::SetActivePercent(float InPercent)
 {
 	SetPercent(InPercent);
+}
+
+void UBrawlHyperWidget::SetSkillIcon(UTexture2D* InIcon)
+{
+	if (InIcon == nullptr) return;
+	
+	if (ImageIcon)
+	{
+		ImageIcon->SetBrushFromTexture(InIcon);
+	}
+	
+	if (ImageHyperReady)
+	{
+		ImageHyperReady->SetBrushFromTexture(InIcon);
+	}
+	
+	if (ImageHyperActive)
+	{
+		ImageHyperActive->SetBrushFromTexture(InIcon);
+	}
 }
 
 void UBrawlHyperWidget::OnChargeIncreased()

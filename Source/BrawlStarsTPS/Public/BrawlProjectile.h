@@ -39,7 +39,7 @@ protected:
 	virtual void ProcessHit(AActor* OtherActor, const FVector& HitLocation);
 	
 	// 명중 효과(SFX/VFX) 재생
-	virtual void PlayHitEffects(const FVector& HitLocation, const FVector& HitNormal);
+	virtual void PlayHitEffects(const FVector& HitLocation, const FVector& HitNormal, AActor* HitActor = nullptr);
 
 	// 장애물 파괴 로직
 	virtual void DestroyObstacle(AActor* OtherActor);

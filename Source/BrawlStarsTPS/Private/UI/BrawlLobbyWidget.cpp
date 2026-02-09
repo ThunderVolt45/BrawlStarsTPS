@@ -5,7 +5,9 @@
 #include "BrawlGameInstance.h"
 #include "Components/Button.h"
 #include "Components/Image.h"
+#include "Components/TextBlock.h"
 #include "UI/BrawlLobbyPlayerController.h"
+#include "Data/BrawlGameModeData.h"
 
 void UBrawlLobbyWidget::NativeConstruct()
 {
@@ -33,9 +35,13 @@ void UBrawlLobbyWidget::NativeConstruct()
 		// 중복 바인딩 방지를 위해 먼저 제거 시도
 		GI->OnBrawlerChanged.RemoveDynamic(this, &UBrawlLobbyWidget::UpdateSelectedBrawlerUI);
 		GI->OnBrawlerChanged.AddDynamic(this, &UBrawlLobbyWidget::UpdateSelectedBrawlerUI);
+
+		GI->OnGameModeChanged.RemoveDynamic(this, &UBrawlLobbyWidget::UpdateSelectedModeUIFromRow);
+		GI->OnGameModeChanged.AddDynamic(this, &UBrawlLobbyWidget::UpdateSelectedModeUIFromRow);
 		
 		// 초기값으로 UI 업데이트
 		UpdateSelectedBrawlerUI(GI->SelectedBrawlerRowName);
+		UpdateSelectedModeUIFromRow(GI->SelectedGameModeRowName);
 	}
 }
 
@@ -46,6 +52,7 @@ void UBrawlLobbyWidget::NativeDestruct()
 	if (UBrawlGameInstance* GI = Cast<UBrawlGameInstance>(GetGameInstance()))
 	{
 		GI->OnBrawlerChanged.RemoveDynamic(this, &UBrawlLobbyWidget::UpdateSelectedBrawlerUI);
+		GI->OnGameModeChanged.RemoveDynamic(this, &UBrawlLobbyWidget::UpdateSelectedModeUIFromRow);
 	}
 }
 
@@ -59,9 +66,10 @@ void UBrawlLobbyWidget::OnBrawlerSelectClicked()
 
 void UBrawlLobbyWidget::OnModeSelectClicked()
 {
-	// 모드 선택창 UI 오픈 로직 (Blueprint에서 주로 처리하거나 C++로 확장 가능)
-	// 여기서는 BlueprintImplementableEvent인 UpdateSelectedModeUI 등을 활용하거나
-	// 별도의 위젯을 띄우는 로직을 추가할 수 있음
+	if (ABrawlLobbyPlayerController* PC = Cast<ABrawlLobbyPlayerController>(GetOwningPlayer()))
+	{
+		PC->ShowGameModeSelect();
+	}
 }
 
 void UBrawlLobbyWidget::OnPlayClicked()
@@ -76,5 +84,27 @@ void UBrawlLobbyWidget::UpdateSelectedBrawlerUI(FName NewRowName)
 {
 	// 브롤러가 변경되었을 때 호출됩니다.
 	// 로비 화면의 3D 브롤러 모델을 교체하거나 하는 로직을 이곳에 구현할 수 있습니다.
+	// 다만 현재는 BrawlBrawlerPreview에서 처리하고 있습니다.
 	UE_LOG(LogTemp, Log, TEXT("UBrawlLobbyWidget::UpdateSelectedBrawlerUI - Selected Brawler changed to: %s"), *NewRowName.ToString());
 }
+
+void UBrawlLobbyWidget::UpdateSelectedModeUIFromRow(FName NewRowName)
+{
+	if (UBrawlGameInstance* GI = Cast<UBrawlGameInstance>(GetGameInstance()))
+	{
+		if (GI->GameModeDataTable)
+		{
+			if (FBrawlGameModeData* ModeData = GI->GameModeDataTable->FindRow<FBrawlGameModeData>(NewRowName, TEXT("")))
+			{
+				ImageModeIcon->SetBrushFromSoftTexture(ModeData->ModeIcon);
+				TextModeName->SetText(ModeData->ModeName);
+				TextMapName->SetText(ModeData->MapDisplayName);
+			}
+		}
+
+		UpdateSelectedModeUI();
+	}
+}
+
+
+

@@ -35,7 +35,8 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Abilities")
 	void ApplyDamageEffect(AActor* TargetActor, TSubclassOf<UGameplayEffect> DamageEffectClass, float DamageAmount);
 
-	/** 지정된 위치에서 Gameplay Cue를 실행합니다 (SFX/VFX용) 
+	/*
+	 *  지정된 위치에서 Gameplay Cue를 실행합니다 (SFX/VFX용) 
 	 *  CueTag가 유효하지 않으면 기본 설정된 AbilityGameplayCueTag를 사용합니다.
 	 *  RotationOffset: 기본 Normal(보통 UpVector 또는 발사 방향)에 추가로 적용할 회전
 	 */
@@ -58,6 +59,7 @@ protected:
 	// Gameplay Cue 재생 회전 오프셋 (기본 방향에서 추가 회전)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities|Effects")
 	FRotator GameplayCueRotationOffset = FRotator::ZeroRotator;
+	
 	// 어빌리티 활성화 시 실행될 로직 (C++에서 오버라이드하거나 블루프린트에서 이벤트 그래프 사용)
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, 
 		const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;

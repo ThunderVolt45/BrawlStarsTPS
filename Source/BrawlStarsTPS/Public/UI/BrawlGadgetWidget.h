@@ -24,6 +24,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void SetRemainingCooldown(float RemainingTime);
 
+	virtual void SetSkillIcon(UTexture2D* InIcon) override;
+
 protected:
 	virtual void NativeConstruct() override;
 
@@ -35,15 +37,7 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> TextCooldown;
 	
-	// 가젯 쿨다운 마스크 텍스쳐
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|UI")
-	TObjectPtr<UTexture2D> TextureCooldownMask;
-	
-	// 가젯 쿨다운 마스크 다이내믹 머티리얼
-	UPROPERTY()
-	TObjectPtr<UMaterialInstanceDynamic> ActiveMaterialDynamic;
-	
-	// 머티리얼의 Percent 파라미터 이름 (기본값: "Percent")
+	// 머티리얼의 GadgetTexture 파라미터 이름 (기본값: "GadgetTexture")
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|UI")
-	FName MaterialMaskTextureParameterName = FName("MaskTexture");
+	FName GadgetTextureParameterName = FName("GadgetTexture");
 };

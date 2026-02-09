@@ -19,10 +19,20 @@
 #include "Kismet/GameplayStatics.h"
 #include "Perception/AISense_Damage.h"
 #include "GameplayEffect.h" // 추가
+#include "Components/PostProcessComponent.h"
+#include "Environment/BrawlPoisonZone.h"
 
 ABrawlCharacter::ABrawlCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	// 독구름 화면 효과 컴포넌트 생성
+	PoisonPostProcess = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PoisonPostProcess"));
+	PoisonPostProcess->SetupAttachment(RootComponent);
+	PoisonPostProcess->bUnbound = false; // 기본은 꺼둠 (BeginPlay에서 로컬 플레이어만 켬)
+	PoisonPostProcess->Priority = 10.0f;
+	PoisonPostProcess->BlendWeight = 0.0f;
+	PoisonPostProcess->bEnabled = false; // 기본 비활성화
 	
 	// 캐릭터 몸체의 회전이 컨트롤러의 Yaw 값을 따라가도록 한다
 	bUseControllerRotationPitch = false;
@@ -36,14 +46,25 @@ ABrawlCharacter::ABrawlCharacter()
 	// 스프링 암 설정
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 300.0f;
-	CameraBoom->SocketOffset = FVector(0.0f, 50.0f, 70.0f); // 카메라의 위치를 살짝 조정
-	CameraBoom->bUsePawnControlRotation = true; // 스프링 암이 컨트롤러의 회전을 사용하도록 한다
+	CameraBoom->TargetArmLength = 350.0f;
+	
+	// 소켓 오프셋: 카메라를 캐릭터의 오른쪽(Y), 위쪽(Z)으로 이동
+	// 이렇게 하면 카메라는 캐릭터의 우측 상단에서 전방을 바라보게 되어, 
+	// 화면상에서 캐릭터는 좌측 하단에 위치하게 됩니다. (버블파이터/TPS 뷰)
+	CameraBoom->SocketOffset = FVector(0.0f, 50.0f, 70.0f); 
+	
+	// 타겟 오프셋 제거 (회전 축은 캐릭터 중심 유지)
+	CameraBoom->TargetOffset = FVector::ZeroVector;
+	CameraBoom->bUsePawnControlRotation = true;
+	CameraBoom->bInheritRoll = false; // Roll 상속 차단
 	
 	// 카메라 설정
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-	FollowCamera->bUsePawnControlRotation = false; // 카메라는 스프링 암의 회전만 따라가면 됨
+	FollowCamera->bUsePawnControlRotation = false;
+
+	// 카메라 자체 회전은 0으로 리셋 (기울어짐의 주원인 제거)
+	FollowCamera->SetRelativeRotation(FRotator::ZeroRotator);
 
 	// 체력바 위젯 컴포넌트
 	HealthBarComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarComponent"));
@@ -122,6 +143,25 @@ UTexture2D* ABrawlCharacter::GetCharacterIcon() const
 void ABrawlCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// 독구름 화면 효과 머티리얼 설정 (로컬 플레이어만)
+	if (IsLocallyControlled())
+	{
+		if (PoisonPostProcess)
+		{
+			PoisonPostProcess->bUnbound = true;
+			PoisonPostProcess->bEnabled = true;
+		}
+
+		if (PoisonPPMaterial)
+		{
+			PoisonPPMaterialInstance = UMaterialInstanceDynamic::Create(PoisonPPMaterial, this);
+			if (PoisonPPMaterialInstance && PoisonPostProcess)
+			{
+				PoisonPostProcess->AddOrUpdateBlendable(PoisonPPMaterialInstance, 1.0f);
+			}
+		}
+	}
 }
 
 UAbilitySystemComponent* ABrawlCharacter::GetAbilitySystemComponent() const
@@ -240,6 +280,27 @@ void ABrawlCharacter::OnMovementSpeedChanged(const FOnAttributeChangeData& Data)
 void ABrawlCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 플레이어 제어 시 메시 회전 보정 (숄더뷰에서 캐릭터가 중앙을 바라보는 느낌을 주기 위함)
+	if (IsLocallyControlled() && GetMesh())
+	{
+		FRotator CurrentMeshRot = GetMesh()->GetRelativeRotation();
+		// 캐릭터 메시의 기본 방향(-90)에 사용자 설정 오프셋을 더함
+		float TargetYaw = -90.0f + ControlledMeshYawOffset;
+		
+		if (!FMath::IsNearlyEqual(CurrentMeshRot.Yaw, TargetYaw, 0.1f))
+		{
+			// 부드럽게 회전 보정
+			float NewYaw = FMath::FInterpTo(CurrentMeshRot.Yaw, TargetYaw, DeltaTime, 10.0f);
+			GetMesh()->SetRelativeRotation(FRotator(CurrentMeshRot.Pitch, NewYaw, CurrentMeshRot.Roll));
+		}
+	}
+
+	// 독구름 화면 효과 업데이트 (로컬 플레이어만)
+	if (IsLocallyControlled())
+	{
+		UpdatePoisonScreenEffect(DeltaTime);
+	}
 	
 	// 체력바 빌보드 처리 (카메라 방향을 보게 함)
 	if (HealthBarComponent && HealthBarComponent->GetWidgetSpace() == EWidgetSpace::World)
@@ -393,11 +454,6 @@ void ABrawlCharacter::OnHyperChargeTagChanged(const FGameplayTag CallbackTag, in
 	{
 		// 하이퍼차지 종료 상태
 		// 직접 제거하는 것도 가능하지만 일단 하이퍼차지 효과 블루프린트가 스스로 정리하게 둔다
-		// if (HyperChargeEffectInstance)
-		// {
-		// 	HyperChargeEffectInstance->Destroy();
-		// 	HyperChargeEffectInstance = nullptr;
-		// }
 	}
 }
 
@@ -596,4 +652,42 @@ void ABrawlCharacter::Die()
 	
 	// 6. Actor 제거 (혹은 리스폰 로직으로 대체 가능)
 	Destroy();
+}
+
+void ABrawlCharacter::UpdatePoisonScreenEffect(float DeltaTime)
+{
+	if (!PoisonPostProcess) return;
+	
+	bool bInPoison = false;
+	
+	// 독구름 액터 캐싱 처리
+	if (!CachedPoisonZone)
+	{
+		CachedPoisonZone = Cast<ABrawlPoisonZone>(UGameplayStatics::GetActorOfClass(GetWorld(), ABrawlPoisonZone::StaticClass()));
+	}
+	
+	if (CachedPoisonZone)
+	{
+		// 안전 구역 밖인지 체크
+		if (!CachedPoisonZone->IsPositionSafe(GetActorLocation()))
+		{
+			bInPoison = true;
+		}
+	}
+	
+	// 목표 강도 설정
+	float TargetIntensity = bInPoison ? 1.0f : 0.0f;
+	
+	// 보간 속도 차등 적용: 들어갈 때는 빠르게(8.0), 나올 때는 부드럽게(3.0)
+	float InterpSpeed = (TargetIntensity > CurrentPoisonIntensity) ? 8.0f : 3.0f;
+	CurrentPoisonIntensity = FMath::FInterpTo(CurrentPoisonIntensity, TargetIntensity, DeltaTime, InterpSpeed);
+
+	// 포스트 프로세스 가중치 조절
+	PoisonPostProcess->BlendWeight = CurrentPoisonIntensity;
+	
+	// 머티리얼 파라미터 업데이트
+	if (PoisonPPMaterialInstance)
+	{
+		PoisonPPMaterialInstance->SetScalarParameterValue(TEXT("Intensity"), CurrentPoisonIntensity);
+	}
 }
