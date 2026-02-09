@@ -4,26 +4,26 @@
 
 #include "CoreMinimal.h"
 #include "UI/BrawlUserWidget.h"
-#include "BrawlGameModeButtonWidget.generated.h"
+#include "BrawlGameModeButton.generated.h"
 
 class UImage;
 class UTextBlock;
 class UButton;
 
 /**
- * UBrawlGameModeButtonWidget
+ * UBrawlGameModeButton
  * 
  * 게임 모드 선택 리스트에서 개별 모드를 나타내는 버튼 위젯입니다.
  */
 UCLASS()
-class BRAWLSTARSTPS_API UBrawlGameModeButtonWidget : public UBrawlUserWidget
+class BRAWLSTARSTPS_API UBrawlGameModeButton : public UBrawlUserWidget
 {
 	GENERATED_BODY()
 
 public:
 	/** 위젯 초기화 및 데이터 설정 */
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
-	void InitializeButton(FName InRowId, FText InDisplayName, TSoftObjectPtr<UTexture2D> InIcon);
+	void InitializeButton(FName InRowId, FText InModeName, TSoftObjectPtr<UTexture2D> InModeIcon, FText InMapName, TSoftObjectPtr<UTexture2D> InThemeIcon);
 
 	/** UI 요소들을 현재 변수값에 맞춰 갱신 */
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
@@ -50,12 +50,33 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|UI", meta = (ExposeOnSpawn = "true"))
 	TSoftObjectPtr<UTexture2D> ModeIcon;
 
+	/** 화면에 표시될 맵 이름 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|UI", meta = (ExposeOnSpawn = "true"))
+	FText MapDisplayName;
+
+	/** 테마 이미지 (배경 등에 쓰일 이미지) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|UI", meta = (ExposeOnSpawn = "true"))
+	TSoftObjectPtr<UTexture2D> ThemeIcon;
+
+	/** 배경 색상 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|UI")
+	FLinearColor BackgroundColor = FLinearColor::White;
+
 	/** UI 바인딩 */
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> ImageBackground;
+
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UImage> ImageIcon;
 
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UTextBlock> TextName;
+	TObjectPtr<UImage> ImageTheme;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> TextModeName;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> TextMapName;
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UButton> ButtonSelect;

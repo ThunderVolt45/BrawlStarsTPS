@@ -34,6 +34,9 @@ protected:
 	UButton* ButtonSelectMode;
 	
 	UPROPERTY(meta=(BindWidget))
+	UImage* ImageModeIcon;
+	
+	UPROPERTY(meta=(BindWidget))
 	UTextBlock* TextModeName;
 	
 	UPROPERTY(meta=(BindWidget))

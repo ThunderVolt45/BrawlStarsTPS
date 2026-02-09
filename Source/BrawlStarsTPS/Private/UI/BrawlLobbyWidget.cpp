@@ -96,26 +96,15 @@ void UBrawlLobbyWidget::UpdateSelectedModeUIFromRow(FName NewRowName)
 		{
 			if (FBrawlGameModeData* ModeData = GI->GameModeDataTable->FindRow<FBrawlGameModeData>(NewRowName, TEXT("")))
 			{
-				if (TextModeName)
-				{
-					TextModeName->SetText(ModeData->ModeName);
-				}
+				ImageModeIcon->SetBrushFromSoftTexture(ModeData->ModeIcon);
+				TextModeName->SetText(ModeData->ModeName);
+				TextMapName->SetText(ModeData->MapDisplayName);
 			}
 		}
-		else if (TextModeName)
-		{
-			TextModeName->SetText(FText::FromName(NewRowName));
-		}
-		
-		if (TextMapName)
-		{
-			TextMapName->SetText(FText::FromName(GI->SelectedMapName));
-		}
-	}
-	
-	UpdateSelectedModeUI();
-}
 
+		UpdateSelectedModeUI();
+	}
+}
 
 
 

@@ -34,7 +34,7 @@ public:
 
 	/** 선택된 게임 모드의 RowName (DT_GameMode 기준) */
 	UPROPERTY(BlueprintReadWrite, Category = "Brawl|State")
-	FName SelectedGameModeRowName = TEXT("Showdown");
+	FName SelectedGameModeRowName = TEXT("StormyPlains");
 
 	/** 게임 모드 변경 시 알림을 위한 델리게이트 */
 	UPROPERTY(BlueprintAssignable, Category = "Brawl|Event")
