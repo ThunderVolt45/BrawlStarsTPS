@@ -35,7 +35,8 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Abilities")
 	void ApplyDamageEffect(AActor* TargetActor, TSubclassOf<UGameplayEffect> DamageEffectClass, float DamageAmount);
 
-	/** 지정된 위치에서 Gameplay Cue를 실행합니다 (SFX/VFX용) 
+	/*
+	 *  지정된 위치에서 Gameplay Cue를 실행합니다 (SFX/VFX용) 
 	 *  CueTag가 유효하지 않으면 기본 설정된 AbilityGameplayCueTag를 사용합니다.
 	 *  RotationOffset: 기본 Normal(보통 UpVector 또는 발사 방향)에 추가로 적용할 회전
 	 */

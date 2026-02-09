@@ -19,10 +19,20 @@
 #include "Kismet/GameplayStatics.h"
 #include "Perception/AISense_Damage.h"
 #include "GameplayEffect.h" // 추가
+#include "Components/PostProcessComponent.h"
+#include "Environment/BrawlPoisonZone.h"
 
 ABrawlCharacter::ABrawlCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	// 독구름 화면 효과 컴포넌트 생성
+	PoisonPostProcess = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PoisonPostProcess"));
+	PoisonPostProcess->SetupAttachment(RootComponent);
+	PoisonPostProcess->bUnbound = false; // 기본은 꺼둠 (BeginPlay에서 로컬 플레이어만 켬)
+	PoisonPostProcess->Priority = 10.0f;
+	PoisonPostProcess->BlendWeight = 0.0f;
+	PoisonPostProcess->bEnabled = false; // 기본 비활성화
 	
 	// 캐릭터 몸체의 회전이 컨트롤러의 Yaw 값을 따라가도록 한다
 	bUseControllerRotationPitch = false;
@@ -122,6 +132,25 @@ UTexture2D* ABrawlCharacter::GetCharacterIcon() const
 void ABrawlCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// 독구름 화면 효과 머티리얼 설정 (로컬 플레이어만)
+	if (IsLocallyControlled())
+	{
+		if (PoisonPostProcess)
+		{
+			PoisonPostProcess->bUnbound = true;
+			PoisonPostProcess->bEnabled = true;
+		}
+
+		if (PoisonPPMaterial)
+		{
+			PoisonPPMaterialInstance = UMaterialInstanceDynamic::Create(PoisonPPMaterial, this);
+			if (PoisonPPMaterialInstance && PoisonPostProcess)
+			{
+				PoisonPostProcess->AddOrUpdateBlendable(PoisonPPMaterialInstance, 1.0f);
+			}
+		}
+	}
 }
 
 UAbilitySystemComponent* ABrawlCharacter::GetAbilitySystemComponent() const
@@ -240,6 +269,12 @@ void ABrawlCharacter::OnMovementSpeedChanged(const FOnAttributeChangeData& Data)
 void ABrawlCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 독구름 화면 효과 업데이트 (로컬 플레이어만)
+	if (IsLocallyControlled())
+	{
+		UpdatePoisonScreenEffect(DeltaTime);
+	}
 	
 	// 체력바 빌보드 처리 (카메라 방향을 보게 함)
 	if (HealthBarComponent && HealthBarComponent->GetWidgetSpace() == EWidgetSpace::World)
@@ -596,4 +631,42 @@ void ABrawlCharacter::Die()
 	
 	// 6. Actor 제거 (혹은 리스폰 로직으로 대체 가능)
 	Destroy();
+}
+
+void ABrawlCharacter::UpdatePoisonScreenEffect(float DeltaTime)
+{
+	if (!PoisonPostProcess) return;
+	
+	bool bInPoison = false;
+	
+	// 독구름 액터 캐싱 처리
+	if (!CachedPoisonZone)
+	{
+		CachedPoisonZone = Cast<ABrawlPoisonZone>(UGameplayStatics::GetActorOfClass(GetWorld(), ABrawlPoisonZone::StaticClass()));
+	}
+	
+	if (CachedPoisonZone)
+	{
+		// 안전 구역 밖인지 체크
+		if (!CachedPoisonZone->IsPositionSafe(GetActorLocation()))
+		{
+			bInPoison = true;
+		}
+	}
+	
+	// 목표 강도 설정
+	float TargetIntensity = bInPoison ? 1.0f : 0.0f;
+	
+	// 보간 속도 차등 적용: 들어갈 때는 빠르게(8.0), 나올 때는 부드럽게(3.0)
+	float InterpSpeed = (TargetIntensity > CurrentPoisonIntensity) ? 8.0f : 3.0f;
+	CurrentPoisonIntensity = FMath::FInterpTo(CurrentPoisonIntensity, TargetIntensity, DeltaTime, InterpSpeed);
+
+	// 포스트 프로세스 가중치 조절
+	PoisonPostProcess->BlendWeight = CurrentPoisonIntensity;
+	
+	// 머티리얼 파라미터 업데이트
+	if (PoisonPPMaterialInstance)
+	{
+		PoisonPPMaterialInstance->SetScalarParameterValue(TEXT("Intensity"), CurrentPoisonIntensity);
+	}
 }

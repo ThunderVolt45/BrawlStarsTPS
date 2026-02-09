@@ -204,12 +204,36 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Camera")
 	TObjectPtr<UCameraComponent> FollowCamera;
 
+	// 독구름 화면 효과 (포스트 프로세스)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Effects")
+	TObjectPtr<class UPostProcessComponent> PoisonPostProcess;
+
 public:	
 	FORCEINLINE USpringArmComponent* GetCameraBoom() { return CameraBoom; }
 	FORCEINLINE UCameraComponent* GetFollowCamera() { return FollowCamera; }
 	
 	virtual void Tick(float DeltaTime) override;
 
+protected:
+	// 독구름 화면 효과 업데이트
+	void UpdatePoisonScreenEffect(float DeltaTime);
+
+	// 독구름 화면 효과용 머티리얼 인스턴스
+	UPROPERTY()
+	TObjectPtr<class UMaterialInstanceDynamic> PoisonPPMaterialInstance;
+
+	// 독구름 화면 효과 머티리얼 (BP에서 설정)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Effects")
+	TObjectPtr<UMaterialInterface> PoisonPPMaterial;
+
+	// 현재 독구름 효과 강도 (0.0 ~ 1.0)
+	float CurrentPoisonIntensity = 0.0f;
+
+	// 독구름 존 액터 캐싱
+	UPROPERTY()
+	TObjectPtr<class ABrawlPoisonZone> CachedPoisonZone;
+
+public:
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	
 	// 수풀(Bush) 진입/나감 처리
