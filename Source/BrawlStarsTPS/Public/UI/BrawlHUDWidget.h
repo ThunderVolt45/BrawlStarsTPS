@@ -34,6 +34,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void BindAttributeCallbacks(class UAbilitySystemComponent* ASC);
 
+	// 캐릭터 데이터를 기반으로 스킬 아이콘 등을 초기화
+	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
+	void InitializeBrawlerUI(class ABrawlCharacter* Character);
+
 	// 게임 모드별 전용 위젯 초기화
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void InitializeGameModeWidget();

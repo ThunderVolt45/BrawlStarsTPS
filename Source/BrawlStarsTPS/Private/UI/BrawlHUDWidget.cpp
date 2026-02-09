@@ -14,6 +14,8 @@
 #include "GameFramework/GameStateBase.h"
 #include "Components/PanelWidget.h"
 #include "GameFramework/GameModeBase.h"
+#include "BrawlCharacter.h"
+#include "Data/BrawlCharacterData.h"
 
 void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 {
@@ -81,6 +83,34 @@ void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 
 	// 게임 모드별 위젯 초기화
 	InitializeGameModeWidget();
+}
+
+void UBrawlHUDWidget::InitializeBrawlerUI(ABrawlCharacter* Character)
+{
+	if (!Character) return;
+
+	FBrawlCharacterData Data = Character->GetCharacterData();
+
+	// 가젯 1 아이콘 설정
+	if (Gadget1Widget && !Data.Gadget1Icon.IsNull())
+	{
+		Gadget1Widget->SetSkillIcon(Data.Gadget1Icon.LoadSynchronous());
+	}
+
+	// 가젯 2 아이콘 설정 (존재할 경우)
+	if (Gadget2Widget && !Data.Gadget2Icon.IsNull())
+	{
+		Gadget2Widget->SetSkillIcon(Data.Gadget2Icon.LoadSynchronous());
+	}
+
+	// 하이퍼차지 아이콘 설정
+	if (HyperWidget && !Data.HyperIcon.IsNull())
+	{
+		HyperWidget->SetSkillIcon(Data.HyperIcon.LoadSynchronous());
+	}
+	
+	// 필요 시 슈퍼(궁극기) 아이콘도 설정 가능하지만, 보통 슈퍼는 고정 아이콘인 경우가 많음
+	// 만약 슈퍼 아이콘도 데이터 테이블에서 가져와야 한다면 여기에 추가 가능
 }
 
 void UBrawlHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)

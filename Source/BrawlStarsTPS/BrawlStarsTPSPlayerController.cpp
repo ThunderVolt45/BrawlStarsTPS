@@ -8,6 +8,7 @@
 #include "UI/BrawlHUDWidget.h"
 #include "Components/BrawlMatchFlowComponent.h"
 #include "AbilitySystemInterface.h"
+#include "BrawlCharacter.h"
 
 ABrawlStarsTPSPlayerController::ABrawlStarsTPSPlayerController()
 {
@@ -43,6 +44,11 @@ void ABrawlStarsTPSPlayerController::BeginPlay()
 			if (BrawlHUDWidget)
 			{
 				BrawlHUDWidget->BindAttributeCallbacks(ASI->GetAbilitySystemComponent());
+
+				if (ABrawlCharacter* BrawlChar = Cast<ABrawlCharacter>(GetPawn()))
+				{
+					BrawlHUDWidget->InitializeBrawlerUI(BrawlChar);
+				}
 			}
 		}
 	}
@@ -64,6 +70,11 @@ void ABrawlStarsTPSPlayerController::AcknowledgePossession(APawn* P)
 		if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(P))
 		{
 			BrawlHUDWidget->BindAttributeCallbacks(ASI->GetAbilitySystemComponent());
+
+			if (ABrawlCharacter* BrawlChar = Cast<ABrawlCharacter>(P))
+			{
+				BrawlHUDWidget->InitializeBrawlerUI(BrawlChar);
+			}
 		}
 	}
 }

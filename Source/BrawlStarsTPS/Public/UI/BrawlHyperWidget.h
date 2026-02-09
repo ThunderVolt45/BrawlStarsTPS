@@ -32,6 +32,9 @@ public:
 	// 발동 중 남은 지속 시간 비율 설정 (1.0 -> 0.0)
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void SetActivePercent(float InPercent);
+	
+	// 스킬 아이콘 텍스처 변경
+	virtual void SetSkillIcon(UTexture2D* InIcon) override;
 
 protected:
 	virtual void NativeConstruct() override;
