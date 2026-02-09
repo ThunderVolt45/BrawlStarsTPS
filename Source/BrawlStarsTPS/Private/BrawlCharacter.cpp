@@ -428,11 +428,6 @@ void ABrawlCharacter::OnHyperChargeTagChanged(const FGameplayTag CallbackTag, in
 	{
 		// 하이퍼차지 종료 상태
 		// 직접 제거하는 것도 가능하지만 일단 하이퍼차지 효과 블루프린트가 스스로 정리하게 둔다
-		// if (HyperChargeEffectInstance)
-		// {
-		// 	HyperChargeEffectInstance->Destroy();
-		// 	HyperChargeEffectInstance = nullptr;
-		// }
 	}
 }
 

@@ -83,3 +83,22 @@ void ABrawlLobbyPlayerController::ShowBrawlerSelect()
 		}
 	}
 }
+
+void ABrawlLobbyPlayerController::ShowGameModeSelect()
+{
+	// 기존 위젯 제거
+	if (CurrentMainWidget)
+	{
+		CurrentMainWidget->RemoveFromParent();
+		CurrentMainWidget = nullptr;
+	}
+
+	if (GameModeSelectWidgetClass)
+	{
+		CurrentMainWidget = CreateWidget<UUserWidget>(this, GameModeSelectWidgetClass);
+		if (CurrentMainWidget)
+		{
+			CurrentMainWidget->AddToViewport();
+		}
+	}
+}

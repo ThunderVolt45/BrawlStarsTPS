@@ -29,6 +29,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void ShowBrawlerSelect();
 
+	/** 게임 모드 선택 화면으로 전환 */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
+	void ShowGameModeSelect();
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -43,6 +47,10 @@ protected:
 	/** 브롤러 선택 위젯 클래스 */
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
 	TSubclassOf<UUserWidget> BrawlerSelectWidgetClass;
+
+	/** 게임 모드 선택 위젯 클래스 */
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
+	TSubclassOf<UUserWidget> GameModeSelectWidgetClass;
 
 	// 로비 배경 음악 오브젝트
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Brawl|BGM")

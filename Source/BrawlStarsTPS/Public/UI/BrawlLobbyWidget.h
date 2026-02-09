@@ -57,7 +57,11 @@ protected:
 	UFUNCTION()
 	void UpdateSelectedBrawlerUI(FName NewRowName);
 
-	/** 현재 선택된 모드 정보 업데이트 */
+	/** 현재 선택된 모드 정보 업데이트 (델리게이트 콜백) */
+	UFUNCTION()
+	void UpdateSelectedModeUIFromRow(FName NewRowName);
+
+	/** 현재 선택된 모드 정보 업데이트 (블루프린트 확장용) */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Brawl|Lobby")
 	void UpdateSelectedModeUI();
 
@@ -65,4 +69,8 @@ protected:
 	/** 브롤러 선택 팝업 위젯 클래스 */
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
 	TSubclassOf<UUserWidget> BrawlerSelectWidgetClass;
+
+	/** 게임 모드 선택 팝업 위젯 클래스 */
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
+	TSubclassOf<UUserWidget> GameModeSelectWidgetClass;
 };
