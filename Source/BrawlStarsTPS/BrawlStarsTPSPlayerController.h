@@ -42,6 +42,8 @@ protected:
 	/** Input mapping context setup */
 	virtual void SetupInputComponent() override;
 
+	virtual void PlayerTick(float DeltaTime) override;
+
 public:
 	ABrawlStarsTPSPlayerController();
 
@@ -57,4 +59,22 @@ protected:
 	/** 매치 흐름(Intro/Outro) 제어 컴포넌트 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UBrawlMatchFlowComponent> MatchFlowComponent;
+
+protected:
+	// 조준 보조 감지 반경 (화면 픽셀 단위, 예: 100.0f)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Aim")
+	float AimDetectionRadius = 100.0f;
+
+	// 조준 보조 회전 속도 (Interpolation Speed)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Aim")
+	float AimAssistInterpSpeed = 5.0f;
+
+	// 현재 조준된 타겟
+	TWeakObjectPtr<class ABrawlCharacter> CurrentAimTarget;
+
+	// 가장 좋은 타겟 찾기
+	void FindBestTarget();
+
+	// 조준 보조 적용 (회전)
+	void ApplyAimAssist(float DeltaTime);
 };

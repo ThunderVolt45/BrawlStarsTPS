@@ -9,6 +9,12 @@
 #include "Components/BrawlMatchFlowComponent.h"
 #include "AbilitySystemInterface.h"
 #include "BrawlCharacter.h"
+#include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "EngineUtils.h"
+#include "Components/Image.h"
+#include "Blueprint/WidgetLayoutLibrary.h"
+#include "Components/CanvasPanelSlot.h"
 
 ABrawlStarsTPSPlayerController::ABrawlStarsTPSPlayerController()
 {
@@ -120,4 +126,170 @@ void ABrawlStarsTPSPlayerController::ShowMatchResultUI_Implementation(bool bIsWi
 			UE_LOG(LogTemp, Error, TEXT("PC: MatchFlowComponent is NULL on local PC!"));
 		}
 	}
+}
+
+
+void ABrawlStarsTPSPlayerController::PlayerTick(float DeltaTime)
+{
+	Super::PlayerTick(DeltaTime);
+
+	// 로컬 플레이어인 경우에만 조준 보조 및 HUD 업데이트 수행
+	if (IsLocalPlayerController())
+	{
+		// 1. 가장 적합한 타겟 탐색 (화면 중앙 기준)
+		FindBestTarget();
+		
+		// 2. 타겟이 있다면 예측 사격을 고려하여 부드럽게 회전
+		ApplyAimAssist(DeltaTime);
+		
+		// 3. HUD 요소 업데이트
+		if (BrawlHUDWidget)
+		{
+			// HUD의 반경 설정을 컨트롤러에도 동기화
+			AimDetectionRadius = BrawlHUDWidget->ReticleCircleRadius;
+
+			ABrawlCharacter* Target = CurrentAimTarget.Get();
+			
+			// [중앙 리틱클] 타겟 유무에 따라 색상 변경
+			if (BrawlHUDWidget->ReticleCircle)
+			{
+				FLinearColor ReticleColor = Target ? FLinearColor::Red : FLinearColor::White;
+				BrawlHUDWidget->ReticleCircle->SetColorAndOpacity(ReticleColor);
+			}
+
+			// [타겟 추적 이미지]
+			if (BrawlHUDWidget->TargetIndicator)
+			{
+				if (Target)
+				{
+					FVector2D ScreenPos;
+					// 타겟의 정중앙(Capsule Center) 위치를 사용
+					FVector TargetWorldPos = Target->GetActorLocation();
+					
+					// 월드 좌표를 HUD 위젯 좌표계로 변환
+					if (UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(this, TargetWorldPos, ScreenPos, false))
+					{
+						BrawlHUDWidget->TargetIndicator->SetVisibility(ESlateVisibility::HitTestInvisible);
+						
+						if (UCanvasPanelSlot* CanvasSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(BrawlHUDWidget->TargetIndicator))
+						{
+							// 위치 설정 및 중앙 정렬
+							CanvasSlot->SetPosition(ScreenPos);
+							CanvasSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+							
+							if (CanvasSlot->GetSize().IsZero())
+							{
+								CanvasSlot->SetSize(FVector2D(64.0f, 64.0f));
+							}
+						}
+					}
+					else
+					{
+						BrawlHUDWidget->TargetIndicator->SetVisibility(ESlateVisibility::Collapsed);
+					}
+				}
+				else
+				{
+					BrawlHUDWidget->TargetIndicator->SetVisibility(ESlateVisibility::Collapsed);
+				}
+			}
+			else if (Target)
+			{
+				// 바인딩 문제 로그
+				static bool bWarnedOnce = false;
+				if (!bWarnedOnce)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Target detected but 'TargetIndicator' widget is NULL! Check WBP_BrawlHUD."));
+					bWarnedOnce = true;
+				}
+			}
+		}
+	}
+}
+
+void ABrawlStarsTPSPlayerController::FindBestTarget()
+{
+	ABrawlCharacter* MyChar = Cast<ABrawlCharacter>(GetPawn());
+	if (!MyChar)
+	{
+		CurrentAimTarget = nullptr;
+		return;
+	}
+
+	ABrawlCharacter* BestTarget = nullptr;
+	float BestDistSq = FMath::Square(AimDetectionRadius);
+	
+	int32 ViewportSizeX, ViewportSizeY;
+	GetViewportSize(ViewportSizeX, ViewportSizeY);
+	FVector2D ScreenCenter(ViewportSizeX * 0.5f, ViewportSizeY * 0.5f);
+
+	for (TActorIterator<ABrawlCharacter> It(GetWorld()); It; ++It)
+	{
+		ABrawlCharacter* OtherChar = *It;
+		if (!OtherChar || OtherChar == MyChar || OtherChar->IsDead()) continue;
+
+		// 같은 팀 제외 (팀 ID가 255가 아니면서 같으면)
+		if (MyChar->GetTeamID() != 255 && MyChar->GetTeamID() == OtherChar->GetTeamID()) continue;
+
+		// 시야/은신 확인 (IsVisibleTo 사용)
+		if (!OtherChar->IsVisibleTo(MyChar->GetGenericTeamId())) continue;
+
+		FVector2D ScreenPos;
+		// 화면에 렌더링 가능한지(앞에 있는지) 확인
+		if (ProjectWorldLocationToScreen(OtherChar->GetActorLocation(), ScreenPos))
+		{
+			float DistSq = FVector2D::DistSquared(ScreenPos, ScreenCenter);
+			if (DistSq < BestDistSq)
+			{
+				BestDistSq = DistSq;
+				BestTarget = OtherChar;
+			}
+		}
+	}
+
+	CurrentAimTarget = BestTarget;
+}
+
+void ABrawlStarsTPSPlayerController::ApplyAimAssist(float DeltaTime)
+{
+	ABrawlCharacter* MyChar = Cast<ABrawlCharacter>(GetPawn());
+	ABrawlCharacter* Target = CurrentAimTarget.Get();
+
+	if (!MyChar || !Target || !PlayerCameraManager) return;
+
+	// 목표가 죽었거나 유효하지 않으면 해제
+	if (Target->IsDead())
+	{
+		CurrentAimTarget = nullptr;
+		return;
+	}
+
+	// 1. 위치 및 속도 정보 가져오기
+	FVector CameraLoc = PlayerCameraManager->GetCameraLocation();
+	FVector TargetLoc = Target->GetActorLocation();
+	FVector TargetVel = Target->GetVelocity();
+	float ProjectileSpeed = MyChar->GetEstimatedProjectileSpeed();
+
+	// 2. 예측 사격 지점 계산 (Linear Prediction)
+	// 카메라에서 목표까지의 거리를 기준으로 탄착 시간 계산
+	float Distance = (TargetLoc - CameraLoc).Size();
+	float TimeToHit = (ProjectileSpeed > 0.f) ? (Distance / ProjectileSpeed) : 0.f;
+
+	// 목표의 미래 위치 예측
+	FVector PredictedLoc = TargetLoc + (TargetVel * TimeToHit);
+
+	// 3. 회전값 계산
+	// 기준점을 MyChar->GetActorLocation()이 아닌 CameraLoc으로 변경하여 
+	// 화면 정중앙(리틱클)에 목표가 오도록 함
+	FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(CameraLoc, PredictedLoc);
+	FRotator CurrentRot = GetControlRotation();
+
+	// 4. 부드럽게 회전 (Interp)
+	FRotator NewRot = FMath::RInterpTo(CurrentRot, LookAtRot, DeltaTime, AimAssistInterpSpeed);
+
+	// 화면 기울어짐 방지를 위해 Roll 값을 강제로 0으로 고정
+	NewRot.Roll = 0.0f;
+
+	// 컨트롤러 회전 적용 (카메라와 캐릭터가 함께 회전)
+	SetControlRotation(NewRot);
 }

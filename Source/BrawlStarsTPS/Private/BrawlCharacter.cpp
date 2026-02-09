@@ -46,14 +46,25 @@ ABrawlCharacter::ABrawlCharacter()
 	// 스프링 암 설정
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 300.0f;
-	CameraBoom->SocketOffset = FVector(0.0f, 50.0f, 70.0f); // 카메라의 위치를 살짝 조정
-	CameraBoom->bUsePawnControlRotation = true; // 스프링 암이 컨트롤러의 회전을 사용하도록 한다
+	CameraBoom->TargetArmLength = 350.0f;
+	
+	// 소켓 오프셋: 카메라를 캐릭터의 오른쪽(Y), 위쪽(Z)으로 이동
+	// 이렇게 하면 카메라는 캐릭터의 우측 상단에서 전방을 바라보게 되어, 
+	// 화면상에서 캐릭터는 좌측 하단에 위치하게 됩니다. (버블파이터/TPS 뷰)
+	CameraBoom->SocketOffset = FVector(0.0f, 50.0f, 70.0f); 
+	
+	// 타겟 오프셋 제거 (회전 축은 캐릭터 중심 유지)
+	CameraBoom->TargetOffset = FVector::ZeroVector;
+	CameraBoom->bUsePawnControlRotation = true;
+	CameraBoom->bInheritRoll = false; // Roll 상속 차단
 	
 	// 카메라 설정
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-	FollowCamera->bUsePawnControlRotation = false; // 카메라는 스프링 암의 회전만 따라가면 됨
+	FollowCamera->bUsePawnControlRotation = false;
+
+	// 카메라 자체 회전은 0으로 리셋 (기울어짐의 주원인 제거)
+	FollowCamera->SetRelativeRotation(FRotator::ZeroRotator);
 
 	// 체력바 위젯 컴포넌트
 	HealthBarComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarComponent"));
@@ -269,6 +280,21 @@ void ABrawlCharacter::OnMovementSpeedChanged(const FOnAttributeChangeData& Data)
 void ABrawlCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 플레이어 제어 시 메시 회전 보정 (숄더뷰에서 캐릭터가 중앙을 바라보는 느낌을 주기 위함)
+	if (IsLocallyControlled() && GetMesh())
+	{
+		FRotator CurrentMeshRot = GetMesh()->GetRelativeRotation();
+		// 캐릭터 메시의 기본 방향(-90)에 사용자 설정 오프셋을 더함
+		float TargetYaw = -90.0f + ControlledMeshYawOffset;
+		
+		if (!FMath::IsNearlyEqual(CurrentMeshRot.Yaw, TargetYaw, 0.1f))
+		{
+			// 부드럽게 회전 보정
+			float NewYaw = FMath::FInterpTo(CurrentMeshRot.Yaw, TargetYaw, DeltaTime, 10.0f);
+			GetMesh()->SetRelativeRotation(FRotator(CurrentMeshRot.Pitch, NewYaw, CurrentMeshRot.Roll));
+		}
+	}
 
 	// 독구름 화면 효과 업데이트 (로컬 플레이어만)
 	if (IsLocallyControlled())

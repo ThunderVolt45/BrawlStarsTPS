@@ -226,6 +226,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Effects")
 	TObjectPtr<UMaterialInterface> PoisonPPMaterial;
 
+	// 플레이어 제어 시 메시 Yaw 오프셋 (숄더뷰 보정용)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Camera")
+	float ControlledMeshYawOffset = 6.0f;
+
 	// 현재 독구름 효과 강도 (0.0 ~ 1.0)
 	float CurrentPoisonIntensity = 0.0f;
 
@@ -233,9 +237,16 @@ protected:
 	UPROPERTY()
 	TObjectPtr<class ABrawlPoisonZone> CachedPoisonZone;
 
+	// 조준 보조용 예상 발사체 속도
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Combat")
+	float EstimatedProjectileSpeed = 3000.0f;
+
 public:
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
+	float GetEstimatedProjectileSpeed() const { return EstimatedProjectileSpeed; }
+
 	// 수풀(Bush) 진입/나감 처리
 	// bInBush true면 수풀 속, false면 나옴
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
