@@ -228,7 +228,7 @@ protected:
 
 	// 플레이어 제어 시 메시 Yaw 오프셋 (숄더뷰 보정용)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Camera")
-	float ControlledMeshYawOffset = 6.0f;
+	float ControlledMeshYawOffset = 3.0f;
 
 	// 현재 독구름 효과 강도 (0.0 ~ 1.0)
 	float CurrentPoisonIntensity = 0.0f;
