@@ -49,6 +49,9 @@ void UBrawlAbilitySystemComponent::AbilityInputTagPressed(const FGameplayTag& In
 	{
 		if (Spec.GetDynamicSpecSourceTags().HasTagExact(InputTag))
 		{
+			// UE_LOG(LogTemp, Warning, TEXT("ASC: Found Ability for Tag [%s], attempting to activate. Instance: %s"), 
+			// 	*InputTag.ToString(), Spec.Ability ? *Spec.Ability->GetName() : TEXT("NULL"));
+
 			AbilitySpecInputPressed(Spec);
 			if (!Spec.IsActive())
 			{
