@@ -136,9 +136,22 @@
     - [x] **Camera Transitions:** Implemented Orbiting camera for Intro and smooth blends using `SetViewTargetWithBlend`.
     - [x] **Level Cleanup:** Automatic cleanup of destructibles and brawlers upon match end.
     - [x] **Robustness:** Implemented strict error handling policy using `check()`, `CastChecked()`, and `checkf()`.
+- [x] **Advanced Aim Assist (Bubble Fighter Style):**
+    - [x] **Screen-Space Target Detection:** Implemented circular detection area (`AimDetectionRadius`) centered on the screen.
+    - [x] **Predictive Aiming (Overshoot):** 
+        - [x] Added `EstimatedProjectileSpeed` property to `BrawlCharacter`.
+        - [x] Implemented Linear Prediction logic in `PlayerController` to calculate target's future position.
+    - [x] **Smooth Auto-Rotation:** 
+        - [x] Automatic camera/character rotation toward the predicted target position using `RInterpTo`.
+        - [x] **Parallax Correction:** Fixed shoulder-view offset by calculating rotation from the **Camera's POV** instead of the Actor's location, ensuring targets stay centered on the HUD reticle.
+    - [x] **Visual Feedback (HUD):**
+        - [x] **Dynamic Reticle:** Circular HUD image that changes color (White -> Red) upon target acquisition.
+        - [x] **Target Tracker:** Implemented `TargetIndicator` widget that procedurally follows the locked-on target's screen position with DPI scale correction.
+    - [x] **Stability Polish:** 
+        - [x] Forced `Roll` to zero in control rotation to prevent "motion sickness" tilting.
+        - [x] Implemented `ControlledMeshYawOffset` for subtle character mesh rotation toward the reticle during player control.
 - [ ] **Polish (Remaining):**
     - [ ] Hit markers
-    - [ ] Refine Aim assist
 - [ ] **Multiplayer:** 
     - [x] **Synchronization:** Implemented replicated match states and Client RPCs for UI flow.
     - [ ] Network Optimization.

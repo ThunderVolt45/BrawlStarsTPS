@@ -9,9 +9,28 @@
 
 UBrawlGameplayAbility_Reload::UBrawlGameplayAbility_Reload()
 {
-	// 재장전은 서버/클라이언트 모두 예측 가능하게 동작하거나, 서버 권한으로 동작해야 함
-	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
+	// 재장전은 서버와 클라이언트 모두에서 타이머를 돌려 UI 동기화를 맞춤
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+}
+
+float UBrawlGameplayAbility_Reload::GetReloadProgress() const
+{
+	if (UWorld* World = GetWorld())
+	{
+		FTimerManager& TM = World->GetTimerManager();
+		if (TM.IsTimerActive(ReloadTimerHandle) || TM.IsTimerPaused(ReloadTimerHandle))
+		{
+			float Remaining = TM.GetTimerRemaining(ReloadTimerHandle);
+			float Rate = TM.GetTimerRate(ReloadTimerHandle);
+			
+			if (Rate > 0.f)
+			{
+				return FMath::Clamp(1.0f - (Remaining / Rate), 0.0f, 1.0f);
+			}
+		}
+	}
+	return 0.0f;
 }
 
 void UBrawlGameplayAbility_Reload::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -145,8 +164,9 @@ void UBrawlGameplayAbility_Reload::TryReloadToken()
 void UBrawlGameplayAbility_Reload::CommitReload()
 {
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	
 	if (!ASC) return;
-
+	
 	// 발사 중이면 무효 (혹시 모를 안전장치)
 	if (ASC->HasMatchingGameplayTag(FireStateTag))
 	{
@@ -154,13 +174,17 @@ void UBrawlGameplayAbility_Reload::CommitReload()
 		// 다시 Pause 시키거나 다음 기회를 노림
 		return;
 	}
-
-	ASC->ApplyModToAttributeUnsafe(UBrawlAttributeSet::GetAmmoAttribute(), EGameplayModOp::Additive, ReloadAmount);
-
+	
+	// 실제 속성 수정은 서버에서만 수행
+	if (GetAvatarActorFromActorInfo()->HasAuthority())
+	{
+		ASC->ApplyModToAttributeUnsafe(UBrawlAttributeSet::GetAmmoAttribute(), EGameplayModOp::Additive, ReloadAmount);
+	}
+	
 	if (GetWorld())
 	{
 		GetWorld()->GetTimerManager().ClearTimer(ReloadTimerHandle);
 	}
-
+	
 	TryReloadToken();
 }

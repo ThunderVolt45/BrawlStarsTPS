@@ -29,6 +29,9 @@ void UBrawlGameplayAbility_Dash::ActivateAbility(const FGameplayAbilitySpecHandl
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+	
+	// SFX/VFX 재생 (블루프린트에서 설정한 AbilityGameplayCueTag 사용)
+	PlayGameplayCue(Character->GetActorLocation());
 
 	// 0. 돌진 시작 시 추가 효과 적용 (탄약 재충전, 무적 등)
 	if (EffectToApplyOnDash)

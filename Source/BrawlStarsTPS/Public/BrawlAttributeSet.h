@@ -61,11 +61,21 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
 	FGameplayAttributeData GadgetDamage;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, GadgetDamage);
+	
+	// 가젯 2 데미지
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Damage")
+	FGameplayAttributeData Gadget2Damage;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, Gadget2Damage);
 
 	// 가젯 쿨다운 (초)
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Cooldown")
 	FGameplayAttributeData GadgetCooldown;
 	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, GadgetCooldown);
+	
+	// 가젯 2 쿨다운 (초)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Cooldown")
+	FGameplayAttributeData Gadget2Cooldown;
+	ATTRIBUTE_ACCESSORS(UBrawlAttributeSet, Gadget2Cooldown);
 
 	// 궁극기 게이지 (SuperCharge)
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes")

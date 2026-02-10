@@ -145,6 +145,8 @@ void UBrawlHeroComponent::Input_StopJumping(const FInputActionValue& InputAction
 
 void UBrawlHeroComponent::Input_AbilityInputTagPressed(FGameplayTag InputTag)
 {
+	// UE_LOG(LogTemp, Warning, TEXT("HeroComponent: Input Pressed with Tag [%s]"), *InputTag.ToString());
+
 	if (const APawn* Pawn = GetPawn<APawn>())
 	{
 		if (const ABrawlCharacter* BrawlCharacter = Cast<ABrawlCharacter>(Pawn))

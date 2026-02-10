@@ -55,6 +55,18 @@ public:
 	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "Brawl|UI")
 	void ShowMatchResultUI(bool bIsWinner, int32 Rank);
 
+	/** 현재 조준 중인 타겟 반환 */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Aim")
+	class ABrawlCharacter* GetCurrentAimTarget() const { return CurrentAimTarget.Get(); }
+
+	/** 조준 보조로 계산된 예측 지점 반환 */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Aim")
+	FVector GetPredictedAimLocation() const { return PredictedAimLocation; }
+
+	// 탄약 부족 경고 애니메이션 재생 요청 (UI 전달)
+	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "Brawl|UI")
+	void PlayNoAmmoAnimation();
+
 protected:
 	/** 매치 흐름(Intro/Outro) 제어 컴포넌트 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Components", meta = (AllowPrivateAccess = "true"))
@@ -71,6 +83,9 @@ protected:
 
 	// 현재 조준된 타겟
 	TWeakObjectPtr<class ABrawlCharacter> CurrentAimTarget;
+
+	// 조준 보조가 계산한 예측 위치 (발사체 보정용)
+	FVector PredictedAimLocation = FVector::ZeroVector;
 
 	// 가장 좋은 타겟 찾기
 	void FindBestTarget();

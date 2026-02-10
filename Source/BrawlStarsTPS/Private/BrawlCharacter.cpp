@@ -21,6 +21,7 @@
 #include "GameplayEffect.h" // 추가
 #include "Components/PostProcessComponent.h"
 #include "Environment/BrawlPoisonZone.h"
+#include "DrawDebugHelpers.h"
 
 ABrawlCharacter::ABrawlCharacter()
 {
@@ -300,6 +301,29 @@ void ABrawlCharacter::Tick(float DeltaTime)
 	if (IsLocallyControlled())
 	{
 		UpdatePoisonScreenEffect(DeltaTime);
+
+		// [Debug] 총구 전방 레이 시각화 (자식 메쉬 포함 탐색)
+		if (IsLocallyControlled() && DrawDebugMuzzleLine)
+		{
+			TArray<UMeshComponent*> MeshComponents;
+			GetComponents<UMeshComponent>(MeshComponents);
+
+			FName MuzzleSocket = FName("Muzzle");
+			for (UMeshComponent* MeshComp : MeshComponents)
+			{
+				if (MeshComp && MeshComp->DoesSocketExist(MuzzleSocket))
+				{
+					FVector Start = MeshComp->GetSocketLocation(MuzzleSocket);
+					FVector Forward = MeshComp->GetSocketRotation(MuzzleSocket).Vector();
+					FVector End = Start + (Forward * 1000.0f);
+
+					DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, -1.0f, 0, 1.0f);
+					
+					// 하나만 찾으면 중단 (여러 무기가 있을 경우 첫 번째 무기 기준)
+					break;
+				}
+			}
+		}
 	}
 	
 	// 체력바 빌보드 처리 (카메라 방향을 보게 함)
@@ -550,6 +574,8 @@ void ABrawlCharacter::InitializeAttributes()
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetAttackDamageAttribute(), Row->AttackDamage);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetGadgetDamageAttribute(), Row->Gadget1Damage);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetGadgetCooldownAttribute(), Row->Gadget1Cooldown);
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetGadget2DamageAttribute(), Row->Gadget2Damage);
+		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetGadget2CooldownAttribute(), Row->Gadget2Cooldown);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperDamageAttribute(), Row->SuperDamage);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxSuperChargeAttribute(), Row->MaxSuperCharge);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargeAttribute(), 0.0f);
