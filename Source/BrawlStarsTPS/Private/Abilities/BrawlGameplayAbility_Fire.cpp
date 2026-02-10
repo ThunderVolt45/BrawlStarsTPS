@@ -155,68 +155,66 @@ FRotator UBrawlGameplayAbility_Fire::GetAimRotation(FVector StartLocation) const
 {
 	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
 	if (!Character) return FRotator::ZeroRotator;
+	
+	// 기본 회전 값은 컨트롤러의 회전 값으로 한다
+	FRotator BaseRotation = Character->GetControlRotation();
 
 	// ABrawlCharacter로 캐스팅
 	ABrawlCharacter* BrawlCharacter = Cast<ABrawlCharacter>(Character);
 	
-	// 플레이어의 경우, 카메라 레이캐스트를 통한 정밀 보정 및 자동 조준 대응
-	if (BrawlCharacter && BrawlCharacter->IsPlayerControlled())
+	// 캐스팅에 실패했거나 AI 브롤러인 경우 약간의 보정 후 기본 값 반환
+	if (!BrawlCharacter && !BrawlCharacter->IsPlayerControlled())
 	{
-		if (ABrawlStarsTPSPlayerController* PC = Cast<ABrawlStarsTPSPlayerController>(Character->GetController()))
-		{
-			// 1. 자동 조준(Auto-Aim) 예측 지점이 있다면 우선적으로 사용
-			FVector PredictedLoc = PC->GetPredictedAimLocation();
-			if (!PredictedLoc.IsZero())
-			{
-				// 총구(StartLocation)에서 예측 지점을 직접 바라보도록 하여 오차 제거
-				return UKismetMathLibrary::FindLookAtRotation(StartLocation, PredictedLoc);
-			}
-
-			// 2. 수동 조준: 카메라 레이캐스트를 통한 정밀 보정
-			FVector CameraLoc;
-			FRotator CameraRot;
-			PC->GetPlayerViewPoint(CameraLoc, CameraRot);
-
-			FVector TraceStart = CameraLoc;
-			FVector TraceEnd = CameraLoc + (CameraRot.Vector() * AimMaxRange);
-
-			FHitResult HitResult;
-			FCollisionQueryParams QueryParams;
-			QueryParams.AddIgnoredActor(Character); 
-
-			FVector TargetLocation = TraceEnd;
-
-			// LineTrace -> SweepSingle (Sphere)
-			FCollisionShape SphereShape = FCollisionShape::MakeSphere(AimTraceRadius);
-
-			if (GetWorld()->SweepSingleByChannel(HitResult, TraceStart, TraceEnd, FQuat::Identity, 
-				ECC_Visibility, SphereShape, QueryParams))
-			{
-				// 너무 가까운 벽을 쏘는 경우 보정 (ImpactPoint 대신 Sphere의 중심인 Location 사용)
-				float DistanceToHit = (HitResult.Location - CameraLoc).Size();
-				if (DistanceToHit < AimMinRange)
-				{
-					float Alpha = FMath::Clamp(DistanceToHit / AimMinRange, 0.0f, 1.0f);
-					TargetLocation = FMath::Lerp(TraceEnd, HitResult.Location, Alpha);
-				}
-				else
-				{
-					TargetLocation = HitResult.Location;
-				}
-			}
-			
-			// Muzzle에서 바라본 TargetLocation의 각도
-			return UKismetMathLibrary::FindLookAtRotation(StartLocation, TargetLocation);
-		}
+		BaseRotation.Pitch += 3.0f;
+		return BaseRotation;
 	}
 
-	// AI 또는 기타: ControlRotation (AI Controller가 바라보는 방향)
-	FRotator BaseRotation = Character->GetControlRotation();
-	
-	// AI 에임 보정 (Pitch)
-	if (BrawlCharacter && !BrawlCharacter->IsPlayerControlled())
+	// 플레이어의 경우, 카메라 레이캐스트를 통한 정밀 보정 및 자동 조준 대응
+	if (ABrawlStarsTPSPlayerController* PC = Cast<ABrawlStarsTPSPlayerController>(Character->GetController()))
 	{
-		BaseRotation.Pitch += AIAimOffset;
+		// 1. 자동 조준(Auto-Aim) 예측 지점이 있다면 우선적으로 사용
+		FVector PredictedLoc = PC->GetPredictedAimLocation();
+		if (!PredictedLoc.IsZero())
+		{
+			// 총구(StartLocation)에서 예측 지점을 직접 바라보도록 하여 오차 제거
+			return UKismetMathLibrary::FindLookAtRotation(StartLocation, PredictedLoc);
+		}
+
+		// 2. 수동 조준: 카메라 레이캐스트를 통한 정밀 보정
+		FVector CameraLoc;
+		FRotator CameraRot;
+		PC->GetPlayerViewPoint(CameraLoc, CameraRot);
+
+		FVector TraceStart = CameraLoc;
+		FVector TraceEnd = CameraLoc + (CameraRot.Vector() * AimMaxRange);
+
+		FHitResult HitResult;
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(Character);
+
+		FVector TargetLocation = TraceEnd;
+
+		// LineTrace -> SweepSingle (Sphere)
+		FCollisionShape SphereShape = FCollisionShape::MakeSphere(AimTraceRadius);
+
+		if (GetWorld()->SweepSingleByChannel(HitResult, TraceStart, TraceEnd, FQuat::Identity,
+		                                     ECC_Visibility, SphereShape, QueryParams))
+		{
+			// 너무 가까운 벽을 쏘는 경우 보정 (ImpactPoint 대신 Sphere의 중심인 Location 사용)
+			float DistanceToHit = (HitResult.Location - CameraLoc).Size();
+			if (DistanceToHit < AimMinRange)
+			{
+				float Alpha = FMath::Clamp(DistanceToHit / AimMinRange, 0.0f, 1.0f);
+				TargetLocation = FMath::Lerp(TraceEnd, HitResult.Location, Alpha);
+			}
+			else
+			{
+				TargetLocation = HitResult.Location;
+			}
+		}
+
+		// Muzzle에서 바라본 TargetLocation의 각도
+		return UKismetMathLibrary::FindLookAtRotation(StartLocation, TargetLocation);
 	}
 	
 	return BaseRotation;

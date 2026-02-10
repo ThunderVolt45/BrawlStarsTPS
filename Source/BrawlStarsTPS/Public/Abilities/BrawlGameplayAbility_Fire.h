@@ -106,8 +106,4 @@ protected:
 	// 각 펠릿(Pellet)당 데미지 비율 (기본값: 1.0f, 산탄총의 경우 1보다 작을 수 있음)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl")
 	float DamagePerPelletScale = 1.0f;
-	
-	// AI 컨트롤러가 사용할 경우 에임 보정치
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|AI")
-	float AIAimOffset = 3.05f;
 };

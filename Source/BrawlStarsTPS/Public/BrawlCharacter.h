@@ -244,6 +244,10 @@ protected:
 	// 조준 보조용 예상 발사체 수명 (사거리 계산용)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Combat")
 	float EstimatedProjectileLifetime = 0.5f;
+	
+	// (디버그) Muzzle 방향으로 레이 드로우
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Brawl|Debug")
+	bool DrawDebugMuzzleLine = false;
 
 public:
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;

@@ -338,7 +338,7 @@ void ABrawlStarsTPSPlayerController::ApplyAimAssist(float DeltaTime)
 	if (DistToTarget < 200.0f)
 	{
 		float VerticalOffset = FMath::GetMappedRangeValueClamped(
-			FVector2D(50.0f, 200.0f), FVector2D(80.0f, 0.0f), DistToTarget);
+			FVector2D(50.0f, 200.0f), FVector2D(70.0f, 0.0f), DistToTarget);
 		PredictedAimLocation.Z += VerticalOffset;
 	}
 
