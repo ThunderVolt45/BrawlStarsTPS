@@ -337,11 +337,11 @@ void ABrawlStarsTPSPlayerController::ApplyAimAssist(float DeltaTime)
 	// 카메라 회전용 타겟 위치 (발사체는 PredictedAimLocation을 사용하므로 분리)
 	FVector CameraTargetLoc = PredictedAimLocation;
 
-	// [Fix] 거리가 가까울수록 카메라 조준 지점을 점진적으로 높여 바닥을 보지 않도록 보정 (200 유닛 이내에서 적용)
-	if (DistToTarget < 200.0f)
+	// [Fix] 거리가 가까울수록 카메라 조준 지점을 점진적으로 높여 바닥을 보지 않도록 보정 (700 유닛 이내에서 적용)
+	if (DistToTarget < 700.0f)
 	{
 		float VerticalOffset = FMath::GetMappedRangeValueClamped(
-			FVector2D(50.0f, 200.0f), FVector2D(70.0f, 0.0f), DistToTarget);
+			FVector2D(200.0f, 700.0f), FVector2D(80.0f, 0.0f), DistToTarget);
 		CameraTargetLoc.Z += VerticalOffset;
 	}
 
