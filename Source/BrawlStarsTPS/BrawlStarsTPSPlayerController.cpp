@@ -334,18 +334,21 @@ void ABrawlStarsTPSPlayerController::ApplyAimAssist(float DeltaTime)
 	// 목표의 미래 위치 예측
 	PredictedAimLocation = TargetLoc + (TargetVel * TimeToHit);
 
-	// [Fix] 거리가 가까울수록 조준 지점을 점진적으로 높여 바닥을 보지 않도록 보정 (200 유닛 이내에서 적용)
+	// 카메라 회전용 타겟 위치 (발사체는 PredictedAimLocation을 사용하므로 분리)
+	FVector CameraTargetLoc = PredictedAimLocation;
+
+	// [Fix] 거리가 가까울수록 카메라 조준 지점을 점진적으로 높여 바닥을 보지 않도록 보정 (200 유닛 이내에서 적용)
 	if (DistToTarget < 200.0f)
 	{
 		float VerticalOffset = FMath::GetMappedRangeValueClamped(
 			FVector2D(50.0f, 200.0f), FVector2D(70.0f, 0.0f), DistToTarget);
-		PredictedAimLocation.Z += VerticalOffset;
+		CameraTargetLoc.Z += VerticalOffset;
 	}
 
 	// 4. 회전값 계산
 	// 기준점을 MyChar->GetActorLocation()이 아닌 CameraLoc으로 변경하여 
 	// 화면 정중앙(리틱클)에 목표가 오도록 함
-	FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(CameraLoc, PredictedAimLocation);
+	FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(CameraLoc, CameraTargetLoc);
 
 	FRotator CurrentRot = GetControlRotation();
 
