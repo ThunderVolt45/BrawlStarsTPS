@@ -216,6 +216,10 @@ void ABrawlStarsTPSPlayerController::FindBestTarget()
 		return;
 	}
 
+	// 최대 사거리 계산 (발사체 속도 * 수명)
+	float MaxWorldRange = MyChar->GetEstimatedProjectileSpeed() * MyChar->GetEstimatedProjectileLifetime();
+	float MaxWorldRangeSq = FMath::Square(MaxWorldRange);
+
 	ABrawlCharacter* BestTarget = nullptr;
 	float BestDistSq = FMath::Square(AimDetectionRadius);
 	
@@ -234,8 +238,29 @@ void ABrawlStarsTPSPlayerController::FindBestTarget()
 		// 시야/은신 확인 (IsVisibleTo 사용)
 		if (!OtherChar->IsVisibleTo(MyChar->GetGenericTeamId())) continue;
 
+		// 월드 거리 확인 (최대 사거리 제한)
+		float WorldDistSq = FVector::DistSquared(MyChar->GetActorLocation(), OtherChar->GetActorLocation());
+		if (WorldDistSq > MaxWorldRangeSq) continue;
+
+		// 장애물 체크 (Line of Sight)
+		FHitResult HitResult;
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(MyChar);
+		QueryParams.AddIgnoredActor(OtherChar);
+		
+		// 캐릭터의 중심(Capsule Center)끼리 레이캐스트 수행
+		FVector TraceStart = MyChar->GetActorLocation();
+		FVector TraceEnd = OtherChar->GetActorLocation();
+		
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+		{
+			// 무언가에 걸렸다면 (장애물이 있다면) 스킵
+			continue;
+		}
+
 		FVector2D ScreenPos;
-		// 화면에 렌더링 가능한지(앞에 있는지) 확인
+		
+		// 화면에 렌더링 가능한지(앞에 있는지) 확인하고 현재 목표가 기존 목표보다 더 가까이에 있다면 목표를 변경한다
 		if (ProjectWorldLocationToScreen(OtherChar->GetActorLocation(), ScreenPos))
 		{
 			float DistSq = FVector2D::DistSquared(ScreenPos, ScreenCenter);
@@ -255,36 +280,59 @@ void ABrawlStarsTPSPlayerController::ApplyAimAssist(float DeltaTime)
 	ABrawlCharacter* MyChar = Cast<ABrawlCharacter>(GetPawn());
 	ABrawlCharacter* Target = CurrentAimTarget.Get();
 
-	if (!MyChar || !Target || !PlayerCameraManager) return;
-
-	// 목표가 죽었거나 유효하지 않으면 해제
-	if (Target->IsDead())
+	if (!MyChar || !Target || !PlayerCameraManager)
 	{
-		CurrentAimTarget = nullptr;
+		PredictedAimLocation = FVector::ZeroVector;
 		return;
 	}
 
-	// 1. 위치 및 속도 정보 가져오기
+	// 1. 유효성 및 사거리 확인
+	float MaxWorldRange = MyChar->GetEstimatedProjectileSpeed() * MyChar->GetEstimatedProjectileLifetime();
+	float DistToTarget = FVector::Dist(MyChar->GetActorLocation(), Target->GetActorLocation());
+
+	if (Target->IsDead() || DistToTarget > MaxWorldRange)
+	{
+		CurrentAimTarget = nullptr;
+		PredictedAimLocation = FVector::ZeroVector;
+		return;
+	}
+
+	// 2. 장애물 체크 (조준 유지 중 벽 뒤로 숨었는지 확인)
+	{
+		FHitResult HitResult;
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(MyChar);
+		QueryParams.AddIgnoredActor(Target);
+
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, MyChar->GetActorLocation(), Target->GetActorLocation(), ECC_Visibility, QueryParams))
+		{
+			CurrentAimTarget = nullptr;
+			PredictedAimLocation = FVector::ZeroVector;
+			return;
+		}
+	}
+
+	// 3. 위치 및 속도 정보 가져오기
 	FVector CameraLoc = PlayerCameraManager->GetCameraLocation();
+	FVector MyLoc = MyChar->GetActorLocation();
 	FVector TargetLoc = Target->GetActorLocation();
 	FVector TargetVel = Target->GetVelocity();
 	float ProjectileSpeed = MyChar->GetEstimatedProjectileSpeed();
 
-	// 2. 예측 사격 지점 계산 (Linear Prediction)
-	// 카메라에서 목표까지의 거리를 기준으로 탄착 시간 계산
-	float Distance = (TargetLoc - CameraLoc).Size();
-	float TimeToHit = (ProjectileSpeed > 0.f) ? (Distance / ProjectileSpeed) : 0.f;
+	// 3. 예측 사격 지점 계산 (Linear Prediction)
+	// 발사 지점(캐릭터 위치 근처)에서 목표까지의 거리를 기준으로 탄착 시간 계산
+	float TimeToHit = (ProjectileSpeed > 0.f) ? (DistToTarget / ProjectileSpeed) : 0.f;
 
 	// 목표의 미래 위치 예측
-	FVector PredictedLoc = TargetLoc + (TargetVel * TimeToHit);
+	PredictedAimLocation = TargetLoc + (TargetVel * TimeToHit);
 
-	// 3. 회전값 계산
+	// 4. 회전값 계산
 	// 기준점을 MyChar->GetActorLocation()이 아닌 CameraLoc으로 변경하여 
 	// 화면 정중앙(리틱클)에 목표가 오도록 함
-	FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(CameraLoc, PredictedLoc);
+	FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(CameraLoc, PredictedAimLocation);
 	FRotator CurrentRot = GetControlRotation();
 
-	// 4. 부드럽게 회전 (Interp)
+	// 5. 부드럽게 회전 (Interp)
 	FRotator NewRot = FMath::RInterpTo(CurrentRot, LookAtRot, DeltaTime, AimAssistInterpSpeed);
 
 	// 화면 기울어짐 방지를 위해 Roll 값을 강제로 0으로 고정

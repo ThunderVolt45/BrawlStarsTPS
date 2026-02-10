@@ -241,11 +241,18 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Combat")
 	float EstimatedProjectileSpeed = 3000.0f;
 
+	// 조준 보조용 예상 발사체 수명 (사거리 계산용)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Combat")
+	float EstimatedProjectileLifetime = 0.5f;
+
 public:
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
 	float GetEstimatedProjectileSpeed() const { return EstimatedProjectileSpeed; }
+
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
+	float GetEstimatedProjectileLifetime() const { return EstimatedProjectileLifetime; }
 
 	// 수풀(Bush) 진입/나감 처리
 	// bInBush true면 수풀 속, false면 나옴

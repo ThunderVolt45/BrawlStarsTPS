@@ -11,6 +11,7 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
+#include "BrawlStarsTPSPlayerController.h"
 
 UBrawlGameplayAbility_Fire::UBrawlGameplayAbility_Fire()
 {
@@ -141,11 +142,20 @@ FRotator UBrawlGameplayAbility_Fire::GetAimRotation(FVector StartLocation) const
 	// ABrawlCharacter로 캐스팅
 	ABrawlCharacter* BrawlCharacter = Cast<ABrawlCharacter>(Character);
 	
-	// 플레이어의 경우, 카메라 레이캐스트를 통한 정밀 보정
+	// 플레이어의 경우, 카메라 레이캐스트를 통한 정밀 보정 및 자동 조준 대응
 	if (BrawlCharacter && BrawlCharacter->IsPlayerControlled())
 	{
-		if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+		if (ABrawlStarsTPSPlayerController* PC = Cast<ABrawlStarsTPSPlayerController>(Character->GetController()))
 		{
+			// 1. 자동 조준(Auto-Aim) 예측 지점이 있다면 우선적으로 사용
+			FVector PredictedLoc = PC->GetPredictedAimLocation();
+			if (!PredictedLoc.IsZero())
+			{
+				// 총구(StartLocation)에서 예측 지점을 직접 바라보도록 하여 오차 제거
+				return UKismetMathLibrary::FindLookAtRotation(StartLocation, PredictedLoc);
+			}
+
+			// 2. 수동 조준: 카메라 레이캐스트를 통한 정밀 보정
 			FVector CameraLoc;
 			FRotator CameraRot;
 			PC->GetPlayerViewPoint(CameraLoc, CameraRot);
