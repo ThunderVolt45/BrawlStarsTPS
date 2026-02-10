@@ -89,39 +89,39 @@ void UBrawlGameplayAbility::PlayGameplayCue(FVector Location, FVector Normal, FG
 		}
 	}
 
-	if (!TagToUse.IsValid()) return;
+	// 매개변수 태그를 가져오지 못했다면 여기서 중단
+	if (!TagToUse.IsValid())
+		return;
 
+	FGameplayCueParameters Params;
+
+	// 1. 회전 계산 (기본 Normal + BP 설정 오프셋 + 함수 인자 오프셋)
+	FRotator FinalRotation = Normal.Rotation();
+
+	if (!GameplayCueRotationOffset.IsZero())
 	{
-		FGameplayCueParameters Params;
-		
-		// 1. 회전 계산 (기본 Normal + BP 설정 오프셋 + 함수 인자 오프셋)
-		FRotator FinalRotation = Normal.Rotation();
-		
-		if (!GameplayCueRotationOffset.IsZero())
-		{
-			FinalRotation += GameplayCueRotationOffset;
-		}
-		
-		if (!RotationOffset.IsZero())
-		{
-			FinalRotation += RotationOffset;
-		}
-
-		Params.Normal = FinalRotation.Vector();
-
-		// 2. 위치 계산 (기본 Location + 회전된 오프셋)
-		// 오프셋을 현재 바라보는 방향(FinalRotation) 기준으로 회전시켜 적용
-		Params.Location = Location;
-		
-		if (!GameplayCueLocationOffset.IsZero())
-		{
-			Params.Location += FinalRotation.RotateVector(GameplayCueLocationOffset);
-		}
-		
-		Params.Instigator = GetAvatarActorFromActorInfo();
-
-		ASC->ExecuteGameplayCue(TagToUse, Params);
+		FinalRotation += GameplayCueRotationOffset;
 	}
+
+	if (!RotationOffset.IsZero())
+	{
+		FinalRotation += RotationOffset;
+	}
+
+	Params.Normal = FinalRotation.Vector();
+
+	// 2. 위치 계산 (기본 Location + 회전된 오프셋)
+	// 오프셋을 현재 바라보는 방향(FinalRotation) 기준으로 회전시켜 적용
+	Params.Location = Location;
+
+	if (!GameplayCueLocationOffset.IsZero())
+	{
+		Params.Location += FinalRotation.RotateVector(GameplayCueLocationOffset);
+	}
+
+	Params.Instigator = GetAvatarActorFromActorInfo();
+
+	ASC->ExecuteGameplayCue(TagToUse, Params);
 }
 
 void UBrawlGameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, 
