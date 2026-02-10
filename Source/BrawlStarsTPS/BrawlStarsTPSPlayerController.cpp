@@ -128,6 +128,14 @@ void ABrawlStarsTPSPlayerController::ShowMatchResultUI_Implementation(bool bIsWi
 	}
 }
 
+void ABrawlStarsTPSPlayerController::PlayNoAmmoAnimation_Implementation()
+{
+	if (BrawlHUDWidget)
+	{
+		BrawlHUDWidget->PlayNoAmmoAnimation();
+	}
+}
+
 
 void ABrawlStarsTPSPlayerController::PlayerTick(float DeltaTime)
 {

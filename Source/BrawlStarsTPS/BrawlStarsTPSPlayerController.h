@@ -63,6 +63,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Aim")
 	FVector GetPredictedAimLocation() const { return PredictedAimLocation; }
 
+	// 탄약 부족 경고 애니메이션 재생 요청 (UI 전달)
+	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "Brawl|UI")
+	void PlayNoAmmoAnimation();
+
 protected:
 	/** 매치 흐름(Intro/Outro) 제어 컴포넌트 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Components", meta = (AllowPrivateAccess = "true"))

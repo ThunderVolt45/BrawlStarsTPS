@@ -14,6 +14,8 @@ class UBrawlGadgetWidget;
 class UBrawlSuperWidget;
 class UBrawlHyperWidget;
 class UPanelWidget; // 추가
+class UHorizontalBox; // 추가
+class UBrawlAmmoSlotWidget; // 추가
 
 // 값이 변경되었을 때 블루프린트로 쏴줄 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAttributeChangedSignature, float, NewValue);
@@ -42,6 +44,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void InitializeGameModeWidget();
 
+	// 탄약 없음 경고 애니메이션 재생 (떨림)
+	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
+	void PlayNoAmmoAnimation();
+
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 protected:
@@ -55,6 +61,12 @@ protected:
 	void OnHyperChargeChanged(const FOnAttributeChangeData& Data);
 	void OnMaxHyperChargeChanged(const FOnAttributeChangeData& Data);
 
+	// 탄약 UI 업데이트 (슬롯 방식)
+	void UpdateAmmoSlots(float CurrentAmmo, float MaxAmmo);
+
+	// 현재 재장전 어빌리티로부터 진행도 가져오기
+	float GetReloadProgress() const;
+
 public:
 	// 블루프린트에서 바인딩할 UI 요소들
 	UPROPERTY(meta=(BindWidget))
@@ -63,11 +75,17 @@ public:
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UTextBlock> HealthText;
 
-	UPROPERTY(meta=(BindWidgetOptional))
-	TObjectPtr<UProgressBar> AmmoBar;
+	// 탄약 슬롯들을 담을 가로 박스 (필수 바인딩)
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UHorizontalBox> AmmoSlotContainer;
 
-	UPROPERTY(meta=(BindWidgetOptional))
-	TObjectPtr<UTextBlock> AmmoText;
+	// 탄약 슬롯 위젯 클래스 (BP에서 설정)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|UI")
+	TSubclassOf<UBrawlAmmoSlotWidget> AmmoSlotClass;
+
+	// 생성된 탄약 슬롯 위젯 목록
+	UPROPERTY()
+	TArray<TObjectPtr<UBrawlAmmoSlotWidget>> AmmoSlotWidgets;
 
 	// 스킬 위젯들 (WBP_BrawlHUD에서 이름이 일치해야 함)
 	UPROPERTY(meta=(BindWidget))

@@ -21,6 +21,10 @@ class BRAWLSTARSTPS_API UBrawlGameplayAbility_Reload : public UBrawlGameplayAbil
 public:
 	UBrawlGameplayAbility_Reload();
 
+	/** 현재 재장전 진행도 반환 (0.0 ~ 1.0) */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Ability")
+	float GetReloadProgress() const;
+
 	// 어빌리티 활성화 로직
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 

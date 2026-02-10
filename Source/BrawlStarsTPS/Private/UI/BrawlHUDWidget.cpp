@@ -8,9 +8,12 @@
 #include "UI/BrawlGadgetWidget.h"
 #include "UI/BrawlSuperWidget.h"
 #include "UI/BrawlHyperWidget.h"
+#include "UI/BrawlAmmoSlotWidget.h"
+#include "Abilities/BrawlGameplayAbility_Reload.h" // 추가
 #include "GameplayTagContainer.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
+#include "Components/HorizontalBox.h" // 추가
 #include "GameFramework/GameStateBase.h"
 #include "Components/PanelWidget.h"
 #include "GameFramework/GameModeBase.h"
@@ -63,10 +66,8 @@ void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 	if (HealthBar && MaxHealth > 0.f) HealthBar->SetPercent(Health / MaxHealth);
 	if (HealthText) HealthText->SetText(FText::AsNumber((int32)Health));
 	
-	if (AmmoBar && MaxAmmo > 0.f) AmmoBar->SetPercent(Ammo / MaxAmmo);
-	if (AmmoText) AmmoText->SetText(FText::Format(
-			NSLOCTEXT("BrawlHUD", "AmmoTextFormat", "{0} / {1}"), 
-			FText::AsNumber((int32)Ammo), FText::AsNumber((int32)MaxAmmo)));
+	// 초기 탄약 슬롯 업데이트
+	UpdateAmmoSlots(Ammo, MaxAmmo);
 
 	// 스킬 위젯 업데이트
 	if (SuperWidget && MaxSuperCharge > 0.f)
@@ -208,6 +209,11 @@ void UBrawlHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 			}
 		}
 	}
+
+	// 3. 탄약 슬롯 부드러운 업데이트
+	float Ammo = AbilitySystemComponent->GetNumericAttribute(UBrawlAttributeSet::GetAmmoAttribute());
+	float MaxAmmo = AbilitySystemComponent->GetNumericAttribute(UBrawlAttributeSet::GetMaxAmmoAttribute());
+	UpdateAmmoSlots(Ammo, MaxAmmo);
 }
 
 void UBrawlHUDWidget::OnHealthChanged(const FOnAttributeChangeData& Data)
@@ -247,14 +253,8 @@ void UBrawlHUDWidget::OnAmmoChanged(const FOnAttributeChangeData& Data)
 	{
 		float MaxVal = AbilitySystemComponent->GetNumericAttribute(UBrawlAttributeSet::GetMaxAmmoAttribute());
 		
-		if (MaxVal > 0.f)
-		{
-			if (AmmoBar) AmmoBar->SetPercent(Data.NewValue / MaxVal);
-		}
-		
-		if (AmmoText) AmmoText->SetText(FText::Format(
-			NSLOCTEXT("BrawlHUD", "AmmoTextFormat", "{0} / {1}"), 
-			FText::AsNumber((int32)Data.NewValue), FText::AsNumber((int32)MaxVal)));
+		// 슬롯 업데이트
+		UpdateAmmoSlots(Data.NewValue, MaxVal);
 	}
 }
 
@@ -266,14 +266,95 @@ void UBrawlHUDWidget::OnMaxAmmoChanged(const FOnAttributeChangeData& Data)
 	{
 		float CurVal = AbilitySystemComponent->GetNumericAttribute(UBrawlAttributeSet::GetAmmoAttribute());
 		
-		if (Data.NewValue > 0.f)
+		// 슬롯 업데이트
+		UpdateAmmoSlots(CurVal, Data.NewValue);
+	}
+}
+
+void UBrawlHUDWidget::UpdateAmmoSlots(float CurrentAmmo, float MaxAmmo)
+{
+	if (!AmmoSlotContainer || !AmmoSlotClass) return;
+
+	int32 MaxAmmoInt = FMath::RoundToInt(MaxAmmo);
+	if (MaxAmmoInt <= 0) return;
+
+	// 1. 슬롯 개수 맞추기
+	if (AmmoSlotWidgets.Num() != MaxAmmoInt)
+	{
+		AmmoSlotContainer->ClearChildren();
+		AmmoSlotWidgets.Empty();
+
+		for (int32 i = 0; i < MaxAmmoInt; i++)
 		{
-			if (AmmoBar) AmmoBar->SetPercent(CurVal / Data.NewValue);
+			UBrawlAmmoSlotWidget* SlotWidget = CreateWidget<UBrawlAmmoSlotWidget>(this, AmmoSlotClass);
+			if (SlotWidget)
+			{
+				SlotWidget->InitSlot(i);
+				AmmoSlotContainer->AddChild(SlotWidget);
+				AmmoSlotWidgets.Add(SlotWidget);
+			}
 		}
-		
-		if (AmmoText) AmmoText->SetText(FText::Format(
-			NSLOCTEXT("BrawlHUD", "AmmoTextFormat", "{0} / {1}"), 
-			FText::AsNumber((int32)CurVal), FText::AsNumber((int32)Data.NewValue)));
+	}
+
+	// 2. 상태 업데이트
+	int32 FullAmmoCount = FMath::FloorToInt(CurrentAmmo);
+	
+	// 어빌리티 타이머로부터 실제 재장전 진행도를 가져옴 (부드러운 연출)
+	float PartialAmmo = GetReloadProgress();
+	
+	// 이미 탄약이 꽉 찼다면 진행도는 무시
+	if (FullAmmoCount >= MaxAmmoInt)
+	{
+		PartialAmmo = 0.0f;
+	}
+
+	for (int32 i = 0; i < AmmoSlotWidgets.Num(); i++)
+	{
+		UBrawlAmmoSlotWidget* AmmoSlot = AmmoSlotWidgets[i];
+		if (!AmmoSlot) continue;
+
+		if (i < FullAmmoCount)
+		{
+			// 꽉 참
+			AmmoSlot->UpdateState(true, false, 1.0f);
+		}
+		else if (i == FullAmmoCount)
+		{
+			// 충전 중 (가장 왼쪽의 비어있는 슬롯)
+			AmmoSlot->UpdateState(false, true, PartialAmmo);
+		}
+		else
+		{
+			// 비어있음 (대기)
+			AmmoSlot->UpdateState(false, false, 0.0f);
+		}
+	}
+}
+
+float UBrawlHUDWidget::GetReloadProgress() const
+{
+	if (!AbilitySystemComponent.IsValid()) return 0.0f;
+
+	// 현재 캐릭터의 어빌리티 목록에서 Reload 어빌리티 인스턴스를 찾아 진행도를 가져옴
+	for (const FGameplayAbilitySpec& Spec : AbilitySystemComponent->GetActivatableAbilities())
+	{
+		if (UBrawlGameplayAbility_Reload* ReloadAbility = Cast<UBrawlGameplayAbility_Reload>(Spec.GetPrimaryInstance()))
+		{
+			return ReloadAbility->GetReloadProgress();
+		}
+	}
+
+	return 0.0f;
+}
+
+void UBrawlHUDWidget::PlayNoAmmoAnimation()
+{
+	for (UBrawlAmmoSlotWidget* AmmoSlot : AmmoSlotWidgets)
+	{
+		if (AmmoSlot)
+		{
+			AmmoSlot->PlayShakeAnimation();
+		}
 	}
 }
 

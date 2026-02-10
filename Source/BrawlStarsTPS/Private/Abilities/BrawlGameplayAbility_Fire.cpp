@@ -30,7 +30,24 @@ void UBrawlGameplayAbility_Fire::ActivateAbility(const FGameplayAbilitySpecHandl
 	// 따라서 CommitAbility 호출 후, 강제로 ApplyCost를 호출하여 C++ 변수 기반 차감을 수행.
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("BrawlGameplayAbility_Fire::ActivateAbility Failed CommitAbility"));
+		// UE_LOG(LogTemp, Warning, TEXT("BrawlGameplayAbility_Fire::ActivateAbility Failed CommitAbility"));
+		
+		// 실패 원인이 코스트(탄약)인지 확인하기 위해 CheckCost를 다시 호출해봄
+		FGameplayTagContainer FailureTags;
+		if (!CheckCost(Handle, ActorInfo, &FailureTags))
+		{
+			// 코스트 부족으로 실패 (가젯은 CheckCost가 true이므로 여기 안 들어옴)
+			if (ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get()))
+			{
+				if (ABrawlStarsTPSPlayerController* PC = Cast<ABrawlStarsTPSPlayerController>(Character->GetController()))
+				{
+					// 로컬 컨트롤러라면 UI 애니메이션 재생
+					// (서버에서 호출되더라도 Client RPC이므로 클라이언트로 전송됨)
+					PC->PlayNoAmmoAnimation();
+				}
+			}
+		}
+
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
