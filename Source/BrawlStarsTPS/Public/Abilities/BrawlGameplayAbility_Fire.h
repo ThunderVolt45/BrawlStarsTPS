@@ -26,9 +26,9 @@ protected:
 	UFUNCTION()
 	void OnFireEventReceived(FGameplayEventData Payload);
 
-	// 발사체 스폰 로직 (Blueprint에서 호출 가능하도록)                                                                      │
+	// 발사체 스폰 로직 (Blueprint에서 호출 가능하도록)
 	UFUNCTION(BlueprintCallable, Category = "Brawl")
-	virtual void SpawnProjectile();
+	virtual void SpawnProjectile(FName AttachParentSocketName = NAME_None);
 
 	// 몽타주 종료 콜백
 	UFUNCTION()

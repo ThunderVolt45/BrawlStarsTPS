@@ -173,6 +173,40 @@ void UBrawlHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		}
 	}
 
+	// 1-2. 가젯 2 쿨다운 처리
+	if (Gadget2Widget)
+	{
+		static FGameplayTag Gadget2CooldownTag = FGameplayTag::RequestGameplayTag(FName("State.CooldownGadget2"));
+		
+		FGameplayEffectQuery CooldownQuery;
+		CooldownQuery.CustomMatchDelegate.BindLambda([&](const FActiveGameplayEffect& Effect) {
+			return Effect.Spec.Def->GetGrantedTags().HasTag(Gadget2CooldownTag) || 
+				   Effect.Spec.Def->GetAssetTags().HasTag(Gadget2CooldownTag);
+		});
+
+		TArray<FActiveGameplayEffectHandle> CooldownEffects = AbilitySystemComponent->GetActiveEffects(CooldownQuery);
+		if (CooldownEffects.Num() > 0)
+		{
+			const FActiveGameplayEffect* Effect = AbilitySystemComponent->GetActiveGameplayEffect(CooldownEffects[0]);
+			if (Effect)
+			{
+				float Remaining = Effect->GetTimeRemaining(GetWorld()->GetTimeSeconds());
+				float Duration = Effect->GetDuration();
+				
+				Gadget2Widget->SetRemainingCooldown(Remaining);
+				if (Duration > 0.f)
+				{
+					Gadget2Widget->SetPercent(Remaining / Duration);
+				}
+			}
+		}
+		else
+		{
+			Gadget2Widget->SetRemainingCooldown(0.f);
+			Gadget2Widget->SetPercent(0.f);
+		}
+	}
+
 	// 2. 하이퍼차지 상태 및 지속 시간 처리
 	if (HyperWidget)
 	{

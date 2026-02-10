@@ -21,5 +21,12 @@ void UBrawlGameplayAbility_Colt_Gadget::ApplyCost(const FGameplayAbilitySpecHand
 
 FGameplayAttribute UBrawlGameplayAbility_Colt_Gadget::GetDamageAttribute() const
 {
+	static FGameplayTag Gadget2Tag = FGameplayTag::RequestGameplayTag(FName("InputTag.Ability.Gadget2"));
+	
+	if (StartupInputTag.MatchesTag(Gadget2Tag))
+	{
+		return UBrawlAttributeSet::GetGadget2DamageAttribute();
+	}
+	
 	return UBrawlAttributeSet::GetGadgetDamageAttribute();
 }

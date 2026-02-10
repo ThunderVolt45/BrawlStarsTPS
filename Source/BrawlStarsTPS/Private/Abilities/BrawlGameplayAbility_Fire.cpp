@@ -250,7 +250,7 @@ FGameplayEffectSpecHandle UBrawlGameplayAbility_Fire::MakeDamageSpecHandle(float
 	return SpecHandle;
 }
 
-void UBrawlGameplayAbility_Fire::SpawnProjectile()
+void UBrawlGameplayAbility_Fire::SpawnProjectile(FName AttachParentSocketName)
 {
 	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
 	if (!Character) return;
@@ -264,7 +264,7 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile()
 	}
 
 	// 2. 발사 시작점
-	FVector MuzzleLocation = GetMuzzleLocation(MuzzleSocketName);
+	FVector MuzzleLocation = GetMuzzleLocation(MuzzleSocketName, AttachParentSocketName);
 
 	// 3. 발사 방향
 	FRotator BaseRotation = GetAimRotation(MuzzleLocation);
