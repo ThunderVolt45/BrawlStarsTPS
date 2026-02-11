@@ -286,7 +286,8 @@ void UBrawlMatchFlowComponent::Outro_StartFinalSummary()
 		MatchResultWidget->RemoveFromParent();
 		MatchResultWidget = nullptr;
 	}
-
+	
+	/*
 	// 레벨 정리
 	TArray<AActor*> ActorsToDestroy;
 	for (const FName& Tag : TagsToDestroy)
@@ -344,4 +345,7 @@ void UBrawlMatchFlowComponent::Outro_StartFinalSummary()
 			OwnerController->SetInputMode(InputMode);
 		}
 	}
+	*/
+
+	UGameplayStatics::OpenLevel(this, FName("LV_Lobby"));
 }

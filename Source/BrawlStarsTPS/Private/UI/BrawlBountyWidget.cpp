@@ -19,6 +19,7 @@ void UBrawlBountyWidget::NativeConstruct()
 		{
 			GS->OnTeamScoreChanged.AddDynamic(this, &UBrawlBountyWidget::OnTeamScoreChanged);
 			GS->OnRemainingTimeChanged.AddDynamic(this, &UBrawlBountyWidget::OnRemainingTimeChanged);
+			GS->OnTieBreakerTeamChanged.AddDynamic(this, &UBrawlBountyWidget::HandleTieBreakerChanged);
 
 			// 초기 남은 시간 설정
 			OnRemainingTimeChanged(GS->GetRemainingTime());
@@ -60,6 +61,11 @@ void UBrawlBountyWidget::OnTeamScoreChanged(int32 TeamID, int32 NewScore)
 	UpdateBountyUI();
 }
 
+void UBrawlBountyWidget::HandleTieBreakerChanged(int32 TeamID)
+{
+	UpdateBountyUI();
+}
+
 void UBrawlBountyWidget::OnRemainingTimeChanged(int32 NewTime)
 {
 	if (TimerText)
@@ -92,24 +98,8 @@ void UBrawlBountyWidget::UpdateBountyUI()
 		RightTeamScoreText->SetText(FText::AsNumber(GS->GetTeamScore(EnemyTeamID)));
 	}
 
-	// 타이 브레이커 아이콘 색상 변경
-	// (PlayerState를 순회하며 누가 타이 브레이커를 가졌는지 확인하거나 GS에 정보를 두는 것이 좋음)
-	// 현재는 간단히 PlayerState들을 순회하여 체크
-	TArray<AActor*> OutActors;
-	UGameplayStatics::GetAllActorsOfClass(World, APlayerState::StaticClass(), OutActors);
-
-	int32 TieBreakerTeam = -1;
-	for (AActor* Actor : OutActors)
-	{
-		if (ABrawlPlayerState* PS = Cast<ABrawlPlayerState>(Actor))
-		{
-			if (PS->HasTieBreaker())
-			{
-				TieBreakerTeam = PS->GetTeamID();
-				break;
-			}
-		}
-	}
+	// 타이 브레이커 아이콘 가시성 제어 (GameState의 정보 활용)
+	int32 TieBreakerTeam = GS->GetTieBreakerTeam();
 
 	if (LeftTieBreakerIcon)
 	{

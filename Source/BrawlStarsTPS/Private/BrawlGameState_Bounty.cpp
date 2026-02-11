@@ -18,6 +18,7 @@ void ABrawlGameState_Bounty::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(ABrawlGameState_Bounty, Team0Score);
 	DOREPLIFETIME(ABrawlGameState_Bounty, Team1Score);
 	DOREPLIFETIME(ABrawlGameState_Bounty, RemainingTime);
+	DOREPLIFETIME(ABrawlGameState_Bounty, TieBreakerTeam);
 }
 
 void ABrawlGameState_Bounty::AddTeamScore(int32 TeamID, int32 Amount)
@@ -66,4 +67,21 @@ void ABrawlGameState_Bounty::OnRep_Team1Score()
 void ABrawlGameState_Bounty::OnRep_RemainingTime()
 {
 	OnRemainingTimeChanged.Broadcast(RemainingTime);
+}
+
+void ABrawlGameState_Bounty::OnRep_TieBreakerTeam()
+{
+	OnTieBreakerTeamChanged.Broadcast(TieBreakerTeam);
+}
+
+void ABrawlGameState_Bounty::SetTieBreakerTeam(int32 TeamID)
+{
+	if (HasAuthority())
+	{
+		TieBreakerTeam = TeamID;
+		if (GetNetMode() != NM_DedicatedServer)
+		{
+			OnRep_TieBreakerTeam();
+		}
+	}
 }

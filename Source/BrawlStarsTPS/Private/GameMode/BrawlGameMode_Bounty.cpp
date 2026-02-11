@@ -388,6 +388,12 @@ void ABrawlGameMode_Bounty::NotifyKill(AActor* Killer, AActor* Victim)
 			KillerPS->SetHasTieBreaker(true);
 			TieBreakerOwnerState = KillerPS;
 
+			// GameState 동기화
+			if (ABrawlGameState_Bounty* GS = GetGameState<ABrawlGameState_Bounty>())
+			{
+				GS->SetTieBreakerTeam(KillerPS->GetTeamID());
+			}
+
 			UE_LOG(LogTemp, Log, TEXT("Tie Breaker STOLEN by %s (Team %d)"), *KillerPS->GetPlayerName(), KillerPS->GetTeamID());
 		}
 
@@ -572,10 +578,11 @@ void ABrawlGameMode_Bounty::OnTieBreakerPickedUp(ABrawlCharacter* Picker)
 		PS->SetHasTieBreaker(true);
 		TieBreakerOwnerState = PS;
 
-		// 3. 팀 점수 1점 추가
+		// 3. 팀 점수 1점 추가 및 GameState 동기화
 		if (ABrawlGameState_Bounty* GS = GetGameState<ABrawlGameState_Bounty>())
 		{
 			GS->AddTeamScore(PS->GetTeamID(), 1);
+			GS->SetTieBreakerTeam(PS->GetTeamID());
 		}
 
 		UE_LOG(LogTemp, Log, TEXT("Tie Breaker picked up by Team %d (+1 Point)"), PS->GetTeamID());

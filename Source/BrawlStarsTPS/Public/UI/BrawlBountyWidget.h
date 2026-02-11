@@ -38,6 +38,10 @@ protected:
 	UFUNCTION()
 	void OnRemainingTimeChanged(int32 NewTime);
 
+	/** 타이 브레이커 변경 콜백 */
+	UFUNCTION()
+	void HandleTieBreakerChanged(int32 TeamID);
+
 	/** UI 텍스트 및 아이콘 상태 갱신 */
 	void UpdateBountyUI();
 
