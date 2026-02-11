@@ -6,7 +6,7 @@
 
 ABrawlPlayerState::ABrawlPlayerState()
 {
-	CurrentBounty = 2;
+	CurrentBounty = 0;
 	ScoreContribution = 0;
 	bHasTieBreaker = false;
 }
@@ -38,7 +38,7 @@ void ABrawlPlayerState::SetBounty(int32 NewBounty)
 {
 	if (HasAuthority())
 	{
-		CurrentBounty = FMath::Clamp(NewBounty, 2, 7);
+		CurrentBounty = FMath::Clamp(NewBounty, 0, 7);
 		if (GetNetMode() != NM_DedicatedServer)
 		{
 			OnRep_CurrentBounty();
@@ -53,7 +53,7 @@ void ABrawlPlayerState::AddBounty(int32 Amount)
 
 void ABrawlPlayerState::ResetBounty()
 {
-	SetBounty(2);
+	SetBounty(0);
 }
 
 void ABrawlPlayerState::AddScoreContribution(int32 Amount)

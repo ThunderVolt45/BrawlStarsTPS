@@ -83,6 +83,10 @@ void ABrawlGameMode_Bounty::PostLogin(APlayerController* NewPlayer)
 	{
 		if (PS->GetTeamID() == 255) PS->SetTeamID(0);
 		AssignedTeams.Add(NewPlayer, 0); // 플레이어 팀 등록
+		
+		// 바운티 모드 초기 점수 설정
+		PS->SetBounty(2);
+		
 		UE_LOG(LogTemp, Log, TEXT("BountyGameMode: PostLogin - Player [%s] TeamID: %d"), *NewPlayer->GetName(), PS->GetTeamID());
 	}
 }
@@ -266,6 +270,7 @@ void ABrawlGameMode_Bounty::SpawnBots()
 			if (ABrawlPlayerState* PS = AIC->GetPlayerState<ABrawlPlayerState>())
 			{
 				PS->SetTeamID(TeamID);
+				PS->SetBounty(2); // 바운티 모드 기본값 설정
 			}
 			else
 			{
@@ -546,7 +551,7 @@ void ABrawlGameMode_Bounty::RespawnBrawler(AController* Controller)
 
 	if (ABrawlPlayerState* PS = Controller->GetPlayerState<ABrawlPlayerState>())
 	{
-		PS->ResetBounty();
+		PS->SetBounty(2);
 	}
 }
 

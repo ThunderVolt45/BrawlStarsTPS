@@ -480,7 +480,7 @@ void UBrawlHUDWidget::OnBountyChanged(int32 NewBounty)
 {
 	if (BountyText)
 	{
-		ESlateVisibility NewVisibility = (NewBounty > 0) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
+		ESlateVisibility NewVisibility = (NewBounty > 1) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
 		
 		BountyText->SetText(FText::AsNumber(NewBounty));
 		BountyText->SetVisibility(NewVisibility);
@@ -497,11 +497,6 @@ void UBrawlHUDWidget::OnTieBreakerStateChanged(bool bHasTieBreaker)
 	if (TieBreakerIcon)
 	{
 		TieBreakerIcon->SetVisibility(bHasTieBreaker ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-		
-		if (BountyIcon)
-		{
-			BountyIcon->SetVisibility(bHasTieBreaker ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
-		}
 	}
 }
 
