@@ -373,7 +373,20 @@ void ABrawlGameMode_Bounty::NotifyKill(AActor* Killer, AActor* Victim)
 		// 3. 피해자의 현상금 초기화
 		VictimPS->ResetBounty();
 
-		// 4. 승리 조건 체크
+		// 4. 타이 브레이커 강탈 로직
+		if (VictimPS->HasTieBreaker())
+		{
+			// 피해자 해제
+			VictimPS->SetHasTieBreaker(false);
+			
+			// 킬러에게 부여
+			KillerPS->SetHasTieBreaker(true);
+			TieBreakerOwnerState = KillerPS;
+
+			UE_LOG(LogTemp, Log, TEXT("Tie Breaker STOLEN by %s (Team %d)"), *KillerPS->GetPlayerName(), KillerPS->GetTeamID());
+		}
+
+		// 5. 승리 조건 체크
 		CheckWinCondition();
 	}
 	else
@@ -544,17 +557,23 @@ void ABrawlGameMode_Bounty::OnTieBreakerPickedUp(ABrawlCharacter* Picker)
 	ABrawlPlayerState* PS = Picker->GetPlayerState<ABrawlPlayerState>();
 	if (PS)
 	{
-		// 기존 소유자 해제
+		// 1. 기존 소유자 해제
 		if (TieBreakerOwnerState)
 		{
 			TieBreakerOwnerState->SetHasTieBreaker(false);
 		}
 
-		// 새 소유자 설정
+		// 2. 새 소유자 설정
 		PS->SetHasTieBreaker(true);
 		TieBreakerOwnerState = PS;
 
-		UE_LOG(LogTemp, Log, TEXT("Tie Breaker picked up by Team %d"), PS->GetTeamID());
+		// 3. 팀 점수 1점 추가
+		if (ABrawlGameState_Bounty* GS = GetGameState<ABrawlGameState_Bounty>())
+		{
+			GS->AddTeamScore(PS->GetTeamID(), 1);
+		}
+
+		UE_LOG(LogTemp, Log, TEXT("Tie Breaker picked up by Team %d (+1 Point)"), PS->GetTeamID());
 	}
 }
 
