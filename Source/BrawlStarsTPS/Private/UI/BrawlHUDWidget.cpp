@@ -18,6 +18,8 @@
 #include "Components/PanelWidget.h"
 #include "GameFramework/GameModeBase.h"
 #include "BrawlCharacter.h"
+#include "BrawlPlayerState.h"
+#include "Components/Image.h"
 #include "Data/BrawlCharacterData.h"
 
 void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
@@ -42,6 +44,9 @@ void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 	ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetHyperChargeAttribute()).AddUObject(this, &UBrawlHUDWidget::OnHyperChargeChanged);
 	ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetMaxHyperChargeAttribute()).AddUObject(this, &UBrawlHUDWidget::OnMaxHyperChargeChanged);
 
+	// 5. 파워 큐브 변경 감지
+	ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetPowerCubeCountAttribute()).AddUObject(this, &UBrawlHUDWidget::OnPowerCubeCountChanged);
+
 	// 초기 값 업데이트
 	float Health = ASC->GetNumericAttribute(UBrawlAttributeSet::GetHealthAttribute());
 	float MaxHealth = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxHealthAttribute());
@@ -51,6 +56,7 @@ void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 	float MaxSuperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxSuperChargeAttribute());
 	float HyperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetHyperChargeAttribute());
 	float MaxHyperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxHyperChargeAttribute());
+	float PowerCubes = ASC->GetNumericAttribute(UBrawlAttributeSet::GetPowerCubeCountAttribute());
 
 	// 델리게이트 브로드캐스트 (BP용)
 	OnHealthChangedDelegate.Broadcast(Health);
@@ -80,6 +86,22 @@ void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 	{
 		HyperWidget->SetPercent(HyperCharge / MaxHyperCharge);
 		HyperWidget->SetIsReady(HyperCharge >= MaxHyperCharge);
+	}
+
+	// 파워 큐브 UI 업데이트
+	UpdatePowerCubeDisplay(PowerCubes);
+
+	// PlayerState 바인딩 시도 (현상금, 타이 브레이커)
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		if (ABrawlPlayerState* PS = PC->GetPlayerState<ABrawlPlayerState>())
+		{
+			PS->OnBountyChanged.AddUniqueDynamic(this, &UBrawlHUDWidget::OnBountyChanged);
+			PS->OnTieBreakerStateChanged.AddUniqueDynamic(this, &UBrawlHUDWidget::OnTieBreakerStateChanged);
+			
+			OnBountyChanged(PS->GetBounty());
+			OnTieBreakerStateChanged(PS->HasTieBreaker());
+		}
 	}
 
 	// 게임 모드별 위젯 초기화
@@ -117,25 +139,6 @@ void UBrawlHUDWidget::InitializeBrawlerUI(ABrawlCharacter* Character)
 void UBrawlHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
-
-	// 0. 게임 시간 표시 (GameMode가 있다고 가정)
-	// 쇼다운 등의 모드에서는 카운트다운일 수 있음. 여기서는 단순히 서버 시간(초)을 분:초로 표시
-	if (MatchTimerText)
-	{
-		if (UWorld* World = GetWorld())
-		{
-			// GameState에서 실제 매치 시간을 가져오는 게 좋음.
-			// 일단은 게임 실행 후 경과 시간 표시
-			float TimeSeconds = World->GetTimeSeconds();
-			
-			// 카운트다운 방식이라면: MaxTime - TimeSeconds
-			// 여기서는 경과 시간 (0:00 -> 0:01 ...)
-			int32 Minutes = FMath::FloorToInt(TimeSeconds / 60.f);
-			int32 Seconds = FMath::FloorToInt(TimeSeconds) % 60;
-			
-			MatchTimerText->SetText(FText::FromString(FString::Printf(TEXT("%d:%02d"), Minutes, Seconds)));
-		}
-	}
 
 	if (!AbilitySystemComponent.IsValid()) return;
 
@@ -451,6 +454,52 @@ void UBrawlHUDWidget::OnMaxHyperChargeChanged(const FOnAttributeChangeData& Data
 		}
 	}
 }
+void UBrawlHUDWidget::OnPowerCubeCountChanged(const FOnAttributeChangeData& Data)
+{
+	UpdatePowerCubeDisplay(Data.NewValue);
+}
+
+void UBrawlHUDWidget::UpdatePowerCubeDisplay(float NewCount)
+{
+	if (PowerCubeText)
+	{
+		int32 Count = FMath::RoundToInt(NewCount);
+		ESlateVisibility NewVisibility = (Count > 0) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
+		
+		PowerCubeText->SetText(FText::AsNumber(Count));
+		PowerCubeText->SetVisibility(NewVisibility);
+		
+		if (PowerCubeIcon)
+		{
+			PowerCubeIcon->SetVisibility(NewVisibility);
+		}
+	}
+}
+
+void UBrawlHUDWidget::OnBountyChanged(int32 NewBounty)
+{
+	if (BountyText)
+	{
+		ESlateVisibility NewVisibility = (NewBounty > 1) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
+		
+		BountyText->SetText(FText::AsNumber(NewBounty));
+		BountyText->SetVisibility(NewVisibility);
+		
+		if (BountyIcon)
+		{
+			BountyIcon->SetVisibility(NewVisibility);
+		}
+	}
+}
+
+void UBrawlHUDWidget::OnTieBreakerStateChanged(bool bHasTieBreaker)
+{
+	if (TieBreakerIcon)
+	{
+		TieBreakerIcon->SetVisibility(bHasTieBreaker ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+}
+
 void UBrawlHUDWidget::InitializeGameModeWidget()
 {
 	if (ActiveGameModeWidget) return;

@@ -13,12 +13,16 @@
 #include "AbilitySystemBlueprintLibrary.h" 
 #include "BrawlAttributeSet.h" 
 #include "BrawlGameState.h"
+#include "BrawlPlayerState.h"
 #include "BrawlStarsTPSPlayerController.h"
 #include "AI/BrawlAIController.h"
 
 ABrawlGameMode_Showdown::ABrawlGameMode_Showdown()
 {
 	// 기본 설정
+	GameStateClass = ABrawlGameState::StaticClass();
+	PlayerStateClass = ABrawlPlayerState::StaticClass();
+	
 	MaxPowerCubeBoxes = 15;
 	MaxBots = 5;
 	PrimaryActorTick.bCanEverTick = true; // Tick 활성화

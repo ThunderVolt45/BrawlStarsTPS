@@ -39,7 +39,24 @@ private:
 	// GAS 어트리뷰트 변경 콜백
 	void HealthChanged(const FOnAttributeChangeData& Data);
 	void MaxHealthChanged(const FOnAttributeChangeData& Data);
-	
+	void PowerCubeCountChanged(const FOnAttributeChangeData& Data);
+
+	/** 현상금 변경 콜백 (PlayerState로부터 호출) */
+	UFUNCTION()
+	void OnBountyChanged(int32 NewBounty);
+
+	/** 타이 브레이커 상태 변경 콜백 */
+	UFUNCTION()
+	void OnTieBreakerStateChanged(bool bHasTieBreaker);
+
+	/** UI 갱신 헬퍼 함수 */
+	void UpdatePowerCubeDisplay(float NewCount);
+	void UpdateBountyDisplay(int32 NewBounty);
+	void UpdateTieBreakerDisplay(bool bHasTieBreaker);
+
+	/** 초기 팀 설정 및 PlayerState 연결 */
+	void SetupPlayerStateBindings();
+
 public:
 	// 블루프린트에서 바인딩할 UI 요소들
 	UPROPERTY(meta=(BindWidget))
@@ -47,6 +64,26 @@ public:
 	
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UTextBlock> HealthText;
+
+	// 파워 큐브 개수 텍스트 (아이콘 옆에 표시 권장)
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> PowerCubeText;
+
+	// 파워 큐브 아이콘
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<class UImage> PowerCubeIcon;
+
+	// 현상금 별 개수 텍스트
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> BountyText;
+
+	// 현상금 아이콘 (별)
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<class UImage> BountyIcon;
+
+	// 타이 브레이커 아이콘
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<class UImage> TieBreakerIcon;
 	
 	// 체력 바 색상
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|UI")
@@ -59,4 +96,8 @@ private:
 	// 현재 값 캐싱
 	float CurrentHealth = 0.0f;
 	float CurrentMaxHealth = 0.0f;
+
+	/** 이 위젯이 표시하고 있는 대상 캐릭터 */
+	UPROPERTY()
+	TWeakObjectPtr<class ABrawlCharacter> TargetCharacter;
 };

@@ -60,6 +60,16 @@ protected:
 	void OnMaxSuperChargeChanged(const FOnAttributeChangeData& Data);
 	void OnHyperChargeChanged(const FOnAttributeChangeData& Data);
 	void OnMaxHyperChargeChanged(const FOnAttributeChangeData& Data);
+	void OnPowerCubeCountChanged(const FOnAttributeChangeData& Data);
+
+	/** 파워 큐브 UI 업데이트 헬퍼 */
+	void UpdatePowerCubeDisplay(float NewCount);
+
+	UFUNCTION()
+	void OnBountyChanged(int32 NewBounty);
+
+	UFUNCTION()
+	void OnTieBreakerStateChanged(bool bHasTieBreaker);
 
 	// 탄약 UI 업데이트 (슬롯 방식)
 	void UpdateAmmoSlots(float CurrentAmmo, float MaxAmmo);
@@ -100,13 +110,25 @@ public:
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UBrawlHyperWidget> HyperWidget;
 
-	// 게임 남은 시간 (분:초)
-	UPROPERTY(meta=(BindWidgetOptional))
-	TObjectPtr<UTextBlock> MatchTimerText;
-
 	// 게임 모드별 추가 위젯을 담을 컨테이너 (CanvasPanel, Overlay 등)
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UPanelWidget> GameModeWidgetContainer;
+
+	// --- Bounty & Power Cube Elements ---
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UTextBlock> PowerCubeText;
+
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<class UImage> PowerCubeIcon;
+
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UTextBlock> BountyText;
+
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<class UImage> BountyIcon;
+
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<class UImage> TieBreakerIcon;
 
 	// 조준 보조 리틱클 (원형 감지 영역)
 	UPROPERTY(meta=(BindWidgetOptional))

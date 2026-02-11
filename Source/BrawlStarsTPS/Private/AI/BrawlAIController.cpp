@@ -97,6 +97,10 @@ void ABrawlAIController::SetAIActive(bool bActive)
 			// 트리 정지
 			BehaviorTreeComponent->StopTree();
 		}
+
+		// 이동 및 포커스 즉시 중단
+		StopMovement();
+		ClearFocus(EAIFocusPriority::Gameplay);
 	}
 }
 
@@ -261,6 +265,15 @@ void ABrawlAIController::Tick(float DeltaTime)
 			GetWorld()->GetTimerManager().ClearTimer(It->Value);
 			It.RemoveCurrent();
 			continue;
+		}
+
+		// 죽은 브롤러 무시
+		if (ABrawlCharacter* TargetChar = Cast<ABrawlCharacter>(Enemy))
+		{
+			if (TargetChar->IsDead())
+			{
+				continue;
+			}
 		}
 		
 		// 지나치게 멀리 있는 액터도 타이머 정리 후 제거

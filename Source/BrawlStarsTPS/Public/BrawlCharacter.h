@@ -7,7 +7,7 @@
 #include "AbilitySystemInterface.h"
 #include "GameplayTagContainer.h"
 #include "GenericTeamAgentInterface.h"
-#include "Data/BrawlCharacterData.h" // 추가
+#include "Data/BrawlCharacterData.h"
 #include "BrawlCharacter.generated.h"
 
 struct FOnAttributeChangeData;
@@ -28,27 +28,21 @@ struct FAICombatSettings
 {
 	GENERATED_BODY()
 
-	// 최대 교전 거리 (이보다 멀면 "이동" 전략)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
 	float MaxCombatRange = 1000.0f;
 
-	// 선호 교전 거리 (이 거리 유지를 위해 이동/후퇴)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
 	float PreferredCombatRange = 700.0f;
 
-	// 최소 교전 거리 (이보다 가까우면 "도주" 전략)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
 	float MinCombatRange = 300.0f;
 
-	// 도주 시작 체력 비율 (0.0 ~ 1.0) - 이 이하로 떨어지면 도주
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
 	float FleeHealthRatio = 0.3f;
 
-	// 도주 종료(복귀) 체력 비율 (0.0 ~ 1.0) - 이 이상 회복되면 다시 교전
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
 	float ResumeCombatHealthRatio = 0.7f;
 
-	// 타겟의 체력 비율이 이 값 이하라면, 자신의 체력이 낮아도 도주하지 않고 공격 지속 (0.0 ~ 1.0)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
 	float PursuitTargetHealthRatio = 0.2f;
 };
@@ -56,8 +50,7 @@ struct FAICombatSettings
 /**
  * ABrawlCharacter
  *
- * Lyra 스타일의 모듈형 아키텍처를 지향하는 프로젝트의 기본 캐릭터 클래스입니다.
- * GAS(Gameplay Ability System)를 사용합니다.
+ * 브롤스타즈 TPS 프로젝트의 기본 캐릭터 클래스
  */
 UCLASS()
 class BRAWLSTARSTPS_API ABrawlCharacter : public ACharacter, 
@@ -66,285 +59,216 @@ class BRAWLSTARSTPS_API ABrawlCharacter : public ACharacter,
 	GENERATED_BODY()
 
 public:
+	// --- Core ---
 	ABrawlCharacter();
+	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	//~IAbilitySystemInterface interface
+	// --- Interface Implementations ---
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	//~End of IAbilitySystemInterface interface
-
-	//~IGenericTeamAgentInterface interface
 	virtual void SetGenericTeamId(const FGenericTeamId& NewTeamID) override;
 	virtual FGenericTeamId GetGenericTeamId() const override;
-	//~End of IGenericTeamAgentInterface interface
+
+	// --- Brawler Stats & Data ---
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
+	FName GetCharacterID() const { return CharacterID; }
 
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
-	UBrawlAbilitySystemComponent* GetBrawlAbilitySystemComponent() const { return AbilitySystemComponent; }
+	FBrawlCharacterData GetCharacterData() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
+	UTexture2D* GetCharacterIcon() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
 	int32 GetTeamID() const { return TeamID; }
 
-	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
-	FName GetCharacterID() const { return CharacterID; }
+	// --- Combat & Abilities ---
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
+	void NotifyCombatAction();
 
-	// 캐릭터 데이터 반환
-	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
-	FBrawlCharacterData GetCharacterData() const;
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
+	void NotifyHyperChargeActivated();
 
-	// 캐릭터 아이콘(Soft Object Ptr -> Load) 반환
-	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
-	UTexture2D* GetCharacterIcon() const;
-
-	// AI 설정 반환
-	UFUNCTION(BlueprintCallable, Category = "Brawl|AI")
-	const FAICombatSettings& GetAICombatSettings() const { return AICombatSettings; }
-
-	// AI용 전투 행동 트리 반환 (데이터 테이블 조회)
-	UFUNCTION(BlueprintCallable, Category = "Brawl|AI")
-	class UBehaviorTree* GetCombatBehaviorTree() const;
-
-protected:
-	virtual void BeginPlay() override;
-
-	// GAS 초기화
-	virtual void PossessedBy(AController* NewController) override;
-	virtual void OnRep_PlayerState() override;
-
-	// 캐릭터 기본 설정 (GAS 관련)
-	void InitAbilityActorInfo();
-
-	// 데이터 테이블을 이용한 속성 초기화
-	void InitializeAttributes();
-
-protected:
-	// 머리 위 체력바 위젯 컴포넌트
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|UI")
-	TObjectPtr<UWidgetComponent> HealthBarComponent;
-
-	// 캐릭터 ID (데이터 테이블의 Row Name과 일치해야 함)
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
-	FName CharacterID = FName("Colt");
-
-	// 팀 ID (0: 레드팀, 1: 블루팀, 255: 중립 / 팀 없음 (모두 적대))
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
-	uint8 TeamID = 255;
-
-	// 능력치 데이터 테이블 (기본 스탯)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
-	TObjectPtr<UDataTable> CharacterDataTable;
-
-	// AI 설정 데이터 테이블 (행동 트리, 교전 거리 등)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
-	TObjectPtr<UDataTable> AIDataTable;
-
-	// 초기화용 Gameplay Effect 클래스
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
-	TSubclassOf<UGameplayEffect> InitStatsEffectClass;
-
-	// AI 행동 설정값
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|AI")
-	FAICombatSettings AICombatSettings;
-
-	// 어빌리티 시스템 컴포넌트
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Character", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UBrawlAbilitySystemComponent> AbilitySystemComponent;
-
-	// 어트리뷰트 세트
-	UPROPERTY()
-	TObjectPtr<const UBrawlAttributeSet> AttributeSet;
-	
-	// 플레이어 전용 로직 및 입력을 담당하는 컴포넌트
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Character")
-	TObjectPtr<UBrawlHeroComponent> HeroComponent;
-
-	// 게임 시작 시 부여할 기본 어빌리티 목록
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Abilities")
-	TArray<TSubclassOf<UBrawlGameplayAbility>> StartupAbilities;
-	
-	// 전투 은신 해제용 GE 클래스 (BP에서 설정)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
-	TSubclassOf<UGameplayEffect> CombatRevealEffectClass;
-	
-	// 전투 상태 태그
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
-	FGameplayTag CombatTag = FGameplayTag::RequestGameplayTag(FName("State.Combat"));
-	
-	// 발각 상태 태그
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
-	FGameplayTag RevealedTag = FGameplayTag::RequestGameplayTag(FName("State.Combat.Revealed"));
-
-	// GameplayCue 태그: 리스폰
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|GameplayCue")
-	FGameplayTag RespawnCueTag = FGameplayTag::RequestGameplayTag(FName("GameplayCue.Common.Respawn"));
-
-	// GameplayCue 태그: 사망
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|GameplayCue")
-	FGameplayTag DeathCueTag = FGameplayTag::RequestGameplayTag(FName("GameplayCue.Common.Die"));;
-
-	// 하이퍼차지 발동 시 생성할 이펙트 액터 클래스
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Effects")
-	TSubclassOf<AActor> HyperChargeEffectClass;
-
-	// 현재 생성된 하이퍼차지 이펙트 인스턴스
-	UPROPERTY()
-	TObjectPtr<AActor> HyperChargeEffectInstance;
-
-	// 하이퍼차지 상태 태그
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
-	FGameplayTag HyperChargeTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
-
-	// 전투 후 은신이 해제되는 시간 (초) - GE 지속시간으로 사용 (동적 GE 사용 시)
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Combat")
-	float CombatRevealDuration = 1.0f;
-	
-	// 스프링 암
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Camera")
-	TObjectPtr<USpringArmComponent> CameraBoom;
-	
-	// 카메라
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Camera")
-	TObjectPtr<UCameraComponent> FollowCamera;
-
-	// 독구름 화면 효과 (포스트 프로세스)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Effects")
-	TObjectPtr<class UPostProcessComponent> PoisonPostProcess;
-
-public:	
-	FORCEINLINE USpringArmComponent* GetCameraBoom() { return CameraBoom; }
-	FORCEINLINE UCameraComponent* GetFollowCamera() { return FollowCamera; }
-	
-	virtual void Tick(float DeltaTime) override;
-
-protected:
-	// 독구름 화면 효과 업데이트
-	void UpdatePoisonScreenEffect(float DeltaTime);
-
-	// 독구름 화면 효과용 머티리얼 인스턴스
-	UPROPERTY()
-	TObjectPtr<class UMaterialInstanceDynamic> PoisonPPMaterialInstance;
-
-	// 독구름 화면 효과 머티리얼 (BP에서 설정)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Effects")
-	TObjectPtr<UMaterialInterface> PoisonPPMaterial;
-
-	// 플레이어 제어 시 메시 Yaw 오프셋 (숄더뷰 보정용)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Camera")
-	float ControlledMeshYawOffset = 3.0f;
-
-	// 현재 독구름 효과 강도 (0.0 ~ 1.0)
-	float CurrentPoisonIntensity = 0.0f;
-
-	// 독구름 존 액터 캐싱
-	UPROPERTY()
-	TObjectPtr<class ABrawlPoisonZone> CachedPoisonZone;
-
-	// 조준 보조용 예상 발사체 속도
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Combat")
-	float EstimatedProjectileSpeed = 3000.0f;
-
-	// 조준 보조용 예상 발사체 수명 (사거리 계산용)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Combat")
-	float EstimatedProjectileLifetime = 0.5f;
-	
-	// (디버그) Muzzle 방향으로 레이 드로우
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Brawl|Debug")
-	bool DrawDebugMuzzleLine = false;
-
-public:
-	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
-	
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
 	float GetEstimatedProjectileSpeed() const { return EstimatedProjectileSpeed; }
 
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
 	float GetEstimatedProjectileLifetime() const { return EstimatedProjectileLifetime; }
 
-	// 수풀(Bush) 진입/나감 처리
-	// bInBush true면 수풀 속, false면 나옴
-	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
-	void SetInBush(bool bInBush);
-
-	// 현재 수풀 속에 있는지 여부 확인
-	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
-	bool IsHiddenInBush() const { return bIsHiddenInBush; }
-
-	// 수풀 속에서 누군가에 의해 감지되었는지 설정
-	// bRevealed true면 감지됨(보임), false면 감지 안됨(숨음)
-	void SetRevealed(bool bRevealed);
-
-	// 전투 행위(피격, 공격) 발생 시 호출하여 은신 해제 (내부적으로 태그 부여)
-	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
-	void NotifyCombatAction();
-
-	// 하이퍼차지 발동 시 호출
-	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
-	void NotifyHyperChargeActivated();
-
-	// 특정 팀에게 이 캐릭터가 보이는지 확인
-	// 수풀에 없거나, 같은 팀이거나, 발각된 상태면 true
-	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
-	virtual bool IsVisibleTo(const FGenericTeamId& ObserverTeam) const;
-
-	// 캐릭터 사망 처리 (Ragdoll 적용)
+	// --- Health & Life Cycle ---
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Health")
 	virtual void Die();
 
-	// 사망 여부 확인
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Health")
 	bool IsDead() const { return bIsDead; }
 
-	// 마지막으로 데미지를 입힌 공격자 설정 (서버 전용)
+	void SetBrawlerActive(bool bActive);
+	void RespawnAt(FVector Location, FRotator Rotation);
 	void SetLastHitInstigator(AActor* InInstigator) { LastHitInstigator = InInstigator; }
 
+	// --- Environment & Perception ---
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
+	void SetInBush(bool bInBush);
+
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
+	bool IsHiddenInBush() const { return bIsHiddenInBush; }
+
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
+	virtual bool IsVisibleTo(const FGenericTeamId& ObserverTeam) const;
+
+	void SetRevealed(bool bRevealed);
+
+	// --- AI Support ---
+	UFUNCTION(BlueprintCallable, Category = "Brawl|AI")
+	const FAICombatSettings& GetAICombatSettings() const { return AICombatSettings; }
+
+	UFUNCTION(BlueprintCallable, Category = "Brawl|AI")
+	class UBehaviorTree* GetCombatBehaviorTree() const;
+
+	// --- Components & Getters ---
+	UBrawlAbilitySystemComponent* GetBrawlAbilitySystemComponent() const { return AbilitySystemComponent; }
+	FORCEINLINE USpringArmComponent* GetCameraBoom() { return CameraBoom; }
+	FORCEINLINE UCameraComponent* GetFollowCamera() { return FollowCamera; }
+
 protected:
-	// 체력 속성 변경 시 호출될 콜백
+	// --- Internal Setup ---
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_PlayerState() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	void InitAbilityActorInfo();
+	void InitializeAttributes();
+
+	// --- Callbacks & Replication ---
 	virtual void OnHealthChanged(const FOnAttributeChangeData& Data);
-
-	// 전투 은신 해제 태그(State.Combat.Revealed) 변경 시 호출
 	virtual void OnCombatRevealedTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
-
-	// 하이퍼차지 태그(State.Hypercharged) 변경 시 호출
 	virtual void OnHyperChargeTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
+	
+	UFUNCTION()
+	void OnRep_IsDead();
 
-private:
-	// 이동 속도 속성 변경 시 호출될 콜백
-	void OnMovementSpeedChanged(const FOnAttributeChangeData& Data);
-
-	// 실제 시각적 은신 상태 업데이트
+	// --- Visual Effects ---
+	void UpdatePoisonScreenEffect(float DeltaTime);
 	void UpdateMeshVisibility();
-
-	// 전투 노출 상태 적용 (GE 적용)
 	void ApplyCombatRevealEffect();
 
-	// 마지막으로 데미지를 입힌 공격자
+protected:
+	// --- Data Assets ---
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
+	FName CharacterID = FName("Colt");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
+	TObjectPtr<UDataTable> CharacterDataTable;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
+	TObjectPtr<UDataTable> AIDataTable;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|AI")
+	FAICombatSettings AICombatSettings;
+
+	// --- GAS Components ---
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Character")
+	TObjectPtr<UBrawlAbilitySystemComponent> AbilitySystemComponent;
+
+	UPROPERTY()
+	TObjectPtr<const UBrawlAttributeSet> AttributeSet;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Character")
+	TObjectPtr<UBrawlHeroComponent> HeroComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Abilities")
+	TArray<TSubclassOf<UBrawlGameplayAbility>> StartupAbilities;
+
+	// --- Gameplay Tags & Effects ---
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
+	FGameplayTag CombatTag = FGameplayTag::RequestGameplayTag(FName("State.Combat"));
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
+	FGameplayTag RevealedTag = FGameplayTag::RequestGameplayTag(FName("State.Combat.Revealed"));
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
+	FGameplayTag HyperChargeTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|GameplayCue")
+	FGameplayTag RespawnCueTag = FGameplayTag::RequestGameplayTag(FName("GameplayCue.Common.Respawn"));
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|GameplayCue")
+	FGameplayTag DeathCueTag = FGameplayTag::RequestGameplayTag(FName("GameplayCue.Common.Die"));
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
+	TSubclassOf<UGameplayEffect> CombatRevealEffectClass;
+
+	// 사망 시 취소할 어빌리티 태그 목록
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Death")
+	FGameplayTagContainer CancelAbilitiesWithTags;
+	
+	// --- Visuals & Camera ---
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|UI")
+	TObjectPtr<UWidgetComponent> HealthBarComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Camera")
+	TObjectPtr<USpringArmComponent> CameraBoom;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Camera")
+	TObjectPtr<UCameraComponent> FollowCamera;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|Effects")
+	TObjectPtr<class UPostProcessComponent> PoisonPostProcess;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Effects")
+	TObjectPtr<UMaterialInterface> PoisonPPMaterial;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Effects")
+	TSubclassOf<AActor> HyperChargeEffectClass;
+
+	// --- Combat Tuning ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Combat")
+	float EstimatedProjectileSpeed = 3000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Combat")
+	float EstimatedProjectileLifetime = 0.5f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Camera")
+	float ControlledMeshYawOffset = 3.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Brawl|Debug")
+	bool DrawDebugMuzzleLine = false;
+
+protected:
+	// --- Internal Variables (Accessible to derived classes) ---
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
+	uint8 TeamID = 255;
+
+private:
+	void OnMovementSpeedChanged(const FOnAttributeChangeData& Data);
+
+private:
+	// --- Internal Variables ---
+	UPROPERTY(ReplicatedUsing = OnRep_IsDead, VisibleInstanceOnly, Category = "Brawl|Health")
+	bool bIsDead = false;
+
 	UPROPERTY()
 	TObjectPtr<AActor> LastHitInstigator;
 
-	// 수풀 속에 있는지 여부 (은신 가능 상태)
+	UPROPERTY()
+	TObjectPtr<class UMaterialInstanceDynamic> PoisonPPMaterialInstance;
+
+	UPROPERTY()
+	TObjectPtr<AActor> HyperChargeEffectInstance;
+
+	UPROPERTY()
+	TObjectPtr<class ABrawlPoisonZone> CachedPoisonZone;
+
+	float CurrentPoisonIntensity = 0.0f;
 	bool bIsHiddenInBush = false;
-
-	// 근처 적 등에 의해 위치가 발각되었는지 여부
 	bool bIsRevealed = false;
-
-	// 전투 노출 태그(State.Combat.Revealed)가 활성화되어 있는지 여부
 	bool bIsRevealedByCombat = false;
-
-	// 전투 상태 태그(State.Combat)가 활성화되어 있는지 여부
 	bool bIsCombatState = false;
-
-	// 전투 노출 태그 변화 감지용 핸들 (피격 시 - Duration)
-	FDelegateHandle CombatRevealedTagDelegateHandle;
-
-	// 전투 상태 태그 변화 감지용 핸들 (공격 시 - Instant)
-	FDelegateHandle CombatStateTagDelegateHandle;
-
-	// 하이퍼차지 태그 변화 감지용 핸들
-	FDelegateHandle HyperChargeTagDelegateHandle;
-
-	// 사망 여부
-	bool bIsDead = false;
-
-	// 겹쳐진 수풀 개수 (여러 수풀이 겹쳐 있을 때 처리용)
 	int32 BushOverlapCount = 0;
-};
 
-	
+	// Delegates
+	FDelegateHandle CombatRevealedTagDelegateHandle;
+	FDelegateHandle CombatStateTagDelegateHandle;
+	FDelegateHandle HyperChargeTagDelegateHandle;
+};

@@ -9,7 +9,8 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
 #include "Environment/BrawlDestructibleInterface.h"
-#include "Environment/BrawlBush.h" // 추가: ABrawlBush 참조용
+#include "Environment/BrawlBush.h" 
+#include "GenericTeamAgentInterface.h"
 
 ABrawlProjectile::ABrawlProjectile()
 {
@@ -267,21 +268,38 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 		DrawDebugSphere(GetWorld(), HitLocation, 10.0f, 12, FColor::Red, false, 2.0f);
 	}
 
-	// 데미지를 입힐 수 있는 액터라면 데미지를 입힌다
-	if (UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor))
+	// 팀 관계 확인 (직접 TeamID 비교)
+	bool bIsHostile = true;
+	if (IGenericTeamAgentInterface* TargetTeamAgent = Cast<IGenericTeamAgentInterface>(OtherActor))
 	{
-		if (DamageSpecHandle.IsValid())
+		if (IGenericTeamAgentInterface* MyInstigator = Cast<IGenericTeamAgentInterface>(GetInstigator()))
 		{
-			FActiveGameplayEffectHandle ActiveGE = TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpecHandle.Data.Get());
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("ProcessHit: DamageSpecHandle is INVALID! Cannot apply damage."));
+			uint8 MyTeamID = MyInstigator->GetGenericTeamId().GetId();
+			uint8 TargetTeamID = TargetTeamAgent->GetGenericTeamId().GetId();
+
+			// 1. 어느 한쪽이라도 255(No Team)라면 무조건 적대
+			if (MyTeamID == 255 || TargetTeamID == 255)
+			{
+				bIsHostile = true;
+			}
+			// 2. 둘 다 유효한 팀(0 또는 1)이 있고, 팀이 같다면 아군 (데미지 무시)
+			else if (MyTeamID == TargetTeamID)
+			{
+				bIsHostile = false;
+			}
 		}
 	}
-	else
+
+	// 데미지를 입힐 수 있는 액터이고 적대적인 경우에만 데미지 적용
+	if (bIsHostile)
 	{
-		// UE_LOG(LogTemp, Warning, TEXT("ProcessHit: Target [%s] has No AbilitySystemComponent."), *OtherActor->GetName());
+		if (UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor))
+		{
+			if (DamageSpecHandle.IsValid())
+			{
+				FActiveGameplayEffectHandle ActiveGE = TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpecHandle.Data.Get());
+			}
+		}
 	}
 	
 	// 맞은 액터가 파괴 가능한 장애물인지, "단단한" 장애물인지 확인

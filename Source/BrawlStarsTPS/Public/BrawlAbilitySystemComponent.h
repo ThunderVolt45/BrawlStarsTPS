@@ -26,6 +26,9 @@ public:
 	// 캐릭터 초기 어빌리티 부여
 	void AddCharacterAbilities(const TArray<TSubclassOf<UBrawlGameplayAbility>>& StartupAbilities);
 
+	// 어빌리티 상태 초기화 (리스폰용)
+	void ResetAbilityStatus() { bCharacterAbilitiesGiven = false; }
+
 	// 입력 태그 처리
 	void AbilityInputTagPressed(const FGameplayTag& InputTag);
 	void AbilityInputTagReleased(const FGameplayTag& InputTag);

@@ -6,6 +6,9 @@
 #include "BrawlAttributeSet.h"
 #include "BrawlStarsTPS.h"
 #include "BrawlStarsTPSGameMode.h"
+#include "BrawlPlayerState.h"
+#include "GameMode/BrawlGameMode_Bounty.h"
+#include "Net/UnrealNetwork.h"
 #include "Data/BrawlCharacterData.h"
 #include "Data/BrawlAIData.h"
 #include "Camera/CameraComponent.h"
@@ -145,6 +148,15 @@ void ABrawlCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 스폰 시 바닥에 파묻힘 방지 (Z축 보정)
+	if (HasAuthority())
+	{
+		FVector Loc = GetActorLocation();
+		// 만약 Z값이 거의 0이거나 매우 낮다면, 지면 위로 올림 (일반적인 캡슐 높이 고려)
+		// RestartPlayer가 호출된 직후 지면 위로 살짝 띄워주는 안전장치
+		SetActorLocation(Loc + FVector(0, 0, 10.0f)); 
+	}
+
 	// 독구름 화면 효과 머티리얼 설정 (로컬 플레이어만)
 	if (IsLocallyControlled())
 	{
@@ -163,6 +175,10 @@ void ABrawlCharacter::BeginPlay()
 			}
 		}
 	}
+	
+	// 궁극기와 하이퍼차지 게이지 초기화는 여기서 한번만 수행한다
+	AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargeAttribute(), 0.0f);
+	AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargeAttribute(), 0.0f);
 }
 
 UAbilitySystemComponent* ABrawlCharacter::GetAbilitySystemComponent() const
@@ -214,6 +230,12 @@ void ABrawlCharacter::InitAbilityActorInfo()
 	}
 
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+	// PlayerState에서 팀 정보 동기화
+	if (ABrawlPlayerState* PS = GetPlayerState<ABrawlPlayerState>())
+	{
+		SetGenericTeamId(FGenericTeamId(PS->GetTeamID()));
+	}
 
 	// 이동 속도 변화 감지 바인딩
 	AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
@@ -516,33 +538,37 @@ bool ABrawlCharacter::IsVisibleTo(const FGenericTeamId& ObserverTeam) const
 
 void ABrawlCharacter::UpdateMeshVisibility()
 {
-	// 최종 은신 여부 판별
-	// 수풀에 있고(HiddenInBush) 발각되지 않은 상태(Revealed) 인가?
-	// 그리고 전투 중(CombatState)이거나 피격 노출(RevealedByCombat) 상태가 아니어야 함
+	// 죽었다면 무조건 숨김 (최우선 순위)
+	bool bShouldHideAll = bIsDead;
+
+	// 최종 은신 여부 판별 (수풀 속 + 전투 중 아님 + 발각 안 됨)
 	bool bFinalHidden = bIsHiddenInBush && !bIsRevealed && !bIsRevealedByCombat && !bIsCombatState;
 
-	// 로컬 플레이어는 항상 보여야 함
-	if (IsPlayerControlled())
+	// 로컬 플레이어는 항상 보여야 함 (죽지 않았을 때만)
+	if (IsPlayerControlled() && !bIsDead)
 	{
 		if (GetMesh())
 		{
 			GetMesh()->SetHiddenInGame(false);
 		}
-	}
-	// 적(AI)은 조건 만족 시 완전 투명(HiddenInGame) 처리
-	else
-	{
-		// 다른 캐릭터(적/AI): 은신 조건 만족 시 메시를 아예 숨김
-		if (GetMesh())
-		{
-			// 자신과 모든 자식 컴포넌트(무기 등)를 포함하여 숨김 처리
-			GetMesh()->SetHiddenInGame(bFinalHidden, true);
-		}
-		
-		// 체력바 등 부착된 위젯도 같이 숨김 처리
 		if (HealthBarComponent)
 		{
-			HealthBarComponent->SetHiddenInGame(bFinalHidden);
+			HealthBarComponent->SetHiddenInGame(false);
+		}
+	}
+	// 적(AI) 또는 사망한 플레이어 처리
+	else
+	{
+		bool bHide = bShouldHideAll || bFinalHidden;
+
+		if (GetMesh())
+		{
+			GetMesh()->SetHiddenInGame(bHide, true);
+		}
+		
+		if (HealthBarComponent)
+		{
+			HealthBarComponent->SetHiddenInGame(bHide);
 		}
 	}
 }
@@ -578,12 +604,15 @@ void ABrawlCharacter::InitializeAttributes()
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetGadget2CooldownAttribute(), Row->Gadget2Cooldown);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperDamageAttribute(), Row->SuperDamage);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxSuperChargeAttribute(), Row->MaxSuperCharge);
-		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargeAttribute(), 0.0f);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperCostAttribute(), Row->SuperCost);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargePerHitAttribute(), Row->SuperChargePerHit);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxHyperChargeAttribute(), Row->MaxHyperCharge);
-		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargeAttribute(), 0.0f);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargePerHitAttribute(), Row->HyperChargePerHit);
+		
+		// 초기 1회 생성 시에만 0으로 설정하고 싶다면 BeginPlay 등에서 수행해야 함
+		// 여기서는 리스폰 시 호출되므로 값을 덮어쓰지 않도록 주석 처리하거나 제거
+		// AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargeAttribute(), 0.0f);
+		// AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargeAttribute(), 0.0f);
 		
 		// 이동 속도 값은 CharacterMovement에 직접 주입한다
 		if (GetCharacterMovement())
@@ -628,6 +657,19 @@ void ABrawlCharacter::OnHealthChanged(const FOnAttributeChangeData& Data)
 	}
 }
 
+void ABrawlCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABrawlCharacter, bIsDead);
+}
+
+void ABrawlCharacter::OnRep_IsDead()
+{
+	// 서버에서 bIsDead가 변하면 클라이언트에서도 가시성과 물리 상태를 동기화
+	SetBrawlerActive(!bIsDead);
+}
+
 void ABrawlCharacter::Die()
 {
 	if (bIsDead) return;
@@ -640,44 +682,106 @@ void ABrawlCharacter::Die()
 		AbilitySystemComponent->ExecuteGameplayCue(DeathCueTag);
 	}
 
-	// 서버에서 GameMode에 사망 사실 알림 (GameState를 통해 클라이언트로 전파됨)
+	if (AbilitySystemComponent)
+	{
+		// 하이퍼차지 종료 처리 (사망 시 즉시 해제)
+		if (AbilitySystemComponent->HasMatchingGameplayTag(HyperChargeTag))
+		{
+			AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(HyperChargeTag));
+			
+			// 하이퍼차지 게이지 리셋
+			AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargeAttribute(), 0.0f);
+		}
+
+		// 블루프린트에서 설정한 태그들에 해당하는 어빌리티 취소
+		if (CancelAbilitiesWithTags.Num() > 0)
+		{
+			AbilitySystemComponent->CancelAbilities(&CancelAbilitiesWithTags);
+		}
+	}
+
+	// 서버에서 GameMode에 사망 사실 알림 및 리스폰 여부 확인
 	if (HasAuthority())
 	{
 		if (ABrawlStarsTPSGameMode* GM = GetWorld()->GetAuthGameMode<ABrawlStarsTPSGameMode>())
 		{
 			GM->NotifyKill(LastHitInstigator, this);
+
+			// 리스폰이 필요 없는 모드라면 액터 파괴
+			if (!GM->ShouldRespawn(this))
+			{
+				Destroy();
+				return;
+			}
 		}
 	}
 
-	// 1. 컨트롤러 분리 (입력 차단)
-	AController* OldController = GetController();
-	if (OldController)
-	{
-		DetachFromControllerPendingDestroy();
-	}
+	// 리스폰이 필요한 경우에만 비활성화 처리 (클라이언트에서도 OnRep_IsDead를 통해 실행됨)
+	SetBrawlerActive(false);
+}
 
-	// 2. 캡슐 콜리전 비활성화 (이동 불가 및 물리 간섭 제거)
+void ABrawlCharacter::SetBrawlerActive(bool bActive)
+{
+	// 1. 가시성 업데이트 (UpdateMeshVisibility 내부에서 bIsDead를 체크함)
+	UpdateMeshVisibility();
+
+	// 2. 콜리전 및 물리 설정
 	if (GetCapsuleComponent())
 	{
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		if (bActive)
+		{
+			GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+			GetCapsuleComponent()->SetCollisionProfileName(TEXT("Pawn"));
+		}
+		else
+		{
+			GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		}
 	}
 
-	// 3. 캐릭터 무브먼트 비활성화
+	// 3. 이동 컴포넌트 설정
 	if (GetCharacterMovement())
 	{
-		GetCharacterMovement()->StopMovementImmediately();
-		GetCharacterMovement()->DisableMovement();
-		GetCharacterMovement()->SetComponentTickEnabled(false);
+		if (bActive)
+		{
+			GetCharacterMovement()->SetDefaultMovementMode();
+		}
+		else
+		{
+			GetCharacterMovement()->StopMovementImmediately();
+			GetCharacterMovement()->DisableMovement();
+		}
+	}
+}
+
+void ABrawlCharacter::RespawnAt(FVector Location, FRotator Rotation)
+{
+	if (!HasAuthority()) return;
+
+	bIsDead = false;
+	
+	// 1. 위치 및 회전 이동
+	SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+
+	// 컨트롤러의 제어 회전(카메라 방향)도 리스폰 지점의 회전값으로 동기화
+	if (AController* C = GetController())
+	{
+		C->SetControlRotation(Rotation);
 	}
 
-	// 5. 체력바 숨김
-	if (HealthBarComponent)
+	// 2. 활성화
+	SetBrawlerActive(true);
+
+	// 3. 스탯 초기화 (체력 등은 초기화하되 궁극기 등은 유지됨)
+	InitializeAttributes();
+
+	// 4. 리스폰 GameplayCue 호출
+	if (AbilitySystemComponent && RespawnCueTag.IsValid())
 	{
-		HealthBarComponent->SetHiddenInGame(true);
+		AbilitySystemComponent->ExecuteGameplayCue(RespawnCueTag);
 	}
 	
-	// 6. Actor 제거 (혹은 리스폰 로직으로 대체 가능)
-	Destroy();
+	UE_LOG(LogTemp, Log, TEXT("Character [%s] Respawned at %s"), *GetName(), *Location.ToString());
 }
 
 void ABrawlCharacter::UpdatePoisonScreenEffect(float DeltaTime)
