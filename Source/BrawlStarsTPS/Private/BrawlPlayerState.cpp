@@ -73,7 +73,14 @@ void ABrawlPlayerState::SetHasTieBreaker(bool bHas)
 {
 	if (HasAuthority())
 	{
-		bHasTieBreaker = bHas;
+		if (bHasTieBreaker != bHas)
+		{
+			bHasTieBreaker = bHas;
+			if (GetNetMode() != NM_DedicatedServer)
+			{
+				OnRep_HasTieBreaker();
+			}
+		}
 	}
 }
 
@@ -85,4 +92,9 @@ void ABrawlPlayerState::OnRep_CurrentBounty()
 void ABrawlPlayerState::OnRep_TeamID()
 {
 	// 필요 시 팀 ID 변경에 따른 처리 (UI 등)
+}
+
+void ABrawlPlayerState::OnRep_HasTieBreaker()
+{
+	OnTieBreakerStateChanged.Broadcast(bHasTieBreaker);
 }

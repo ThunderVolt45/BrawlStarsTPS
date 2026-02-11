@@ -8,6 +8,7 @@
 #include "BrawlPlayerState.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBountyChanged, int32, NewBounty);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTieBreakerStateChanged, bool, bHasTieBreaker);
 
 /**
  * ABrawlPlayerState
@@ -63,12 +64,19 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Brawl|PlayerState")
 	FOnBountyChanged OnBountyChanged;
 
+	// 타이 브레이커 상태 변경 델리게이트
+	UPROPERTY(BlueprintAssignable, Category = "Brawl|PlayerState")
+	FOnTieBreakerStateChanged OnTieBreakerStateChanged;
+
 protected:
 	UFUNCTION()
 	void OnRep_CurrentBounty();
 
 	UFUNCTION()
 	void OnRep_TeamID();
+
+	UFUNCTION()
+	void OnRep_HasTieBreaker();
 
 protected:
 	// 현재 현상금 (2~7점)
@@ -84,6 +92,6 @@ protected:
 	FGenericTeamId TeamID = FGenericTeamId::NoTeam;
 
 	// 타이 브레이커 보유 여부
-	UPROPERTY(Replicated, VisibleInstanceOnly, Category = "Brawl|PlayerState")
+	UPROPERTY(ReplicatedUsing = OnRep_HasTieBreaker, VisibleInstanceOnly, Category = "Brawl|PlayerState")
 	bool bHasTieBreaker = false;
 };

@@ -4,42 +4,141 @@
 #include "UI/BrawlHealthWidget.h"
 #include "AbilitySystemComponent.h"
 #include "BrawlAttributeSet.h"
+#include "BrawlCharacter.h"
+#include "BrawlPlayerState.h"
+#include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 
 void UBrawlHealthWidget::InitializeWithAbilitySystem(UAbilitySystemComponent* ASC)
 {
-	if (!ASC)
-	{
-		UE_LOG(LogTemp, Error, TEXT("BrawlHealthWidget::Initialize - ASC is NULL!"));
-		return;
-	}
+	if (!ASC) return;
 
-	UE_LOG(LogTemp, Warning, TEXT("BrawlHealthWidget::Initialize - ASC Found. Binding Delegates..."));
+	// 대상 캐릭터 저장
+	TargetCharacter = Cast<ABrawlCharacter>(ASC->GetAvatarActor());
 
-	// 1. 초기값 설정
-	bool bFoundHealth = false;
-	CurrentHealth = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetHealthAttribute(), bFoundHealth);
-	
-	bool bFoundMaxHealth = false;
-	CurrentMaxHealth = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetMaxHealthAttribute(), bFoundMaxHealth);
-
-	UE_LOG(LogTemp, Warning, TEXT("BrawlHealthWidget::Initialize - Init Health: %.1f / %.1f"), CurrentHealth, CurrentMaxHealth);
-
-	// 초기 UI 업데이트 호출
+	// 1. 초기 체력값 설정
+	bool bFound = false;
+	CurrentHealth = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetHealthAttribute(), bFound);
+	CurrentMaxHealth = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetMaxHealthAttribute(), bFound);
 	OnHealthChanged(CurrentHealth, CurrentMaxHealth);
 
 	// 2. 어트리뷰트 변경 델리게이트 등록
 	ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetHealthAttribute()).AddUObject(this, &UBrawlHealthWidget::HealthChanged);
 	ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetMaxHealthAttribute()).AddUObject(this, &UBrawlHealthWidget::MaxHealthChanged);
+	
+	// 파워 큐브 개수 감지
+	ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetPowerCubeCountAttribute()).AddUObject(this, &UBrawlHealthWidget::PowerCubeCountChanged);
+	
+	// 초기 파워 큐브 값 설정
+	UpdatePowerCubeDisplay(ASC->GetNumericAttribute(UBrawlAttributeSet::GetPowerCubeCountAttribute()));
 
-	// 3. 팀 색상 결정 (플레이어 컨트롤러 소유 여부 등으로 임시 판단, 추후 팀 시스템 연동)
-	if (APawn* OwningPawn = GetOwningPlayerPawn())
+	// 3. PlayerState 바인딩 시도 (팀 색상 및 현상금)
+	SetupPlayerStateBindings();
+}
+
+void UBrawlHealthWidget::SetupPlayerStateBindings()
+{
+	// 위젯이 붙은 실제 캐릭터 사용
+	ABrawlCharacter* TargetChar = TargetCharacter.Get();
+	
+	if (!TargetChar)
 	{
-		// 이 위젯이 붙은 캐릭터가 로컬 플레이어가 조종하는 캐릭터인가?
-		// Overhead Widget은 보통 자기 머리 위에도 뜨고 적 머리 위에도 뜸.
-		// WidgetController(캐릭터) 정보를 통해 판단하는 것이 정확함.
-		OnTeamColorChanged(false); // 기본은 아군 색상
+		// 아직 캐릭터가 설정되지 않았다면 (ASC 초기화 전) 잠시 후 재시도
+		FTimerHandle TimerHandle;
+		GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UBrawlHealthWidget::SetupPlayerStateBindings, 0.2f, false);
+		return;
+	}
+
+	// 대상 캐릭터의 PlayerState 확인
+	ABrawlPlayerState* TargetPS = TargetChar->GetPlayerState<ABrawlPlayerState>();
+	if (TargetPS)
+	{
+		// 1. 팀 색상 설정 (로컬 플레이어와 비교)
+		APlayerController* LocalPC = GetWorld()->GetFirstPlayerController();
+		if (LocalPC)
+		{
+			ABrawlPlayerState* LocalPS = LocalPC->GetPlayerState<ABrawlPlayerState>();
+			if (LocalPS)
+			{
+				bool bIsEnemy = (LocalPS->GetTeamID() != TargetPS->GetTeamID());
+				OnTeamColorChanged(bIsEnemy);
+			}
+		}
+
+		// 2. 현상금 델리게이트 연결
+		TargetPS->OnBountyChanged.AddUniqueDynamic(this, &UBrawlHealthWidget::OnBountyChanged);
+		UpdateBountyDisplay(TargetPS->GetBounty());
+
+		// 3. 타이 브레이커 델리게이트 연결
+		TargetPS->OnTieBreakerStateChanged.AddUniqueDynamic(this, &UBrawlHealthWidget::OnTieBreakerStateChanged);
+		UpdateTieBreakerDisplay(TargetPS->HasTieBreaker());
+	}
+	else
+	{
+		// PlayerState가 아직 복제되지 않았을 수 있으므로 재시도
+		FTimerHandle TimerHandle;
+		GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UBrawlHealthWidget::SetupPlayerStateBindings, 0.2f, false);
+	}
+}
+
+void UBrawlHealthWidget::OnBountyChanged(int32 NewBounty)
+{
+	UpdateBountyDisplay(NewBounty);
+}
+
+void UBrawlHealthWidget::OnTieBreakerStateChanged(bool bHasTieBreaker)
+{
+	UpdateTieBreakerDisplay(bHasTieBreaker);
+}
+
+void UBrawlHealthWidget::UpdateBountyDisplay(int32 NewBounty)
+{
+	if (BountyText)
+	{
+		ESlateVisibility NewVisibility = (NewBounty > 0) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
+		
+		BountyText->SetText(FText::AsNumber(NewBounty));
+		BountyText->SetVisibility(NewVisibility);
+		
+		if (BountyIcon)
+		{
+			BountyIcon->SetVisibility(NewVisibility);
+		}
+	}
+}
+
+void UBrawlHealthWidget::PowerCubeCountChanged(const FOnAttributeChangeData& Data)
+{
+	UpdatePowerCubeDisplay(Data.NewValue);
+}
+
+void UBrawlHealthWidget::UpdatePowerCubeDisplay(float NewCount)
+{
+	if (PowerCubeText)
+	{
+		int32 Count = FMath::RoundToInt(NewCount);
+		ESlateVisibility NewVisibility = (Count > 0) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
+		PowerCubeText->SetText(FText::AsNumber(Count));
+		PowerCubeText->SetVisibility(NewVisibility);
+		
+		if (PowerCubeIcon)
+		{
+			PowerCubeIcon->SetVisibility(NewVisibility);
+		}
+	}
+}
+
+void UBrawlHealthWidget::UpdateTieBreakerDisplay(bool bHasTieBreaker)
+{
+	if (TieBreakerIcon)
+	{
+		TieBreakerIcon->SetVisibility(bHasTieBreaker ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		
+		if (BountyIcon)
+		{
+			BountyIcon->SetVisibility(bHasTieBreaker ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		}
 	}
 }
 
@@ -67,14 +166,12 @@ void UBrawlHealthWidget::OnTeamColorChanged(bool bIsEnemy)
 
 void UBrawlHealthWidget::HealthChanged(const FOnAttributeChangeData& Data)
 {
-	// UE_LOG(LogTemp, Log, TEXT("BrawlHealthWidget::HealthChanged - New: %.1f"), Data.NewValue);
 	CurrentHealth = Data.NewValue;
 	OnHealthChanged(CurrentHealth, CurrentMaxHealth);
 }
 
 void UBrawlHealthWidget::MaxHealthChanged(const FOnAttributeChangeData& Data)
 {
-	// UE_LOG(LogTemp, Log, TEXT("BrawlHealthWidget::MaxHealthChanged - New: %.1f"), Data.NewValue);
 	CurrentMaxHealth = Data.NewValue;
 	OnHealthChanged(CurrentHealth, CurrentMaxHealth);
 }
