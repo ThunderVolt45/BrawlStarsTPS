@@ -89,6 +89,12 @@ void UBrawlHeroComponent::Input_Move(const FInputActionValue& InputActionValue)
 	{
 		return;
 	}
+
+	// 사망 시 이동 차단
+	if (ABrawlCharacter* Character = Cast<ABrawlCharacter>(Pawn))
+	{
+		if (Character->IsDead()) return;
+	}
 	
 	const FVector2D Value = InputActionValue.Get<FVector2D>();
 	const FRotator MovementRotation(0.0f, Pawn->GetControlRotation().Yaw, 0.0f);
@@ -129,8 +135,9 @@ void UBrawlHeroComponent::Input_Look(const FInputActionValue& InputActionValue)
 
 void UBrawlHeroComponent::Input_Jump(const FInputActionValue& InputActionValue)
 {
-	if (ACharacter* Character = GetPawn<ACharacter>())
+	if (ABrawlCharacter* Character = GetPawn<ABrawlCharacter>())
 	{
+		if (Character->IsDead()) return;
 		Character->Jump();
 	}
 }
@@ -145,12 +152,13 @@ void UBrawlHeroComponent::Input_StopJumping(const FInputActionValue& InputAction
 
 void UBrawlHeroComponent::Input_AbilityInputTagPressed(FGameplayTag InputTag)
 {
-	// UE_LOG(LogTemp, Warning, TEXT("HeroComponent: Input Pressed with Tag [%s]"), *InputTag.ToString());
-
 	if (const APawn* Pawn = GetPawn<APawn>())
 	{
 		if (const ABrawlCharacter* BrawlCharacter = Cast<ABrawlCharacter>(Pawn))
 		{
+			// 사망 시 입력 무시
+			if (BrawlCharacter->IsDead()) return;
+
 			if (UBrawlAbilitySystemComponent* ASC = BrawlCharacter->GetBrawlAbilitySystemComponent())
 			{
 				ASC->AbilityInputTagPressed(InputTag);
@@ -165,6 +173,9 @@ void UBrawlHeroComponent::Input_AbilityInputTagReleased(FGameplayTag InputTag)
 	{
 		if (const ABrawlCharacter* BrawlCharacter = Cast<ABrawlCharacter>(Pawn))
 		{
+			// 사망 시 입력 무시
+			if (BrawlCharacter->IsDead()) return;
+
 			if (UBrawlAbilitySystemComponent* ASC = BrawlCharacter->GetBrawlAbilitySystemComponent())
 			{
 				ASC->AbilityInputTagReleased(InputTag);

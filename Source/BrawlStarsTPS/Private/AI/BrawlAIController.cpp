@@ -262,6 +262,15 @@ void ABrawlAIController::Tick(float DeltaTime)
 			It.RemoveCurrent();
 			continue;
 		}
+
+		// 죽은 브롤러 무시
+		if (ABrawlCharacter* TargetChar = Cast<ABrawlCharacter>(Enemy))
+		{
+			if (TargetChar->IsDead())
+			{
+				continue;
+			}
+		}
 		
 		// 지나치게 멀리 있는 액터도 타이머 정리 후 제거
 		float Distance = MyPawn->GetDistanceTo(Enemy);
