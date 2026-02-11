@@ -252,7 +252,10 @@ void ABrawlGameMode_Bounty::SpawnBots()
 		
 		if (AIC)
 		{
-			// 리스폰을 위해 매핑 저장
+			// AI 컨트롤러의 PlayerState를 즉시 생성 및 초기화
+			AIC->InitPlayerState();
+
+			// 리스폰 및 팀 판별을 위해 매핑 저장
 			AssignedAIClasses.Add(AIC, BotClass);
 			AssignedTeams.Add(AIC, TeamID);
 			
@@ -263,6 +266,10 @@ void ABrawlGameMode_Bounty::SpawnBots()
 			if (ABrawlPlayerState* PS = AIC->GetPlayerState<ABrawlPlayerState>())
 			{
 				PS->SetTeamID(TeamID);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("BountyGameMode: FAILED to initialize PlayerState for AI [%s]"), *AIC->GetName());
 			}
 
 			// 2. RestartPlayer를 통해 폰 스폰 (ChoosePlayerStart 로직을 타게 됨)
@@ -314,48 +321,68 @@ void ABrawlGameMode_Bounty::NotifyKill(AActor* Killer, AActor* Victim)
 	ABrawlCharacter* VictimChar = Cast<ABrawlCharacter>(Victim);
 	if (!VictimChar) return;
 
-	// Victim의 컨트롤러를 미리 확보 (Die() 이후에 GetController()가 null이 될 수 있음)
+	// Victim의 컨트롤러 미리 확보
 	AController* VictimController = VictimChar->GetController();
 	UE_LOG(LogTemp, Log, TEXT("BountyGameMode: NotifyKill - Victim: [%s], Controller: [%s]"), 
 		*VictimChar->GetName(), VictimController ? *VictimController->GetName() : TEXT("NULL"));
 
-	// Killer가 Controller인 경우 Pawn을 가져옴
+	// Killer의 컨트롤러 확보
 	AActor* KillerPawn = Killer;
 	if (AController* KillerController = Cast<AController>(Killer))
 	{
 		KillerPawn = KillerController->GetPawn();
 	}
-
 	ABrawlCharacter* KillerChar = Cast<ABrawlCharacter>(KillerPawn);
-	ABrawlPlayerState* VictimPS = VictimChar->GetPlayerState<ABrawlPlayerState>();
+	AController* KillerController = KillerChar ? KillerChar->GetController() : Cast<AController>(Killer);
 
-	if (KillerChar && VictimPS)
+	// PlayerState 찾기 (캐릭터 또는 컨트롤러 양쪽에서 시도)
+	auto GetPS = [](AActor* Actor, AController* Controller) -> ABrawlPlayerState*
 	{
-		ABrawlPlayerState* KillerPS = KillerChar->GetPlayerState<ABrawlPlayerState>();
-		if (KillerPS)
+		if (ABrawlCharacter* C = Cast<ABrawlCharacter>(Actor))
 		{
-			int32 VictimBounty = VictimPS->GetBounty();
-			int32 KillerTeam = KillerPS->GetTeamID();
-
-			// 1. 킬러의 팀에 피해자의 현상금만큼 점수 추가
-			if (ABrawlGameState_Bounty* GS = GetGameState<ABrawlGameState_Bounty>())
-			{
-				GS->AddTeamScore(KillerTeam, VictimBounty);
-			}
-
-			// 2. 킬러의 개인 현상금 증가 (+1, 최대 7)
-			KillerPS->AddBounty(1);
-			KillerPS->AddScoreContribution(VictimBounty);
-
-			// 3. 피해자의 현상금 초기화
-			VictimPS->ResetBounty();
-
-			// 4. 승리 조건 체크
-			CheckWinCondition();
+			if (ABrawlPlayerState* PS = C->GetPlayerState<ABrawlPlayerState>()) return PS;
 		}
+		if (Controller)
+		{
+			return Controller->GetPlayerState<ABrawlPlayerState>();
+		}
+		return nullptr;
+	};
+
+	ABrawlPlayerState* KillerPS = GetPS(KillerChar, KillerController);
+	ABrawlPlayerState* VictimPS = GetPS(VictimChar, VictimController);
+
+	if (KillerPS && VictimPS)
+	{
+		int32 VictimBounty = VictimPS->GetBounty();
+		int32 KillerTeam = KillerPS->GetTeamID();
+
+		UE_LOG(LogTemp, Log, TEXT("BountyGameMode: Killer %s (Team %d) earned %d points from %s"), 
+			*KillerPS->GetPlayerName(), KillerTeam, VictimBounty, *VictimPS->GetPlayerName());
+
+		// 1. 킬러의 팀에 피해자의 현상금만큼 점수 추가
+		if (ABrawlGameState_Bounty* GS = GetGameState<ABrawlGameState_Bounty>())
+		{
+			GS->AddTeamScore(KillerTeam, VictimBounty);
+		}
+
+		// 2. 킬러의 개인 현상금 증가 (+1, 최대 7)
+		KillerPS->AddBounty(1);
+		KillerPS->AddScoreContribution(VictimBounty);
+
+		// 3. 피해자의 현상금 초기화
+		VictimPS->ResetBounty();
+
+		// 4. 승리 조건 체크
+		CheckWinCondition();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("BountyGameMode: Failed to find PS. KillerPS: %s, VictimPS: %s"), 
+			KillerPS ? TEXT("Valid") : TEXT("NULL"), 
+			VictimPS ? TEXT("Valid") : TEXT("NULL"));
 	}
 
-	// 5. 리스폰 요청 (확보된 컨트롤러 사용)
 	if (VictimController)
 	{
 		RequestRespawn(VictimController);
