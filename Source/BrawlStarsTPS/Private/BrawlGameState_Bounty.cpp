@@ -24,8 +24,16 @@ void ABrawlGameState_Bounty::AddTeamScore(int32 TeamID, int32 Amount)
 {
 	if (HasAuthority())
 	{
-		if (TeamID == 0) Team0Score += Amount;
-		else if (TeamID == 1) Team1Score += Amount;
+		if (TeamID == 0)
+		{
+			Team0Score += Amount;
+			OnRep_Team0Score();
+		}
+		else if (TeamID == 1)
+		{
+			Team1Score += Amount;
+			OnRep_Team1Score();
+		}
 	}
 }
 
@@ -41,5 +49,21 @@ void ABrawlGameState_Bounty::SetRemainingTime(int32 TimeInSeconds)
 	if (HasAuthority())
 	{
 		RemainingTime = TimeInSeconds;
+		OnRep_RemainingTime();
 	}
+}
+
+void ABrawlGameState_Bounty::OnRep_Team0Score()
+{
+	OnTeamScoreChanged.Broadcast(0, Team0Score);
+}
+
+void ABrawlGameState_Bounty::OnRep_Team1Score()
+{
+	OnTeamScoreChanged.Broadcast(1, Team1Score);
+}
+
+void ABrawlGameState_Bounty::OnRep_RemainingTime()
+{
+	OnRemainingTimeChanged.Broadcast(RemainingTime);
 }

@@ -100,10 +100,6 @@ public:
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UBrawlHyperWidget> HyperWidget;
 
-	// 게임 남은 시간 (분:초)
-	UPROPERTY(meta=(BindWidgetOptional))
-	TObjectPtr<UTextBlock> MatchTimerText;
-
 	// 게임 모드별 추가 위젯을 담을 컨테이너 (CanvasPanel, Overlay 등)
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UPanelWidget> GameModeWidgetContainer;

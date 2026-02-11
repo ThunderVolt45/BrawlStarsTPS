@@ -6,13 +6,13 @@
 #include "BrawlGameState.h"
 #include "BrawlGameState_Bounty.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnTeamScoreChanged, int32, TeamID, int32, NewScore);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnRemainingTimeChanged, int32, NewTime);
+
 /**
  * ABrawlGameState_Bounty
  * 
  * 바운티 모드 전용 게임 상태 클래스
- * - 팀별 점수 관리
- * - 남은 시간 관리
- * - 승리 조건 도달 체크 (20점 선점)
  */
 UCLASS()
 class BRAWLSTARSTPS_API ABrawlGameState_Bounty : public ABrawlGameState
@@ -36,16 +36,34 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Bounty")
 	int32 GetRemainingTime() const { return RemainingTime; }
 
+public:
+	// UI 바인딩용 델리게이트
+	UPROPERTY(BlueprintAssignable, Category = "Brawl|Bounty")
+	FOnTeamScoreChanged OnTeamScoreChanged;
+
+	UPROPERTY(BlueprintAssignable, Category = "Brawl|Bounty")
+	FOnRemainingTimeChanged OnRemainingTimeChanged;
+
+protected:
+	UFUNCTION()
+	void OnRep_Team0Score();
+
+	UFUNCTION()
+	void OnRep_Team1Score();
+
+	UFUNCTION()
+	void OnRep_RemainingTime();
+
 protected:
 	// 팀 0 점수
-	UPROPERTY(Replicated, VisibleInstanceOnly, Category = "Brawl|Bounty")
+	UPROPERTY(ReplicatedUsing = OnRep_Team0Score, VisibleInstanceOnly, Category = "Brawl|Bounty")
 	int32 Team0Score = 0;
 
 	// 팀 1 점수
-	UPROPERTY(Replicated, VisibleInstanceOnly, Category = "Brawl|Bounty")
+	UPROPERTY(ReplicatedUsing = OnRep_Team1Score, VisibleInstanceOnly, Category = "Brawl|Bounty")
 	int32 Team1Score = 0;
 
 	// 남은 경기 시간 (초)
-	UPROPERTY(Replicated, VisibleInstanceOnly, Category = "Brawl|Bounty")
+	UPROPERTY(ReplicatedUsing = OnRep_RemainingTime, VisibleInstanceOnly, Category = "Brawl|Bounty")
 	int32 RemainingTime = 0;
 };

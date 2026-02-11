@@ -118,25 +118,6 @@ void UBrawlHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
-	// 0. 게임 시간 표시 (GameMode가 있다고 가정)
-	// 쇼다운 등의 모드에서는 카운트다운일 수 있음. 여기서는 단순히 서버 시간(초)을 분:초로 표시
-	if (MatchTimerText)
-	{
-		if (UWorld* World = GetWorld())
-		{
-			// GameState에서 실제 매치 시간을 가져오는 게 좋음.
-			// 일단은 게임 실행 후 경과 시간 표시
-			float TimeSeconds = World->GetTimeSeconds();
-			
-			// 카운트다운 방식이라면: MaxTime - TimeSeconds
-			// 여기서는 경과 시간 (0:00 -> 0:01 ...)
-			int32 Minutes = FMath::FloorToInt(TimeSeconds / 60.f);
-			int32 Seconds = FMath::FloorToInt(TimeSeconds) % 60;
-			
-			MatchTimerText->SetText(FText::FromString(FString::Printf(TEXT("%d:%02d"), Minutes, Seconds)));
-		}
-	}
-
 	if (!AbilitySystemComponent.IsValid()) return;
 
 	// 1. 가젯 쿨다운 처리
