@@ -18,6 +18,8 @@
 #include "Components/PanelWidget.h"
 #include "GameFramework/GameModeBase.h"
 #include "BrawlCharacter.h"
+#include "BrawlPlayerState.h"
+#include "Components/Image.h"
 #include "Data/BrawlCharacterData.h"
 
 void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
@@ -42,6 +44,9 @@ void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 	ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetHyperChargeAttribute()).AddUObject(this, &UBrawlHUDWidget::OnHyperChargeChanged);
 	ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetMaxHyperChargeAttribute()).AddUObject(this, &UBrawlHUDWidget::OnMaxHyperChargeChanged);
 
+	// 5. 파워 큐브 변경 감지
+	ASC->GetGameplayAttributeValueChangeDelegate(UBrawlAttributeSet::GetPowerCubeCountAttribute()).AddUObject(this, &UBrawlHUDWidget::OnPowerCubeCountChanged);
+
 	// 초기 값 업데이트
 	float Health = ASC->GetNumericAttribute(UBrawlAttributeSet::GetHealthAttribute());
 	float MaxHealth = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxHealthAttribute());
@@ -51,6 +56,7 @@ void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 	float MaxSuperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxSuperChargeAttribute());
 	float HyperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetHyperChargeAttribute());
 	float MaxHyperCharge = ASC->GetNumericAttribute(UBrawlAttributeSet::GetMaxHyperChargeAttribute());
+	float PowerCubes = ASC->GetNumericAttribute(UBrawlAttributeSet::GetPowerCubeCountAttribute());
 
 	// 델리게이트 브로드캐스트 (BP용)
 	OnHealthChangedDelegate.Broadcast(Health);
@@ -80,6 +86,22 @@ void UBrawlHUDWidget::BindAttributeCallbacks(UAbilitySystemComponent* ASC)
 	{
 		HyperWidget->SetPercent(HyperCharge / MaxHyperCharge);
 		HyperWidget->SetIsReady(HyperCharge >= MaxHyperCharge);
+	}
+
+	// 파워 큐브 UI 업데이트
+	UpdatePowerCubeDisplay(PowerCubes);
+
+	// PlayerState 바인딩 시도 (현상금, 타이 브레이커)
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		if (ABrawlPlayerState* PS = PC->GetPlayerState<ABrawlPlayerState>())
+		{
+			PS->OnBountyChanged.AddUniqueDynamic(this, &UBrawlHUDWidget::OnBountyChanged);
+			PS->OnTieBreakerStateChanged.AddUniqueDynamic(this, &UBrawlHUDWidget::OnTieBreakerStateChanged);
+			
+			OnBountyChanged(PS->GetBounty());
+			OnTieBreakerStateChanged(PS->HasTieBreaker());
+		}
 	}
 
 	// 게임 모드별 위젯 초기화
@@ -432,6 +454,57 @@ void UBrawlHUDWidget::OnMaxHyperChargeChanged(const FOnAttributeChangeData& Data
 		}
 	}
 }
+void UBrawlHUDWidget::OnPowerCubeCountChanged(const FOnAttributeChangeData& Data)
+{
+	UpdatePowerCubeDisplay(Data.NewValue);
+}
+
+void UBrawlHUDWidget::UpdatePowerCubeDisplay(float NewCount)
+{
+	if (PowerCubeText)
+	{
+		int32 Count = FMath::RoundToInt(NewCount);
+		ESlateVisibility NewVisibility = (Count > 0) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
+		
+		PowerCubeText->SetText(FText::AsNumber(Count));
+		PowerCubeText->SetVisibility(NewVisibility);
+		
+		if (PowerCubeIcon)
+		{
+			PowerCubeIcon->SetVisibility(NewVisibility);
+		}
+	}
+}
+
+void UBrawlHUDWidget::OnBountyChanged(int32 NewBounty)
+{
+	if (BountyText)
+	{
+		ESlateVisibility NewVisibility = (NewBounty > 0) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
+		
+		BountyText->SetText(FText::AsNumber(NewBounty));
+		BountyText->SetVisibility(NewVisibility);
+		
+		if (BountyIcon)
+		{
+			BountyIcon->SetVisibility(NewVisibility);
+		}
+	}
+}
+
+void UBrawlHUDWidget::OnTieBreakerStateChanged(bool bHasTieBreaker)
+{
+	if (TieBreakerIcon)
+	{
+		TieBreakerIcon->SetVisibility(bHasTieBreaker ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		
+		if (BountyIcon)
+		{
+			BountyIcon->SetVisibility(bHasTieBreaker ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		}
+	}
+}
+
 void UBrawlHUDWidget::InitializeGameModeWidget()
 {
 	if (ActiveGameModeWidget) return;

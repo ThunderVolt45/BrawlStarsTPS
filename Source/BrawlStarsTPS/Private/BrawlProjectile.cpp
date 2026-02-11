@@ -268,13 +268,22 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 		DrawDebugSphere(GetWorld(), HitLocation, 10.0f, 12, FColor::Red, false, 2.0f);
 	}
 
-	// 팀 관계 확인 (아군이면 데미지 스킵)
+	// 팀 관계 확인 (직접 TeamID 비교)
 	bool bIsHostile = true;
-	if (IGenericTeamAgentInterface* TeamAgent = Cast<IGenericTeamAgentInterface>(OtherActor))
+	if (IGenericTeamAgentInterface* TargetTeamAgent = Cast<IGenericTeamAgentInterface>(OtherActor))
 	{
-		if (const IGenericTeamAgentInterface* MyInstigator = Cast<IGenericTeamAgentInterface>(GetInstigator()))
+		if (IGenericTeamAgentInterface* MyInstigator = Cast<IGenericTeamAgentInterface>(GetInstigator()))
 		{
-			if (MyInstigator->GetTeamAttitudeTowards(*OtherActor) == ETeamAttitude::Friendly)
+			uint8 MyTeamID = MyInstigator->GetGenericTeamId().GetId();
+			uint8 TargetTeamID = TargetTeamAgent->GetGenericTeamId().GetId();
+
+			// 1. 어느 한쪽이라도 255(No Team)라면 무조건 적대
+			if (MyTeamID == 255 || TargetTeamID == 255)
+			{
+				bIsHostile = true;
+			}
+			// 2. 둘 다 유효한 팀(0 또는 1)이 있고, 팀이 같다면 아군 (데미지 무시)
+			else if (MyTeamID == TargetTeamID)
 			{
 				bIsHostile = false;
 			}

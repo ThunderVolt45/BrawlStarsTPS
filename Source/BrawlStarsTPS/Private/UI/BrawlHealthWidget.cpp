@@ -44,39 +44,61 @@ void UBrawlHealthWidget::SetupPlayerStateBindings()
 	
 	if (!TargetChar)
 	{
-		// 아직 캐릭터가 설정되지 않았다면 (ASC 초기화 전) 잠시 후 재시도
+		// 아직 캐릭터가 설정되지 않았다면 잠시 후 재시도
 		FTimerHandle TimerHandle;
 		GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UBrawlHealthWidget::SetupPlayerStateBindings, 0.2f, false);
 		return;
 	}
 
-	// 대상 캐릭터의 PlayerState 확인
+	// 1. [백업] PlayerState가 없더라도 일단 폰의 TeamID를 기반으로 색상 먼저 설정
+	APlayerController* LocalPC = GetWorld()->GetFirstPlayerController();
+	if (LocalPC)
+	{
+		// 로컬 플레이어가 조종하는 폰 확인
+		if (ABrawlCharacter* LocalChar = Cast<ABrawlCharacter>(LocalPC->GetPawn()))
+		{
+			uint8 MyTeam = LocalChar->GetTeamID();
+			uint8 TargetTeam = TargetChar->GetTeamID();
+
+			bool bIsEnemy = true;
+			if (LocalChar == TargetChar) bIsEnemy = false;
+			else if (MyTeam != 255 && TargetTeam != 255 && MyTeam == TargetTeam) bIsEnemy = false;
+
+			OnTeamColorChanged(bIsEnemy);
+		}
+	}
+
+	// 2. [정식] PlayerState가 있다면 델리게이트 연결 및 정밀 판정
 	ABrawlPlayerState* TargetPS = TargetChar->GetPlayerState<ABrawlPlayerState>();
 	if (TargetPS)
 	{
-		// 1. 팀 색상 설정 (로컬 플레이어와 비교)
-		APlayerController* LocalPC = GetWorld()->GetFirstPlayerController();
 		if (LocalPC)
 		{
 			ABrawlPlayerState* LocalPS = LocalPC->GetPlayerState<ABrawlPlayerState>();
 			if (LocalPS)
 			{
-				bool bIsEnemy = (LocalPS->GetTeamID() != TargetPS->GetTeamID());
+				uint8 MyTeamID = LocalPS->GetTeamID();
+				uint8 TargetTeamID = TargetPS->GetTeamID();
+
+				bool bIsEnemy = true;
+				
+				if (LocalPS == TargetPS) bIsEnemy = false;
+				else if (MyTeamID != 255 && TargetTeamID != 255 && MyTeamID == TargetTeamID) bIsEnemy = false;
+
 				OnTeamColorChanged(bIsEnemy);
 			}
 		}
 
-		// 2. 현상금 델리게이트 연결
+		// 델리게이트 연결 (Bounty, TieBreaker)
 		TargetPS->OnBountyChanged.AddUniqueDynamic(this, &UBrawlHealthWidget::OnBountyChanged);
 		UpdateBountyDisplay(TargetPS->GetBounty());
 
-		// 3. 타이 브레이커 델리게이트 연결
 		TargetPS->OnTieBreakerStateChanged.AddUniqueDynamic(this, &UBrawlHealthWidget::OnTieBreakerStateChanged);
 		UpdateTieBreakerDisplay(TargetPS->HasTieBreaker());
 	}
 	else
 	{
-		// PlayerState가 아직 복제되지 않았을 수 있으므로 재시도
+		// PlayerState가 올 때까지 계속 재시도
 		FTimerHandle TimerHandle;
 		GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UBrawlHealthWidget::SetupPlayerStateBindings, 0.2f, false);
 	}
