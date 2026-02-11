@@ -447,8 +447,14 @@ void ABrawlGameMode_Bounty::RequestRespawn(AController* Controller)
 						NewBot->SetGenericTeamId(FGenericTeamId(TeamID));
 						if (BountyAITree) NewAIC->InjectGameModeSubtree(BountyAITree);
 						
-						// 행동 트리 시작
-						NewAIC->SetAIActive(true);
+						// 매치가 진행 중일 때만 행동 트리 시작
+						if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
+						{
+							if (GS->IsMatchInProgress())
+							{
+								NewAIC->SetAIActive(true);
+							}
+						}
 					}
 				}
 			}
@@ -485,10 +491,16 @@ void ABrawlGameMode_Bounty::RespawnBrawler(AController* Controller)
 
 		Character->RespawnAt(SpawnLoc + FVector(0, 0, 95.0f), SpawnRot);
 
-		// AI 행동 트리 재시작
+		// AI 행동 트리 재시작 (매치 진행 중일 때만)
 		if (ABrawlAIController* AIC = Cast<ABrawlAIController>(Controller))
 		{
-			AIC->SetAIActive(true);
+			if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
+			{
+				if (GS->IsMatchInProgress())
+				{
+					AIC->SetAIActive(true);
+				}
+			}
 		}
 	}
 

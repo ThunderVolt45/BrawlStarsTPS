@@ -62,23 +62,34 @@ void ABrawlGameState::SetAllAIActive(bool bActive)
 {
 	if (HasAuthority())
 	{
+		// 실시간으로 월드의 모든 AI 컨트롤러 검색 (동적 생성/리스폰 대응)
+		TArray<AActor*> FoundAI;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlAIController::StaticClass(), FoundAI);
+
 		if (bActive)
 		{
 			// 1.5초 대기 후 AI 활성화
 			FTimerHandle TimerHandle;
-			GetWorldTimerManager().SetTimer(TimerHandle, [this]()
+			GetWorldTimerManager().SetTimer(TimerHandle, [FoundAI]()
 			{
-				for (ABrawlAIController* AIC : CachedAIControllers)
+				for (AActor* Actor : FoundAI)
 				{
-					if (AIC) AIC->SetAIActive(true);
+					if (ABrawlAIController* AIC = Cast<ABrawlAIController>(Actor))
+					{
+						AIC->SetAIActive(true);
+					}
 				}
 			}, 1.5f, false);
 		}
 		else
 		{
-			for (ABrawlAIController* AIC : CachedAIControllers)
+			// 즉시 비활성화
+			for (AActor* Actor : FoundAI)
 			{
-				if (AIC) AIC->SetAIActive(bActive);
+				if (ABrawlAIController* AIC = Cast<ABrawlAIController>(Actor))
+				{
+					AIC->SetAIActive(false);
+				}
 			}
 		}
 	}

@@ -199,6 +199,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Combat")
 	TSubclassOf<UGameplayEffect> CombatRevealEffectClass;
 
+	// 사망 시 취소할 어빌리티 태그 목록
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Death")
+	FGameplayTagContainer CancelAbilitiesWithTags;
+	
 	// --- Visuals & Camera ---
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|UI")
 	TObjectPtr<UWidgetComponent> HealthBarComponent;

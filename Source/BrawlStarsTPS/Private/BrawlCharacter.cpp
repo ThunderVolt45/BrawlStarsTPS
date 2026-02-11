@@ -175,6 +175,10 @@ void ABrawlCharacter::BeginPlay()
 			}
 		}
 	}
+	
+	// 궁극기와 하이퍼차지 게이지 초기화는 여기서 한번만 수행한다
+	AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargeAttribute(), 0.0f);
+	AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargeAttribute(), 0.0f);
 }
 
 UAbilitySystemComponent* ABrawlCharacter::GetAbilitySystemComponent() const
@@ -600,12 +604,15 @@ void ABrawlCharacter::InitializeAttributes()
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetGadget2CooldownAttribute(), Row->Gadget2Cooldown);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperDamageAttribute(), Row->SuperDamage);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxSuperChargeAttribute(), Row->MaxSuperCharge);
-		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargeAttribute(), 0.0f);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperCostAttribute(), Row->SuperCost);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargePerHitAttribute(), Row->SuperChargePerHit);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxHyperChargeAttribute(), Row->MaxHyperCharge);
-		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargeAttribute(), 0.0f);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargePerHitAttribute(), Row->HyperChargePerHit);
+		
+		// 초기 1회 생성 시에만 0으로 설정하고 싶다면 BeginPlay 등에서 수행해야 함
+		// 여기서는 리스폰 시 호출되므로 값을 덮어쓰지 않도록 주석 처리하거나 제거
+		// AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargeAttribute(), 0.0f);
+		// AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargeAttribute(), 0.0f);
 		
 		// 이동 속도 값은 CharacterMovement에 직접 주입한다
 		if (GetCharacterMovement())
@@ -675,10 +682,22 @@ void ABrawlCharacter::Die()
 		AbilitySystemComponent->ExecuteGameplayCue(DeathCueTag);
 	}
 
-	// 모든 어빌리티 제거 (재장전, 자동 회복 등 포함한 모든 권한 회수)
 	if (AbilitySystemComponent)
 	{
-		AbilitySystemComponent->ClearAllAbilities();
+		// 하이퍼차지 종료 처리 (사망 시 즉시 해제)
+		if (AbilitySystemComponent->HasMatchingGameplayTag(HyperChargeTag))
+		{
+			AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(HyperChargeTag));
+			
+			// 하이퍼차지 게이지 리셋
+			AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargeAttribute(), 0.0f);
+		}
+
+		// 블루프린트에서 설정한 태그들에 해당하는 어빌리티 취소
+		if (CancelAbilitiesWithTags.Num() > 0)
+		{
+			AbilitySystemComponent->CancelAbilities(&CancelAbilitiesWithTags);
+		}
 	}
 
 	// 서버에서 GameMode에 사망 사실 알림 및 리스폰 여부 확인
@@ -753,17 +772,10 @@ void ABrawlCharacter::RespawnAt(FVector Location, FRotator Rotation)
 	// 2. 활성화
 	SetBrawlerActive(true);
 
-	// 3. 스탯 초기화 (체력 등)
+	// 3. 스탯 초기화 (체력 등은 초기화하되 궁극기 등은 유지됨)
 	InitializeAttributes();
 
-	// 4. 초기 어빌리티 재부여 (재장전, 자동 회복 등 패시브 포함)
-	if (UBrawlAbilitySystemComponent* BrawlASC = Cast<UBrawlAbilitySystemComponent>(AbilitySystemComponent))
-	{
-		BrawlASC->ResetAbilityStatus();
-		BrawlASC->AddCharacterAbilities(StartupAbilities);
-	}
-
-	// 5. 리스폰 GameplayCue 호출
+	// 4. 리스폰 GameplayCue 호출
 	if (AbilitySystemComponent && RespawnCueTag.IsValid())
 	{
 		AbilitySystemComponent->ExecuteGameplayCue(RespawnCueTag);

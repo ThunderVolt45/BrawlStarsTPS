@@ -97,6 +97,10 @@ void ABrawlAIController::SetAIActive(bool bActive)
 			// 트리 정지
 			BehaviorTreeComponent->StopTree();
 		}
+
+		// 이동 및 포커스 즉시 중단
+		StopMovement();
+		ClearFocus(EAIFocusPriority::Gameplay);
 	}
 }
 
