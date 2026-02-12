@@ -57,13 +57,8 @@ void UBrawlHealthWidget::SetupPlayerStateBindings()
 		// 로컬 플레이어가 조종하는 폰 확인
 		if (ABrawlCharacter* LocalChar = Cast<ABrawlCharacter>(LocalPC->GetPawn()))
 		{
-			uint8 MyTeam = LocalChar->GetTeamID();
-			uint8 TargetTeam = TargetChar->GetTeamID();
-
-			bool bIsEnemy = true;
-			if (LocalChar == TargetChar) bIsEnemy = false;
-			else if (MyTeam != 255 && TargetTeam != 255 && MyTeam == TargetTeam) bIsEnemy = false;
-
+			// IsAlly 함수가 Instigator 관계를 포함하므로 소환물 판별 가능
+			bool bIsEnemy = !LocalChar->IsAlly(TargetChar);
 			OnTeamColorChanged(bIsEnemy);
 		}
 	}
@@ -74,17 +69,9 @@ void UBrawlHealthWidget::SetupPlayerStateBindings()
 	{
 		if (LocalPC)
 		{
-			ABrawlPlayerState* LocalPS = LocalPC->GetPlayerState<ABrawlPlayerState>();
-			if (LocalPS)
+			if (ABrawlCharacter* LocalChar = Cast<ABrawlCharacter>(LocalPC->GetPawn()))
 			{
-				uint8 MyTeamID = LocalPS->GetTeamID();
-				uint8 TargetTeamID = TargetPS->GetTeamID();
-
-				bool bIsEnemy = true;
-				
-				if (LocalPS == TargetPS) bIsEnemy = false;
-				else if (MyTeamID != 255 && TargetTeamID != 255 && MyTeamID == TargetTeamID) bIsEnemy = false;
-
+				bool bIsEnemy = !LocalChar->IsAlly(TargetChar);
 				OnTeamColorChanged(bIsEnemy);
 			}
 		}
@@ -98,9 +85,15 @@ void UBrawlHealthWidget::SetupPlayerStateBindings()
 	}
 	else
 	{
-		// PlayerState가 올 때까지 계속 재시도
-		FTimerHandle TimerHandle;
-		GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UBrawlHealthWidget::SetupPlayerStateBindings, 0.2f, false);
+		// 소환물(LifePlant) 등은 PlayerState가 영원히 없을 수 있으므로, 
+		// 일정 횟수 시도 후에는 재시도를 멈춘다 (이미 위에서 IsAlly로 색상은 설정됨)
+		static int32 RetryCount = 0;
+		if (RetryCount < 5)
+		{
+			RetryCount++;
+			FTimerHandle TimerHandle;
+			GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UBrawlHealthWidget::SetupPlayerStateBindings, 0.5f, false);
+		}
 	}
 }
 

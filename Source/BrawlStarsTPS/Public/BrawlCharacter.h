@@ -83,6 +83,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
 	int32 GetTeamID() const { return TeamID; }
 
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
+	bool IsAlly(AActor* Other) const;
+
 	// --- Combat & Abilities ---
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
 	void NotifyCombatAction();

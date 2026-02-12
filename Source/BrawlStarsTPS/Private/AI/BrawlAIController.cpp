@@ -117,7 +117,6 @@ FGenericTeamId ABrawlAIController::GetGenericTeamId() const
 
 ETeamAttitude::Type ABrawlAIController::GetTeamAttitudeTowards(const AActor& Other) const
 {
-	// 상대방이 TeamAgentInterface를 구현하는지 확인
 	const IGenericTeamAgentInterface* OtherTeamAgent = Cast<const IGenericTeamAgentInterface>(&Other);
 	
 	if (!OtherTeamAgent)
@@ -125,10 +124,21 @@ ETeamAttitude::Type ABrawlAIController::GetTeamAttitudeTowards(const AActor& Oth
 		return ETeamAttitude::Neutral;
 	}
 
+	// 1. 생성자 관계 체크 (소환물과 주인 관계)
+	APawn* MyPawn = GetPawn();
+	if (MyPawn)
+	{
+		// 내가 상대방의 생성자이거나, 상대방이 나의 생성자인 경우 우호적
+		if (MyPawn->GetInstigator() == &Other || Other.GetInstigator() == MyPawn)
+		{
+			return ETeamAttitude::Friendly;
+		}
+	}
+
 	FGenericTeamId MyTeamID = GetGenericTeamId();
 	FGenericTeamId OtherTeamID = OtherTeamAgent->GetGenericTeamId();
 
-	// 팀 ID가 255(NoTeam)이면 모두 적대
+	// 팀 ID가 255(NoTeam)이면 적대 (쇼다운 솔로 등)
 	if (MyTeamID.GetId() == 255 || OtherTeamID.GetId() == 255)
 	{
 		return ETeamAttitude::Hostile;

@@ -196,6 +196,35 @@ FGenericTeamId ABrawlCharacter::GetGenericTeamId() const
 	return FGenericTeamId(TeamID);
 }
 
+bool ABrawlCharacter::IsAlly(AActor* Other) const
+{
+	if (!Other) return false;
+
+	// 1. 생성자 관계 체크
+	AActor* MyInstigator = GetInstigator();
+	AActor* OtherInstigator = Other->GetInstigator();
+
+	// 내가 상대의 생성자이거나, 상대가 나의 생성자이거나, 둘의 생성자가 같은 경우 (같은 주인이 소환한 소환물들끼리)
+	if (MyInstigator == Other || OtherInstigator == this || (MyInstigator != nullptr && MyInstigator == OtherInstigator))
+	{
+		return true;
+	}
+
+	// 2. 팀 인터페이스 체크
+	if (IGenericTeamAgentInterface* OtherTeamAgent = Cast<IGenericTeamAgentInterface>(Other))
+	{
+		FGenericTeamId OtherTeamID = OtherTeamAgent->GetGenericTeamId();
+		
+		// 둘 다 유효한 팀인 경우 비교
+		if (TeamID != 255 && OtherTeamID.GetId() != 255)
+		{
+			return TeamID == OtherTeamID.GetId();
+		}
+	}
+
+	return false;
+}
+
 void ABrawlCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);

@@ -241,8 +241,8 @@ void ABrawlStarsTPSPlayerController::FindBestTarget()
 		ABrawlCharacter* OtherChar = *It;
 		if (!OtherChar || OtherChar == MyChar || OtherChar->IsDead()) continue;
 
-		// 같은 팀 제외 (팀 ID가 255가 아니면서 같으면)
-		if (MyChar->GetTeamID() != 255 && MyChar->GetTeamID() == OtherChar->GetTeamID()) continue;
+		// 아군 제외 (IsAlly 사용 - 소환사/주인 관계 및 팀 ID 포함 판별)
+		if (MyChar->IsAlly(OtherChar)) continue;
 
 		// 시야/은신 확인 (IsVisibleTo 사용)
 		if (!OtherChar->IsVisibleTo(MyChar->GetGenericTeamId())) continue;
