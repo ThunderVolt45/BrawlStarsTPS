@@ -209,7 +209,16 @@ void UBrawlMatchFlowComponent::HandleIntroStarted()
 		{
 			if (UBrawlMatchStartWidget* StartWidget = Cast<UBrawlMatchStartWidget>(MatchStartWidget))
 			{
-				StartWidget->SetupMatchInfo(FText::FromString(TEXT("SHOWDOWN")), FText::FromString(TEXT("DEFEAT ALL OTHER BRAWLERS")));
+				FText ModeName = FText::FromString(TEXT("GAME MODE"));
+				FText ModeDesc = FText::FromString(TEXT("DEFEAT ENEMIES"));
+
+				if (ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>())
+				{
+					ModeName = GS->GetModeName();
+					ModeDesc = GS->GetModeDescription();
+				}
+
+				StartWidget->SetupMatchInfo(ModeName, ModeDesc);
 			}
 
 			if (!MatchStartWidget->IsInViewport())

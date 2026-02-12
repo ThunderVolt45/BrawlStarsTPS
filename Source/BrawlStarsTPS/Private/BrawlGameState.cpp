@@ -33,6 +33,8 @@ void ABrawlGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 
 	DOREPLIFETIME(ABrawlGameState, AliveBrawlerCount);
 	DOREPLIFETIME(ABrawlGameState, MatchState);
+	DOREPLIFETIME(ABrawlGameState, ModeName);
+	DOREPLIFETIME(ABrawlGameState, ModeDescription);
 }
 
 void ABrawlGameState::SetMatchState(EBrawlMatchState NewState)
@@ -56,6 +58,15 @@ void ABrawlGameState::OnRep_MatchState()
 {
 	// 클라이언트에서 연출 트리거를 위해 브로드캐스트
 	OnMatchStateChanged.Broadcast();
+}
+
+void ABrawlGameState::SetModeInfo(FText InName, FText InDescription)
+{
+	if (HasAuthority())
+	{
+		ModeName = InName;
+		ModeDescription = InDescription;
+	}
 }
 
 void ABrawlGameState::SetAllAIActive(bool bActive)

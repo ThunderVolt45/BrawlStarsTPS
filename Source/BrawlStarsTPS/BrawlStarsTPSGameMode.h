@@ -44,10 +44,17 @@ public:
 	/** 게임 종료 처리 */
 	virtual void EndGame(bool bIsPlayerWinner, int32 RankOrTeam);
 
-protected:
 	/** 브롤러 ID와 클래스 매핑을 위한 데이터 테이블 */
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Data")
 	TObjectPtr<UDataTable> BrawlerClassDataTable;
+
+	/** 게임 모드 정보를 담은 스트링 테이블 에셋 */
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Data")
+	TSoftObjectPtr<class UStringTable> GameModeStringTable;
+
+	/** 이 게임 모드의 식별자 (스트링 테이블 키의 접두사로 사용) */
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Data")
+	FName GameModeID = FName("Showdown");
 
 	// --- Match Flow ---
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|GameMode")

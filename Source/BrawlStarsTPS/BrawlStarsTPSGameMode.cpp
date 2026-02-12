@@ -34,6 +34,22 @@ void ABrawlStarsTPSGameMode::BeginPlay()
 
 	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
 	{
+		// 스트링 테이블에서 게임 모드 정보 로드
+		if (!GameModeStringTable.IsNull())
+		{
+			// 에셋의 경로 자체가 스트링 테이블의 고유 ID가 됩니다.
+			FName TableID = FName(*GameModeStringTable.ToSoftObjectPath().GetAssetPathString());
+			FString BaseKey = GameModeID.ToString();
+
+			FText ModeName = FText::FromStringTable(TableID, BaseKey + TEXT("_Name"));
+			FText ModeDesc = FText::FromStringTable(TableID, BaseKey + TEXT("_Desc"));
+
+			GS->SetModeInfo(ModeName, ModeDesc);
+			
+			UE_LOG(LogTemp, Log, TEXT("GameMode: Loaded strings from Table [%s] using ID [%s]"), 
+				*GameModeStringTable.ToString(), *TableID.ToString());
+		}
+
 		GS->SetMatchState(EBrawlMatchState::Intro);
 
 		FTimerHandle StartTimerHandle;
