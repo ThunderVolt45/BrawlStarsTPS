@@ -33,6 +33,9 @@ public:
 	/** 게임 종료 연출 시작 */
 	void StartOutroSequence(bool bIsWinner, int32 Rank);
 
+	/** 라운드 종료 연출 시작 */
+	void StartRoundResultSequence(bool bIsWinner, int32 Team1Score, int32 Team2Score);
+
 	/** 매치 결과 위젯의 나가기 클릭 시 호출 */
 	UFUNCTION()
 	void HandleMatchExitClicked();
@@ -48,6 +51,7 @@ protected:
 	/** 각 상태별 연출 시작 함수 */
 	void HandleIntroStarted();
 	void HandlePlayingStarted();
+	void HandleIntermissionStarted();
 
 	/** 레벨 정리 및 최종 결과 표시 */
 	void Outro_StartFinalSummary();
@@ -59,6 +63,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|UI")
 	TSubclassOf<UUserWidget> MatchResultWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|UI")
+	TSubclassOf<UUserWidget> RoundResultWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|Flow|UI")
 	TSubclassOf<UUserWidget> FinalSummaryWidgetClass;

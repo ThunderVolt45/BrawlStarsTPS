@@ -24,6 +24,8 @@ public:
 	virtual void NotifyKill(AActor* Killer, AActor* Victim) override;
 	virtual void StartMatch() override;
 
+	virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
+
 	// 스폰 포인트 선택 로직 (Bounty 로직 이식)
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 

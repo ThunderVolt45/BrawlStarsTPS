@@ -52,6 +52,9 @@ protected:
 	// --- Match Flow ---
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|GameMode")
 	float StartDelay = 5.0f;
+	
+	UPROPERTY(EditDefaultsOnly, Category= "Brawl|GameMode")
+	float RoundDelay = 3.0f;
 
 	bool bHasMatchStarted = false;
 

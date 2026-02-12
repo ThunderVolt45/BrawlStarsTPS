@@ -15,6 +15,7 @@ enum class EBrawlMatchState : uint8
 	Waiting,    // 대기 중
 	Intro,      // 카메라 연출 및 정보 표시
 	Playing,    // 실제 게임 진행 중 (조작 허용)
+	Intermission, // 라운드 사이 휴식/결과 표시
 	GameOver    // 종료 및 결과 화면
 };
 

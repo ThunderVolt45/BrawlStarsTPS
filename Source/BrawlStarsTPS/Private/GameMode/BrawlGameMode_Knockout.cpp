@@ -1,7 +1,8 @@
 #include "GameMode/BrawlGameMode_Knockout.h"
 #include "BrawlCharacter.h"
 #include "BrawlPlayerState.h"
-#include "BrawlGameState.h"
+#include "BrawlGameState_Knockout.h"
+#include "BrawlStarsTPSPlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameMode/BrawlSpawnPoint.h"
 #include "AI/BrawlAIController.h"
@@ -9,6 +10,7 @@
 
 ABrawlGameMode_Knockout::ABrawlGameMode_Knockout()
 {
+	GameStateClass = ABrawlGameState_Knockout::StaticClass();
 	MaxBots = 5; // 플레이어 포함 6명을 만들기 위해 5명의 봇 추가
 	StartDelay = 5.0f;
 	PoisonStartDelay = 20.0f; // 녹아웃은 독구름이 조금 늦게 시작됨
@@ -111,6 +113,34 @@ void ABrawlGameMode_Knockout::StartMatch()
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("Knockout Round %d Started! Team1: %d, Team2: %d"), CurrentRound, Team1AliveCount, Team2AliveCount);
+}
+
+UClass* ABrawlGameMode_Knockout::GetDefaultPawnClassForController_Implementation(AController* InController)
+{
+	if (!InController) return nullptr;
+
+	// 1. 할당된 AI 클래스가 있다면 반환
+	if (AssignedAIClasses.Contains(InController))
+	{
+		return AssignedAIClasses[InController];
+	}
+
+	// 2. AI 컨트롤러인데 할당된 클래스가 없는 경우 랜덤하게 선택 (Bounty 스타일 안전장치)
+	if (InController->IsA<AAIController>() && AICharacterClasses.Num() > 0)
+	{
+		int32 CharIndex = FMath::RandRange(0, AICharacterClasses.Num() - 1);
+		TSubclassOf<ABrawlCharacter> RandomClass = AICharacterClasses[CharIndex];
+		
+		// 나중을 위해 저장
+		AssignedAIClasses.Add(InController, RandomClass);
+		
+		UE_LOG(LogTemp, Log, TEXT("Knockout: Assigned random class [%s] to AI Controller [%s]"), 
+			*RandomClass->GetName(), *InController->GetName());
+			
+		return RandomClass;
+	}
+
+	return Super::GetDefaultPawnClassForController_Implementation(InController);
 }
 
 AActor* ABrawlGameMode_Knockout::ChoosePlayerStart_Implementation(AController* Player)
@@ -230,6 +260,13 @@ void ABrawlGameMode_Knockout::EndRound(int32 WinningTeam)
 
 	UE_LOG(LogTemp, Log, TEXT("Round %d Ended. Winner: Team %d. Score: %d - %d"), CurrentRound, WinningTeam, Team1Wins, Team2Wins);
 
+	// GameState_Knockout 정보 업데이트
+	if (ABrawlGameState_Knockout* KGS = GetGameState<ABrawlGameState_Knockout>())
+	{
+		KGS->SetTeamWins(Team1Wins, Team2Wins);
+		KGS->SetLastRoundWinner(WinningTeam);
+	}
+
 	if (Team1Wins >= RequiredWins || Team2Wins >= RequiredWins)
 	{
 		// 게임 종료
@@ -251,7 +288,7 @@ void ABrawlGameMode_Knockout::EndRound(int32 WinningTeam)
 
 		if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
 		{
-			GS->SetMatchState(EBrawlMatchState::Intro);
+			GS->SetMatchState(EBrawlMatchState::Intermission);
 		}
 
 		FTimerHandle NextRoundTimerHandle;
