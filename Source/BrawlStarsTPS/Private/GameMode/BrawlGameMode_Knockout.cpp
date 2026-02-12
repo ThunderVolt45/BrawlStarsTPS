@@ -7,6 +7,7 @@
 #include "GameMode/BrawlSpawnPoint.h"
 #include "AI/BrawlAIController.h"
 #include "Environment/BrawlPoisonZone.h"
+#include "GameFramework/PlayerInput.h"
 
 ABrawlGameMode_Knockout::ABrawlGameMode_Knockout()
 {
@@ -229,6 +230,12 @@ void ABrawlGameMode_Knockout::NotifyKill(AActor* Killer, AActor* Victim)
 {
 	Super::NotifyKill(Killer, Victim);
 
+	// 매치 진행 중(Playing)일 때만 처치 및 라운드 종료 로직 수행
+	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
+	{
+		if (GS->GetMatchState() != EBrawlMatchState::Playing) return;
+	}
+
 	if (ABrawlCharacter* VictimBrawler = Cast<ABrawlCharacter>(Victim))
 	{
 		if (VictimBrawler->GetTeamID() == 0)
@@ -352,14 +359,23 @@ void ABrawlGameMode_Knockout::ResetBrawlersForRound()
 	{
 		if (ABrawlCharacter* Brawler = Cast<ABrawlCharacter>(Actor))
 		{
-			// 팀에 맞는 스폰 포인트 찾기
+			// 1. 컨트롤러 입력 상태 강제 초기화 (키 눌림 상태 해제)
 			AController* Controller = Brawler->GetController();
+			if (APlayerController* PC = Cast<APlayerController>(Controller))
+			{
+				if (PC->PlayerInput)
+				{
+					PC->PlayerInput->FlushPressedKeys();
+				}
+			}
+
+			// 2. 팀에 맞는 스폰 포인트 찾기
 			AActor* SpawnPoint = FindPlayerStart(Controller);
 			
 			if (SpawnPoint)
 			{
-				FVector SpawnLoc = SpawnPoint->GetActorLocation();
-				Brawler->RespawnAt(SpawnLoc, SpawnPoint->GetActorRotation());
+				// 3. 스폰 포인트의 위치로 즉시 리스폰 (오프셋 없이)
+				Brawler->RespawnAt(SpawnPoint->GetActorLocation(), SpawnPoint->GetActorRotation());
 			}
 		}
 	}
