@@ -286,6 +286,7 @@ void ABrawlGameMode_Knockout::EndRound(int32 WinningTeam)
 	{
 		KGS->SetTeamWins(Team1Wins, Team2Wins);
 		KGS->SetLastRoundWinner(WinningTeam);
+		KGS->AddRoundWinner(WinningTeam);
 	}
 
 	if (Team1Wins >= RequiredWins || Team2Wins >= RequiredWins)

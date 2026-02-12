@@ -21,6 +21,7 @@ public:
 
 	void SetTeamWins(int32 InTeam0Wins, int32 InTeam1Wins);
 	void SetLastRoundWinner(int32 Winner);
+	void AddRoundWinner(int32 Winner);
 
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Knockout")
 	int32 GetTeam0Wins() const { return Team0Wins; }
@@ -30,6 +31,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Knockout")
 	int32 GetLastRoundWinner() const { return LastRoundWinner; }
+
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Knockout")
+	const TArray<int32>& GetRoundWinners() const { return RoundWinners; }
 
 protected:
 	// 팀 0 (레드) 승리 횟수
@@ -43,4 +47,8 @@ protected:
 	// 마지막 라운드 승리 팀 (-1: 무승부, 0: 레드, 1: 블루)
 	UPROPERTY(Replicated, VisibleInstanceOnly, Category = "Brawl|Knockout")
 	int32 LastRoundWinner = -1;
+
+	// 각 라운드별 승리 팀 목록 (인덱스 0이 1라운드)
+	UPROPERTY(Replicated, VisibleInstanceOnly, Category = "Brawl|Knockout")
+	TArray<int32> RoundWinners;
 };
