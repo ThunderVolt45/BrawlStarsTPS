@@ -9,7 +9,7 @@ void UBrawlRoundResultWidget::SetupRoundResult(bool bInIsWinner, int32 InTeam1Sc
 
 	if (ResultText)
 	{
-		ResultText->SetText(FText::FromString(bIsWinner ? TEXT("라운드 승리") : TEXT("라운드 패배")));
+		ResultText->SetText(FText::FromString(bIsWinner ? TEXT("Round Win") : TEXT("Round Lose")));
 	}
 
 	OnRoundResultApplied();

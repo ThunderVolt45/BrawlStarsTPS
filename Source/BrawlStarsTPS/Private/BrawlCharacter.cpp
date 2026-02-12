@@ -793,10 +793,17 @@ void ABrawlCharacter::RespawnAt(FVector Location, FRotator Rotation)
 	// 1. 위치 및 회전 이동
 	SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
 
-	// 컨트롤러의 제어 회전(카메라 방향)도 리스폰 지점의 회전값으로 동기화
+	// 컨트롤러의 제어 회전 및 이동 명령 초기화
 	if (AController* C = GetController())
 	{
 		C->SetControlRotation(Rotation);
+		C->StopMovement();
+	}
+
+	// 이동 컴포넌트 즉시 정지 및 가속도 초기화
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->StopMovementImmediately();
 	}
 
 	// 2. 활성화
