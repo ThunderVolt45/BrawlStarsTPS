@@ -314,12 +314,30 @@ void ABrawlGameMode_Knockout::StartNewRound()
 {
 	ResetBrawlersForRound();
 	
-	// 다음 라운드는 "START" 연출 없이 바로 Playing으로 즉시 전이
+	// 생존자 수 다시 계산 및 초기화
+	Team1AliveCount = 0;
+	Team2AliveCount = 0;
+
+	TArray<AActor*> FoundBrawlers;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlCharacter::StaticClass(), FoundBrawlers);
+
+	for (AActor* Actor : FoundBrawlers)
+	{
+		if (ABrawlCharacter* Brawler = Cast<ABrawlCharacter>(Actor))
+		{
+			if (Brawler->GetTeamID() == 0) Team1AliveCount++;
+			else if (Brawler->GetTeamID() == 1) Team2AliveCount++;
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("Knockout Round %d Prepared! Team1 Alive: %d, Team2 Alive: %d"), CurrentRound, Team1AliveCount, Team2AliveCount);
+
+	// 대기 없이 즉시 Playing 상태로 전이
 	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
 	{
 		bHasMatchStarted = true;
 		GS->SetMatchState(EBrawlMatchState::Playing);
-			
+				
 		// 독구름 다시 시작
 		StartPoisonLogic();
 	}
@@ -340,8 +358,7 @@ void ABrawlGameMode_Knockout::ResetBrawlersForRound()
 			
 			if (SpawnPoint)
 			{
-				// Bounty와 동일하게 95.0f 오프셋 적용
-				FVector SpawnLoc = SpawnPoint->GetActorLocation() + FVector(0, 0, 95.0f);
+				FVector SpawnLoc = SpawnPoint->GetActorLocation();
 				Brawler->RespawnAt(SpawnLoc, SpawnPoint->GetActorRotation());
 			}
 		}
@@ -397,8 +414,7 @@ void ABrawlGameMode_Knockout::SpawnBots()
 
 			if (APawn* NewPawn = AIC->GetPawn())
 			{
-				// Bounty와 동일하게 95.0f 오프셋 적용
-				FVector SpawnLocation = SP->GetActorLocation() + FVector(0, 0, 95.0f);
+				FVector SpawnLocation = SP->GetActorLocation();
 				NewPawn->SetActorLocationAndRotation(SpawnLocation, SP->GetActorRotation());
 
 				if (ABrawlCharacter* NewBot = Cast<ABrawlCharacter>(NewPawn))

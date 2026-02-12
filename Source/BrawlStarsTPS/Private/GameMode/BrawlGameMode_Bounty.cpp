@@ -500,7 +500,7 @@ void ABrawlGameMode_Bounty::RequestRespawn(AController* Controller)
 
 				if (APawn* NewPawn = NewAIC->GetPawn())
 				{
-					FVector SpawnLocation = FoundSP->GetActorLocation() + FVector(0, 0, 95.0f);
+					FVector SpawnLocation = FoundSP->GetActorLocation();
 					NewPawn->SetActorLocationAndRotation(SpawnLocation, FoundSP->GetActorRotation());
 
 					if (ABrawlCharacter* NewBot = Cast<ABrawlCharacter>(NewPawn))
@@ -551,7 +551,7 @@ void ABrawlGameMode_Bounty::RespawnBrawler(AController* Controller)
 		FVector SpawnLoc = SpawnSpot ? SpawnSpot->GetActorLocation() : FVector::ZeroVector;
 		FRotator SpawnRot = SpawnSpot ? SpawnSpot->GetActorRotation() : FRotator::ZeroRotator;
 
-		Character->RespawnAt(SpawnLoc + FVector(0, 0, 95.0f), SpawnRot);
+		Character->RespawnAt(SpawnLoc, SpawnRot);
 
 		// AI 행동 트리 재시작 (매치 진행 중일 때만)
 		if (ABrawlAIController* AIC = Cast<ABrawlAIController>(Controller))
