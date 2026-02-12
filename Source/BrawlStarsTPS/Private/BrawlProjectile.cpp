@@ -6,6 +6,7 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "BrawlCharacter.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
 #include "Environment/BrawlDestructibleInterface.h"
@@ -54,7 +55,10 @@ void ABrawlProjectile::InitializeProjectile(const FGameplayEffectSpecHandle& InD
 	
 	if (!DamageSpecHandle.IsValid())
 	{
-		UE_LOG(LogTemp, Error, TEXT("Projectile Initialized with INVALID Damage Spec!"));
+		UE_LOG(LogTemp, Error, TEXT("Projectile [%s] Initialized with INVALID Damage Spec! Make sure DamageEffectClass is assigned in the calling Ability."), *GetName());
+		
+		// 개발 중 에디터에서 즉시 문제를 인지할 수 있도록 ensure 추가
+		ensureAlwaysMsgf(false, TEXT("Projectile [%s] has no valid Damage Spec. Damage will not be applied."), *GetName());
 	}
 }
 
@@ -268,22 +272,25 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 		DrawDebugSphere(GetWorld(), HitLocation, 10.0f, 12, FColor::Red, false, 2.0f);
 	}
 
-	// 팀 관계 확인 (직접 TeamID 비교)
+	// 팀 관계 확인
 	bool bIsHostile = true;
-	if (IGenericTeamAgentInterface* TargetTeamAgent = Cast<IGenericTeamAgentInterface>(OtherActor))
+	if (ABrawlCharacter* MyInstigator = Cast<ABrawlCharacter>(GetInstigator()))
 	{
-		if (IGenericTeamAgentInterface* MyInstigator = Cast<IGenericTeamAgentInterface>(GetInstigator()))
+		// IsAlly를 사용하여 아군(생성자/주인 관계 포함) 여부 판별
+		if (MyInstigator->IsAlly(OtherActor))
 		{
-			uint8 MyTeamID = MyInstigator->GetGenericTeamId().GetId();
+			bIsHostile = false;
+		}
+	}
+	else if (IGenericTeamAgentInterface* TargetTeamAgent = Cast<IGenericTeamAgentInterface>(OtherActor))
+	{
+		// Instigator가 ABrawlCharacter가 아닌 경우 기존 로직 수행
+		if (IGenericTeamAgentInterface* MyInstigatorAgent = Cast<IGenericTeamAgentInterface>(GetInstigator()))
+		{
+			uint8 MyTeamID = MyInstigatorAgent->GetGenericTeamId().GetId();
 			uint8 TargetTeamID = TargetTeamAgent->GetGenericTeamId().GetId();
 
-			// 1. 어느 한쪽이라도 255(No Team)라면 무조건 적대
-			if (MyTeamID == 255 || TargetTeamID == 255)
-			{
-				bIsHostile = true;
-			}
-			// 2. 둘 다 유효한 팀(0 또는 1)이 있고, 팀이 같다면 아군 (데미지 무시)
-			else if (MyTeamID == TargetTeamID)
+			if (MyTeamID != 255 && TargetTeamID != 255 && MyTeamID == TargetTeamID)
 			{
 				bIsHostile = false;
 			}
@@ -297,7 +304,7 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 		{
 			if (DamageSpecHandle.IsValid())
 			{
-				FActiveGameplayEffectHandle ActiveGE = TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpecHandle.Data.Get());
+				TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpecHandle.Data.Get());
 			}
 		}
 	}

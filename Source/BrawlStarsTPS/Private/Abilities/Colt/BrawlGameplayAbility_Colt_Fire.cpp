@@ -112,7 +112,7 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 {
 	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
 	if (!Character) return;
-	
+
 	// 1. 발사체 클래스
 	TSubclassOf<AActor> ClassToSpawn = GetProjectileClassToSpawn();
 	if (!ClassToSpawn)
@@ -131,19 +131,20 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = Character;
 	SpawnParams.Instigator = Character;
-	
-	AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(ClassToSpawn, MuzzleLocation, ProjectileRotation, SpawnParams);
+
+	AActor* SpawnedActor = GetWorld()->SpawnActor<
+		AActor>(ClassToSpawn, MuzzleLocation, ProjectileRotation, SpawnParams);
 	if (ABrawlProjectile* Projectile = Cast<ABrawlProjectile>(SpawnedActor))
 	{
 		// GAS 데미지 Spec 생성 및 주입
 		FGameplayEffectSpecHandle SpecHandle = MakeDamageSpecHandle(1.0f); // 1.0 Scale
-				if (SpecHandle.IsValid())
-				{
-					Projectile->InitializeProjectile(SpecHandle);
-				}
-		
-				// SFX/VFX 재생 (블루프린트에서 설정한 AbilityGameplayCueTag 사용)
-				PlayGameplayCue(MuzzleLocation, ProjectileRotation.Vector());
-			}
+		if (SpecHandle.IsValid())
+		{
+			Projectile->InitializeProjectile(SpecHandle);
 		}
+
+		// SFX/VFX 재생 (블루프린트에서 설정한 AbilityGameplayCueTag 사용)
+		PlayGameplayCue(MuzzleLocation, ProjectileRotation.Vector());
+	}
+}
 		

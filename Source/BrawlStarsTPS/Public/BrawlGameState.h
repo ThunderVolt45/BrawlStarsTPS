@@ -14,7 +14,9 @@ enum class EBrawlMatchState : uint8
 {
 	Waiting,    // 대기 중
 	Intro,      // 카메라 연출 및 정보 표시
+	MatchStart, // "START" 연출 (조작 차단 유지)
 	Playing,    // 실제 게임 진행 중 (조작 허용)
+	Intermission, // 라운드 사이 휴식/결과 표시
 	GameOver    // 종료 및 결과 화면
 };
 
@@ -62,6 +64,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Game")
 	void SetAllAIActive(bool bActive);
 
+	// 게임 모드 정보 설정 (서버 전용)
+	void SetModeInfo(FText InName, FText InDescription);
+
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Game")
+	FText GetModeName() const { return ModeName; }
+
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Game")
+	FText GetModeDescription() const { return ModeDescription; }
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -78,6 +89,14 @@ protected:
 	// 현재 매치 상태 (Replicated)
 	UPROPERTY(ReplicatedUsing = OnRep_MatchState, VisibleInstanceOnly, Category = "Brawl|Game")
 	EBrawlMatchState MatchState = EBrawlMatchState::Waiting;
+
+	// 게임 모드 이름 (Replicated)
+	UPROPERTY(Replicated, VisibleInstanceOnly, Category = "Brawl|Game")
+	FText ModeName;
+
+	// 게임 모드 설명 (Replicated)
+	UPROPERTY(Replicated, VisibleInstanceOnly, Category = "Brawl|Game")
+	FText ModeDescription;
 
 private:
 	/** 레벨 내의 모든 AI 컨트롤러 캐싱 */

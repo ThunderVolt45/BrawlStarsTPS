@@ -44,17 +44,16 @@ public:
 	// 바운티 모드에서는 리스폰 필요
 	virtual bool ShouldRespawn(AActor* Victim) const override { return true; }
 
-	/** 게임 시작 실행 */
-	UFUNCTION(BlueprintCallable, Category = "Brawl|Bounty")
-	void StartMatch();
+	// 게임 시작 실행
+	virtual void StartMatch() override;
 
-	/** 타이 브레이커 아이템 획득 시 호출 */
+	// 타이 브레이커 아이템 획득 시 호출
 	void OnTieBreakerPickedUp(ABrawlCharacter* Picker);
 
 protected:
 	// 팀 및 봇 설정
 	void SetupTeams();
-	void SpawnBots();
+	virtual void SpawnBots() override;
 
 	// 리스폰 처리
 	void RequestRespawn(AController* Controller);
@@ -64,7 +63,7 @@ protected:
 
 	// 게임 종료 체크
 	void CheckWinCondition();
-	void EndGame(int32 WinningTeam);
+	virtual void EndGame(bool bIsPlayerWinner, int32 RankOrTeam) override;
 
 	// 매치 타이머 업데이트
 	void UpdateMatchTimer();
@@ -85,30 +84,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Bounty")
 	float RespawnDelay = 3.0f;
 
-	// AI 클래스
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Bounty")
-	TArray<TSubclassOf<ABrawlCharacter>> AICharacterClasses;
-
 	// 타이 브레이커 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Bounty")
 	TSubclassOf<AActor> TieBreakerClass;
 
-	// 바운티 모드 전용 AI 행동 트리
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|AI")
-	TObjectPtr<class UBehaviorTree> BountyAITree;
-
 private:
 	FTimerHandle MatchTimerHandle;
-	bool bHasMatchStarted = false;
 	
-	// AI 컨트롤러와 할당된 캐릭터 클래스 매핑 (리스폰용)
-	UPROPERTY()
-	TMap<TObjectPtr<AController>, TSubclassOf<ABrawlCharacter>> AssignedAIClasses;
-
-	// 컨트롤러별 팀 ID 직접 매핑 (PlayerState가 준비되기 전 스폰 단계에서 사용)
-	UPROPERTY()
-	TMap<TObjectPtr<AController>, int32> AssignedTeams;
-
 	// 타이 브레이커 현재 소유자 (PlayerState)
 	UPROPERTY()
 	TObjectPtr<class ABrawlPlayerState> TieBreakerOwnerState;

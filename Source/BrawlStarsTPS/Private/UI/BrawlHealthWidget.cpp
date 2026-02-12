@@ -50,45 +50,64 @@ void UBrawlHealthWidget::SetupPlayerStateBindings()
 		return;
 	}
 
-	// 1. [백업] PlayerState가 없더라도 일단 폰의 TeamID를 기반으로 색상 먼저 설정
 	APlayerController* LocalPC = GetWorld()->GetFirstPlayerController();
-	if (LocalPC)
+	if (!LocalPC) return;
+
+	// 1. 팀 색상 설정 (로컬 플레이어 기준)
+	bool bTeamIdentified = false;
+	bool bIsEnemy = true;
+
+	// 로컬 플레이어 캐릭터 가져오기
+	ABrawlCharacter* LocalChar = Cast<ABrawlCharacter>(LocalPC->GetPawn());
+	
+	if (LocalChar)
 	{
-		// 로컬 플레이어가 조종하는 폰 확인
-		if (ABrawlCharacter* LocalChar = Cast<ABrawlCharacter>(LocalPC->GetPawn()))
+		// IsAlly 함수가 Instigator 관계를 포함하므로 소환물 판별 가능
+		// 단, 둘 중 하나라도 TeamID가 NoTeam(255)이면 false를 반환하므로 주의
+		if (LocalChar->GetGenericTeamId() != FGenericTeamId::NoTeam && 
+			TargetChar->GetGenericTeamId() != FGenericTeamId::NoTeam)
 		{
-			uint8 MyTeam = LocalChar->GetTeamID();
-			uint8 TargetTeam = TargetChar->GetTeamID();
+			bIsEnemy = !LocalChar->IsAlly(TargetChar);
+			bTeamIdentified = true;
+		}
+	}
+	else
+	{
+		// Pawn이 아직 없는 경우 PlayerState를 통해 팀 확인 시도
+		ABrawlPlayerState* LocalPS = LocalPC->GetPlayerState<ABrawlPlayerState>();
+		ABrawlPlayerState* TargetPS = TargetChar->GetPlayerState<ABrawlPlayerState>();
 
-			bool bIsEnemy = true;
-			if (LocalChar == TargetChar) bIsEnemy = false;
-			else if (MyTeam != 255 && TargetTeam != 255 && MyTeam == TargetTeam) bIsEnemy = false;
+		if (LocalPS && TargetPS)
+		{
+			int32 LocalTeam = LocalPS->GetTeamID();
+			int32 TargetTeam = TargetPS->GetTeamID();
 
-			OnTeamColorChanged(bIsEnemy);
+			if (LocalTeam != 255 && TargetTeam != 255)
+			{
+				bIsEnemy = (LocalTeam != TargetTeam);
+				bTeamIdentified = true;
+			}
 		}
 	}
 
-	// 2. [정식] PlayerState가 있다면 델리게이트 연결 및 정밀 판정
+	// 팀이 확인되었거나 재시도 횟수를 초과한 경우 색상 적용
+	if (bTeamIdentified || PS_RetryCount >= 10)
+	{
+		OnTeamColorChanged(bIsEnemy);
+	}
+	else
+	{
+		// 아직 팀 정보가 불분명하면 잠시 후 재시도
+		PS_RetryCount++;
+		FTimerHandle TimerHandle;
+		GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UBrawlHealthWidget::SetupPlayerStateBindings, 0.3f, false);
+		return;
+	}
+
+	// 2. PlayerState 델리게이트 연결 (Bounty, TieBreaker)
 	ABrawlPlayerState* TargetPS = TargetChar->GetPlayerState<ABrawlPlayerState>();
 	if (TargetPS)
 	{
-		if (LocalPC)
-		{
-			ABrawlPlayerState* LocalPS = LocalPC->GetPlayerState<ABrawlPlayerState>();
-			if (LocalPS)
-			{
-				uint8 MyTeamID = LocalPS->GetTeamID();
-				uint8 TargetTeamID = TargetPS->GetTeamID();
-
-				bool bIsEnemy = true;
-				
-				if (LocalPS == TargetPS) bIsEnemy = false;
-				else if (MyTeamID != 255 && TargetTeamID != 255 && MyTeamID == TargetTeamID) bIsEnemy = false;
-
-				OnTeamColorChanged(bIsEnemy);
-			}
-		}
-
 		// 델리게이트 연결 (Bounty, TieBreaker)
 		TargetPS->OnBountyChanged.AddUniqueDynamic(this, &UBrawlHealthWidget::OnBountyChanged);
 		UpdateBountyDisplay(TargetPS->GetBounty());
@@ -98,9 +117,14 @@ void UBrawlHealthWidget::SetupPlayerStateBindings()
 	}
 	else
 	{
-		// PlayerState가 올 때까지 계속 재시도
-		FTimerHandle TimerHandle;
-		GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UBrawlHealthWidget::SetupPlayerStateBindings, 0.2f, false);
+		// 소환물 등 PlayerState가 없는 경우는 여기서 종료
+		// 단, 캐릭터인데 아직 PS가 없는 경우라면 재시도
+		if (TargetChar->IsPlayerControlled() && PS_RetryCount < 10)
+		{
+			PS_RetryCount++;
+			FTimerHandle TimerHandle;
+			GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UBrawlHealthWidget::SetupPlayerStateBindings, 0.5f, false);
+		}
 	}
 }
 
@@ -159,7 +183,23 @@ void UBrawlHealthWidget::UpdateTieBreakerDisplay(bool bHasTieBreaker)
 		
 		if (BountyIcon)
 		{
-			BountyIcon->SetVisibility(bHasTieBreaker ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+			// 타이 브레이커가 있으면 숨김, 없으면 현상금 개수가 0보다 클 때만 표시
+			if (bHasTieBreaker)
+			{
+				BountyIcon->SetVisibility(ESlateVisibility::Collapsed);
+			}
+			else
+			{
+				int32 CurrentBounty = 0;
+				if (ABrawlCharacter* TargetChar = TargetCharacter.Get())
+				{
+					if (ABrawlPlayerState* PS = TargetChar->GetPlayerState<ABrawlPlayerState>())
+					{
+						CurrentBounty = PS->GetBounty();
+					}
+				}
+				BountyIcon->SetVisibility(CurrentBounty > 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+			}
 		}
 	}
 }

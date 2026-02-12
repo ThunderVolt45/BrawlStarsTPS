@@ -7,7 +7,9 @@
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "GameFramework/Pawn.h"
-#include "TimerManager.h" // 타이머 사용을 위해 추가
+#include "TimerManager.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 
 void UBrawlKillLogEntry::NativeConstruct()
 {
@@ -95,10 +97,28 @@ void UBrawlKillLogEntry::SetKillInfo(AActor* Killer, AActor* Victim)
 			if (KillerBrawler->GetTeamID() == LocalPlayer->GetTeamID())
 			{
 				BackgroundImage->SetBrushTintColor(AllyKillBackgroundColor);
+				
+				// 아군이 킬을 냈을 때 사운드 재생
+				if (GoodKillSFX)
+				{
+					UGameplayStatics::PlaySound2D(GetWorld(), GoodKillSFX);
+				}
 			}
 			else
 			{
 				BackgroundImage->SetBrushTintColor(EnemyKillBackgroundColor);
+				
+				// 적이 아군을 죽였는지 체크 (피해자가 아군 팀일 경우 BadKillSFX)
+				if (ABrawlCharacter* VictimBrawler = Cast<ABrawlCharacter>(Victim))
+				{
+					if (VictimBrawler->GetTeamID() == LocalPlayer->GetTeamID())
+					{
+						if (BadKillSFX)
+						{
+							UGameplayStatics::PlaySound2D(GetWorld(), BadKillSFX);
+						}
+					}
+				}
 			}
 		}
 		else

@@ -97,6 +97,9 @@ private:
 	float CurrentHealth = 0.0f;
 	float CurrentMaxHealth = 0.0f;
 
+	/** 재시도 횟수 관리 */
+	int32 PS_RetryCount = 0;
+
 	/** 이 위젯이 표시하고 있는 대상 캐릭터 */
 	UPROPERTY()
 	TWeakObjectPtr<class ABrawlCharacter> TargetCharacter;

@@ -83,6 +83,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
 	int32 GetTeamID() const { return TeamID; }
 
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
+	bool IsAlly(AActor* Other) const;
+
 	// --- Combat & Abilities ---
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Combat")
 	void NotifyCombatAction();
@@ -237,7 +240,7 @@ protected:
 
 protected:
 	// --- Internal Variables (Accessible to derived classes) ---
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
 	uint8 TeamID = 255;
 
 private:

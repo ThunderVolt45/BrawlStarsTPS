@@ -2,11 +2,14 @@
 
 
 #include "Components/BrawlMatchFlowComponent.h"
+
+#include "BrawlCharacter.h"
 #include "BrawlStarsTPSPlayerController.h"
-#include "BrawlGameState.h"
+#include "BrawlGameState_Knockout.h"
 #include "Blueprint/UserWidget.h"
 #include "UI/BrawlMatchStartWidget.h"
 #include "UI/BrawlMatchResultWidget.h"
+#include "UI/BrawlRoundResultWidget.h"
 #include "UI/BrawlFinalSummaryWidget.h"
 #include "UI/BrawlHUDWidget.h"
 #include "Kismet/GameplayStatics.h"
@@ -85,13 +88,104 @@ void UBrawlMatchFlowComponent::OnMatchStateChanged()
 	case EBrawlMatchState::Intro:
 		HandleIntroStarted();
 		break;
+	case EBrawlMatchState::MatchStart:
+		HandleMatchStartStarted();
+		break;
 	case EBrawlMatchState::Playing:
 		HandlePlayingStarted();
+		break;
+	case EBrawlMatchState::Intermission:
+		HandleIntermissionStarted();
 		break;
 	case EBrawlMatchState::GameOver:
 		UE_LOG(LogTemp, Warning, TEXT("MatchFlow: GameOver state detected. Waiting for RPC..."));
 		break;
 	}
+}
+
+void UBrawlMatchFlowComponent::HandleMatchStartStarted()
+{
+	UE_LOG(LogTemp, Warning, TEXT("MatchFlow: HandleMatchStartStarted. START Animation!"));
+
+	bIsOrbiting = false;
+	OwnerController = CastChecked<ABrawlStarsTPSPlayerController>(GetOwner());
+	
+	// 폰으로 시점 복귀
+	OwnerController->SetViewTargetWithBlend(OwnerController->GetPawn(), 1.0f);
+
+	if (UBrawlMatchStartWidget* StartWidget = Cast<UBrawlMatchStartWidget>(MatchStartWidget))
+	{
+		StartWidget->HideInfoText();
+		StartWidget->PlayStartAnimation();
+	}
+
+	// "START" 사운드 재생
+	PlayBGM(MatchStartBGM, 0.1f, 0.0f);
+}
+
+void UBrawlMatchFlowComponent::HandlePlayingStarted()
+{
+	UE_LOG(LogTemp, Warning, TEXT("MatchFlow: HandlePlayingStarted. Enabling Input!"));
+
+	OwnerController = CastChecked<ABrawlStarsTPSPlayerController>(GetOwner());
+
+	// 실제 게임플레이 BGM으로 전환
+	PlayBGM(GameplayBGM, 0.0f, 0.0f);
+
+	if (MatchStartWidget)
+	{
+		MatchStartWidget->RemoveFromParent();
+		MatchStartWidget = nullptr;
+	}
+
+	// 입력 활성화
+	if (OwnerController)
+	{
+		if (APawn* MyPawn = OwnerController->GetPawn())
+		{
+			MyPawn->EnableInput(OwnerController);
+		}
+		
+		FInputModeGameOnly InputMode;
+		OwnerController->SetInputMode(InputMode);
+		OwnerController->bShowMouseCursor = false;
+	}
+}
+
+void UBrawlMatchFlowComponent::HandleIntermissionStarted()
+{
+	OwnerController = CastChecked<ABrawlStarsTPSPlayerController>(GetOwner());
+	if (!OwnerController->IsLocalPlayerController()) return;
+
+	// 조작 차단 및 UI 모드 전환
+	if (APawn* MyPawn = OwnerController->GetPawn())
+	{
+		MyPawn->DisableInput(OwnerController);
+	}
+	OwnerController->SetInputMode(FInputModeUIOnly());
+	OwnerController->bShowMouseCursor = true;
+
+	ABrawlGameState_Knockout* KGS = GetWorld()->GetGameState<ABrawlGameState_Knockout>();
+	if (!KGS)
+	{
+		UE_LOG(LogTemp, Error, TEXT("MatchFlow: FAILED to get BrawlGameState_Knockout on Client!"));
+		return;
+	}
+
+	int32 Winner = KGS->GetLastRoundWinner();
+	int32 T0Wins = KGS->GetTeam0Wins();
+	int32 T1Wins = KGS->GetTeam1Wins();
+
+	UE_LOG(LogTemp, Log, TEXT("MatchFlow: Intermission Data - Winner: %d, T0: %d, T1: %d"), Winner, T0Wins, T1Wins);
+
+	// 플레이어가 승리 팀인지 확인
+	bool bIsPlayerWinner = false;
+	if (ABrawlCharacter* MyChar = Cast<ABrawlCharacter>(OwnerController->GetPawn()))
+	{
+		if (MyChar->GetTeamID() == Winner) bIsPlayerWinner = true;
+	}
+
+	StartRoundResultSequence(bIsPlayerWinner, T0Wins, T1Wins);
 }
 
 void UBrawlMatchFlowComponent::StartIntroSequence()
@@ -115,7 +209,16 @@ void UBrawlMatchFlowComponent::HandleIntroStarted()
 		{
 			if (UBrawlMatchStartWidget* StartWidget = Cast<UBrawlMatchStartWidget>(MatchStartWidget))
 			{
-				StartWidget->SetupMatchInfo(FText::FromString(TEXT("SHOWDOWN")), FText::FromString(TEXT("DEFEAT ALL OTHER BRAWLERS")));
+				FText ModeName = FText::FromString(TEXT("GAME MODE"));
+				FText ModeDesc = FText::FromString(TEXT("DEFEAT ENEMIES"));
+
+				if (ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>())
+				{
+					ModeName = GS->GetModeName();
+					ModeDesc = GS->GetModeDescription();
+				}
+
+				StartWidget->SetupMatchInfo(ModeName, ModeDesc);
 			}
 
 			if (!MatchStartWidget->IsInViewport())
@@ -148,50 +251,6 @@ void UBrawlMatchFlowComponent::HandleIntroStarted()
 			bIsOrbiting = true;
 		}
 	}, 2.0f, false);
-}
-
-void UBrawlMatchFlowComponent::HandlePlayingStarted()
-{
-	UE_LOG(LogTemp, Warning, TEXT("MatchFlow: HandlePlayingStarted. Input will be enabled shortly."));
-
-	bIsOrbiting = false;
-	OwnerController->SetViewTargetWithBlend(OwnerController->GetPawn(), 1.0f);
-
-	if (UBrawlMatchStartWidget* StartWidget = Cast<UBrawlMatchStartWidget>(MatchStartWidget))
-	{
-		StartWidget->HideInfoText();
-		StartWidget->PlayStartAnimation();
-	}
-
-	// 1. "START" 사운드 즉시 재생
-	PlayBGM(MatchStartBGM, 0.1f, 0.0f);
-
-	// 1.5초 뒤 연출 종료 시점에 실제 게임 BGM으로 전환
-	GetWorld()->GetTimerManager().SetTimer(SequenceTimerHandle, [this]()
-	{
-		// 2. 실제 게임플레이 BGM 즉시 재생 (페이드 인 없음)
-		PlayBGM(GameplayBGM, 0.0f, 0.0f);
-
-		if (MatchStartWidget)
-		{
-			MatchStartWidget->RemoveFromParent();
-			MatchStartWidget = nullptr;
-		}
-
-		if (OwnerController)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("MatchFlow: Enabling Input!"));
-
-			if (APawn* MyPawn = OwnerController->GetPawn())
-			{
-				MyPawn->EnableInput(OwnerController);
-			}
-			
-			FInputModeGameOnly InputMode;
-			OwnerController->SetInputMode(InputMode);
-			OwnerController->bShowMouseCursor = false;
-		}
-	}, 1.5f, false);
 }
 
 void UBrawlMatchFlowComponent::StartOutroSequence(bool bIsWinner, int32 Rank)
@@ -251,6 +310,48 @@ void UBrawlMatchFlowComponent::StartOutroSequence(bool bIsWinner, int32 Rank)
 	{
 		// 위젯 인스턴스 생성 실패 시 크래시 (시스템상 발생하면 안 되는 상황)
 		checkf(false, TEXT("MatchFlow: FAILED to create widget instance from class %s"), *MatchResultWidgetClass->GetName());
+	}
+}
+
+void UBrawlMatchFlowComponent::StartRoundResultSequence(bool bIsWinner, int32 Team1Score, int32 Team2Score)
+{
+	OwnerController = CastChecked<ABrawlStarsTPSPlayerController>(GetOwner());
+	if (!OwnerController->IsLocalPlayerController()) return;
+
+	UE_LOG(LogTemp, Warning, TEXT("MatchFlow: StartRoundResultSequence. Winner: %d, Score: %d-%d"), bIsWinner, Team1Score, Team2Score);
+
+	if (RoundResultWidgetClass)
+	{
+		UUserWidget* RoundWidget = CreateWidget<UUserWidget>(OwnerController, RoundResultWidgetClass);
+		if (RoundWidget)
+		{
+			UE_LOG(LogTemp, Log, TEXT("MatchFlow: RoundResultWidget Created."));
+			if (UBrawlRoundResultWidget* ResultWidget = Cast<UBrawlRoundResultWidget>(RoundWidget))
+			{
+				ResultWidget->SetupRoundResult(bIsWinner, Team1Score, Team2Score);
+			}
+
+			RoundWidget->AddToViewport(15);
+			
+			// 일정 시간 후 위젯 제거 (3초 뒤 제거)
+			FTimerHandle WidgetTimerHandle;
+			GetWorld()->GetTimerManager().SetTimer(WidgetTimerHandle, [RoundWidget]()
+			{
+				if (RoundWidget)
+				{
+					RoundWidget->RemoveFromParent();
+					UE_LOG(LogTemp, Log, TEXT("MatchFlow: RoundResultWidget Removed."));
+				}
+			}, 3.0f, false);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("MatchFlow: FAILED to create RoundResultWidget instance from Class: %s"), *RoundResultWidgetClass->GetName());
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("MatchFlow: RoundResultWidgetClass is NULL! Check BP_BrawlMatchFlowComponent."));
 	}
 }
 
