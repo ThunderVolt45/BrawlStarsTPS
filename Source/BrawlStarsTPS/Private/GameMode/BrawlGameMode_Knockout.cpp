@@ -20,9 +20,66 @@ void ABrawlGameMode_Knockout::BeginPlay()
 
 	// 봇 스폰 (3v3 설정)
 	SpawnBots();
+	
+	// 플레이어 팀 설정 및 초기 위치 보정
+	SetupTeams();
 
 	// 첫 라운드 준비
 	CurrentRound = 1;
+}
+
+void ABrawlGameMode_Knockout::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+
+	if (ABrawlPlayerState* PS = NewPlayer->GetPlayerState<ABrawlPlayerState>())
+	{
+		// 플레이어 팀 할당
+		if (PS->GetTeamID() == 255) PS->SetTeamID(0);
+		AssignedTeams.Add(NewPlayer, PS->GetTeamID());
+		
+		UE_LOG(LogTemp, Log, TEXT("Knockout: PostLogin - Player [%s] TeamID: %d"), *NewPlayer->GetName(), PS->GetTeamID());
+	}
+}
+
+void ABrawlGameMode_Knockout::SetupTeams()
+{
+	// 한 프레임 뒤에 실행하여 월드 로드 및 초기 스폰 완료를 기다림
+	GetWorldTimerManager().SetTimerForNextTick([this]()
+	{
+		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		{
+			if (APlayerController* PC = It->Get())
+			{
+				if (ABrawlPlayerState* PS = PC->GetPlayerState<ABrawlPlayerState>())
+				{
+					// 플레이어는 무조건 팀 0
+					PS->SetTeamID(0);
+					AssignedTeams.Add(PC, 0);
+					
+					if (APawn* P = PC->GetPawn())
+					{
+						// (0,0,0)에 있거나 너무 낮게 스폰된 경우 재배치 (Bounty 로직)
+						if (P->GetActorLocation().Z < -100.0f || P->GetActorLocation().IsNearlyZero(1.0f))
+						{
+							UE_LOG(LogTemp, Warning, TEXT("Knockout: Player [%s] is at invalid location %s. Restarting..."), 
+								*P->GetName(), *P->GetActorLocation().ToString());
+							RestartPlayer(PC);
+						}
+						
+						if (ABrawlCharacter* Char = Cast<ABrawlCharacter>(PC->GetPawn()))
+						{
+							Char->SetGenericTeamId(FGenericTeamId(0));
+						}
+					}
+					else
+					{
+						RestartPlayer(PC);
+					}
+				}
+			}
+		}
+	});
 }
 
 void ABrawlGameMode_Knockout::StartMatch()
@@ -54,6 +111,74 @@ void ABrawlGameMode_Knockout::StartMatch()
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("Knockout Round %d Started! Team1: %d, Team2: %d"), CurrentRound, Team1AliveCount, Team2AliveCount);
+}
+
+AActor* ABrawlGameMode_Knockout::ChoosePlayerStart_Implementation(AController* Player)
+{
+	if (!Player) return nullptr;
+
+	int32 TeamID = -1;
+
+	// 1. AssignedTeams 맵에서 먼저 확인
+	if (AssignedTeams.Contains(Player))
+	{
+		TeamID = AssignedTeams[Player];
+	}
+	// 2. PlayerState에서 확인
+	else if (ABrawlPlayerState* PS = Player->GetPlayerState<ABrawlPlayerState>())
+	{
+		TeamID = PS->GetTeamID();
+	}
+
+	// 3. 플레이어 컨트롤러인데 팀이 안 정해졌다면 기본값 0
+	if ((TeamID == -1 || TeamID == 255) && Player->IsPlayerController())
+	{
+		TeamID = 0;
+	}
+
+	TArray<AActor*> FoundSpawnPoints;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlSpawnPoint::StaticClass(), FoundSpawnPoints);
+
+	TArray<ABrawlSpawnPoint*> TeamSpawnPoints;
+	TArray<ABrawlSpawnPoint*> ValidSpawnPoints;
+
+	for (AActor* Actor : FoundSpawnPoints)
+	{
+		ABrawlSpawnPoint* SP = Cast<ABrawlSpawnPoint>(Actor);
+		if (SP && SP->SpawnPointType == EBrawlSpawnPointType::Brawler && (SP->TeamID == TeamID || SP->TeamID == 255))
+		{
+			TeamSpawnPoints.Add(SP);
+
+			// 점유 상태 확인 (캐릭터가 이미 있는지)
+			TArray<AActor*> OverlappingActors;
+			TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+			ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+			
+			if (!UKismetSystemLibrary::SphereOverlapActors(GetWorld(), SP->GetActorLocation(), 100.0f, ObjectTypes, ABrawlCharacter::StaticClass(), TArray<AActor*>(), OverlappingActors))
+			{
+				ValidSpawnPoints.Add(SP);
+			}
+		}
+	}
+
+	AActor* SelectedSpot = nullptr;
+	if (ValidSpawnPoints.Num() > 0)
+	{
+		SelectedSpot = ValidSpawnPoints[FMath::RandRange(0, ValidSpawnPoints.Num() - 1)];
+	}
+	else if (TeamSpawnPoints.Num() > 0)
+	{
+		SelectedSpot = TeamSpawnPoints[FMath::RandRange(0, TeamSpawnPoints.Num() - 1)];
+	}
+
+	if (SelectedSpot)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Knockout: Found SpawnPoint [%s] for Team %d"), *SelectedSpot->GetName(), TeamID);
+		return SelectedSpot;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Knockout: Failed to find Team %d SpawnPoint, falling back to Super"), TeamID);
+	return Super::ChoosePlayerStart_Implementation(Player);
 }
 
 void ABrawlGameMode_Knockout::NotifyKill(AActor* Killer, AActor* Victim)
@@ -154,11 +279,13 @@ void ABrawlGameMode_Knockout::ResetBrawlersForRound()
 		{
 			// 팀에 맞는 스폰 포인트 찾기
 			AController* Controller = Brawler->GetController();
-			AActor* SpawnPoint = ChoosePlayerStart(Controller);
+			AActor* SpawnPoint = FindPlayerStart(Controller);
 			
 			if (SpawnPoint)
 			{
-				Brawler->RespawnAt(SpawnPoint->GetActorLocation(), SpawnPoint->GetActorRotation());
+				// Bounty와 동일하게 95.0f 오프셋 적용
+				FVector SpawnLoc = SpawnPoint->GetActorLocation() + FVector(0, 0, 95.0f);
+				Brawler->RespawnAt(SpawnLoc, SpawnPoint->GetActorRotation());
 			}
 		}
 	}
@@ -166,73 +293,97 @@ void ABrawlGameMode_Knockout::ResetBrawlersForRound()
 
 void ABrawlGameMode_Knockout::SpawnBots()
 {
-	// 3v3 설정을 위해 팀 할당 로직 오버라이드
-	if (AICharacterClasses.Num() == 0 || MaxBots <= 0) return;
+	if (AICharacterClasses.Num() == 0) return;
 
 	TArray<AActor*> FoundSpawnPoints;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlSpawnPoint::StaticClass(), FoundSpawnPoints);
-	
-	// 셔플
+
+	auto SpawnBotForTeam = [&](int32 TeamID, ABrawlSpawnPoint* SP)
+	{
+		// 스폰 지점 점유 확인
+		TArray<AActor*> OverlappingActors;
+		TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+		ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+		if (UKismetSystemLibrary::SphereOverlapActors(GetWorld(), SP->GetActorLocation(), 
+			50.0f, ObjectTypes, ABrawlCharacter::StaticClass(), TArray<AActor*>(), OverlappingActors))
+		{
+			return false;
+		}
+
+		int32 CharIndex = FMath::RandRange(0, AICharacterClasses.Num() - 1);
+		TSubclassOf<ABrawlCharacter> BotClass = AICharacterClasses[CharIndex];
+
+		FActorSpawnParameters AICSpawnParams;
+		AICSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		
+		UClass* AICClass = ABrawlAIController::StaticClass();
+		if (BotClass.GetDefaultObject()->AIControllerClass)
+		{
+			AICClass = BotClass.GetDefaultObject()->AIControllerClass;
+		}
+
+		ABrawlAIController* AIC = GetWorld()->SpawnActor<ABrawlAIController>(AICClass, SP->GetActorLocation(), SP->GetActorRotation(), AICSpawnParams);
+		
+		if (AIC)
+		{
+			AIC->InitPlayerState();
+
+			AssignedAIClasses.Add(AIC, BotClass);
+			AssignedTeams.Add(AIC, TeamID);
+			
+			if (ABrawlPlayerState* PS = AIC->GetPlayerState<ABrawlPlayerState>())
+			{
+				PS->SetTeamID(TeamID);
+			}
+
+			RestartPlayerAtPlayerStart(AIC, SP);
+
+			if (APawn* NewPawn = AIC->GetPawn())
+			{
+				// Bounty와 동일하게 95.0f 오프셋 적용
+				FVector SpawnLocation = SP->GetActorLocation() + FVector(0, 0, 95.0f);
+				NewPawn->SetActorLocationAndRotation(SpawnLocation, SP->GetActorRotation());
+
+				if (ABrawlCharacter* NewBot = Cast<ABrawlCharacter>(NewPawn))
+				{
+					NewBot->SetGenericTeamId(FGenericTeamId(TeamID));
+					
+					if (GameModeAITree)
+					{
+						AIC->InjectGameModeSubtree(GameModeAITree);
+					}
+					// Knockout은 매치 시작 전 대기하므로 AI 활성화는 StartMatch나 NotifyMatchStarted에서 수행하거나
+					// 필요에 따라 여기서 설정 (Bounty는 바로 활성화하지 않고 MatchState 체크함)
+				}
+			}
+			return true;
+		}
+		return false;
+	};
+
+	// 3v3 설정
+	int32 Team0BotsToSpawn = 2; // 플레이어 1명 + 봇 2명
+	int32 Team1BotsToSpawn = 3; // 적 팀 3명
+
+	// 스폰 포인트를 셔플하여 랜덤하게 배정
 	for (int32 i = 0; i < FoundSpawnPoints.Num(); i++)
 	{
 		int32 RandIndex = FMath::RandRange(i, FoundSpawnPoints.Num() - 1);
 		FoundSpawnPoints.Swap(i, RandIndex);
 	}
 
-	// 플레이어 팀 ID 확인
-	int32 PlayerTeamID = 0;
-	if (APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0))
-	{
-		if (ABrawlCharacter* PlayerChar = Cast<ABrawlCharacter>(PlayerPawn))
-		{
-			// 플레이어에게 팀 ID 0 할당 (보통 그렇다고 가정)
-			if (ABrawlPlayerState* PS = PlayerChar->GetPlayerState<ABrawlPlayerState>())
-			{
-				PS->SetTeamID(0);
-				PlayerTeamID = 0;
-			}
-		}
-	}
-
-	int32 Team0Count = 1; // 플레이어 포함
-	int32 Team1Count = 0;
-	int32 MaxTeamSize = 3;
-
-	int32 SpawnedCount = 0;
 	for (AActor* Actor : FoundSpawnPoints)
 	{
-		if (SpawnedCount >= MaxBots) break;
+		ABrawlSpawnPoint* SP = Cast<ABrawlSpawnPoint>(Actor);
+		if (!SP || SP->SpawnPointType != EBrawlSpawnPointType::Brawler) continue;
 
-		if (ABrawlSpawnPoint* SpawnPoint = Cast<ABrawlSpawnPoint>(Actor))
+		if (SP->TeamID == 0 && Team0BotsToSpawn > 0)
 		{
-			if (SpawnPoint->SpawnPointType == EBrawlSpawnPointType::Brawler)
-			{
-				// 스폰 포인트의 팀 ID에 맞춰서 스폰
-				int32 TargetTeam = SpawnPoint->TeamID;
-				if (TargetTeam == 255) continue; // 공용 포인트는 무시 (Knockout은 팀 포인트 필수)
-
-				if (TargetTeam == 0 && Team0Count >= MaxTeamSize) continue;
-				if (TargetTeam == 1 && Team1Count >= MaxTeamSize) continue;
-
-				TSubclassOf<ABrawlCharacter> BotClass = AICharacterClasses[FMath::RandRange(0, AICharacterClasses.Num() - 1)];
-				if (BotClass)
-				{
-					FActorSpawnParameters SpawnParams;
-					SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-					
-					ABrawlCharacter* NewBot = GetWorld()->SpawnActor<ABrawlCharacter>(BotClass, SpawnPoint->GetActorLocation(), SpawnPoint->GetActorRotation(), SpawnParams);
-					if (NewBot)
-					{
-						NewBot->SpawnDefaultController();
-						ConfigureAI(NewBot->GetController(), TargetTeam);
-						
-						if (TargetTeam == 0) Team0Count++;
-						else Team1Count++;
-						
-						SpawnedCount++;
-					}
-				}
-			}
+			if (SpawnBotForTeam(0, SP)) Team0BotsToSpawn--;
+		}
+		else if (SP->TeamID == 1 && Team1BotsToSpawn > 0)
+		{
+			if (SpawnBotForTeam(1, SP)) Team1BotsToSpawn--;
 		}
 	}
 }

@@ -18,5 +18,6 @@ enum class EBrawlGameModeType : uint8
 	GemGrab UMETA(DisplayName = "Gem Grab"),
 	BrawlBall UMETA(DisplayName = "Brawl Ball"),
 	Heist UMETA(DisplayName = "Heist"),
-	Bounty UMETA(DisplayName = "Bounty")
+	Bounty UMETA(DisplayName = "Bounty"),
+	KnockOut UMETA(DisplayName = "Knock Out")
 };
