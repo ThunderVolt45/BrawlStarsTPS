@@ -194,12 +194,8 @@ AActor* ABrawlGameMode_Knockout::ChoosePlayerStart_Implementation(AController* P
 		{
 			TeamSpawnPoints.Add(SP);
 
-			// 점유 상태 확인 (캐릭터가 이미 있는지)
-			TArray<AActor*> OverlappingActors;
-			TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
-			ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
-			
-			if (!UKismetSystemLibrary::SphereOverlapActors(GetWorld(), SP->GetActorLocation(), 100.0f, ObjectTypes, ABrawlCharacter::StaticClass(), TArray<AActor*>(), OverlappingActors))
+			// 신규 IsOccupied 함수 사용
+			if (!SP->IsOccupied(50.0f))
 			{
 				ValidSpawnPoints.Add(SP);
 			}

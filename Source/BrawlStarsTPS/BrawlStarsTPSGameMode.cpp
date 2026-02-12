@@ -109,7 +109,12 @@ AActor* ABrawlStarsTPSGameMode::ChoosePlayerStart_Implementation(AController* Pl
 				{
 					continue;
 				}
-				ValidSpawnPoints.Add(SpawnPoint);
+
+				// 신규 IsOccupied 함수 사용
+				if (!SpawnPoint->IsOccupied(100.0f))
+				{
+					ValidSpawnPoints.Add(SpawnPoint);
+				}
 			}
 		}
 	}
@@ -118,6 +123,24 @@ AActor* ABrawlStarsTPSGameMode::ChoosePlayerStart_Implementation(AController* Pl
 	{
 		int32 RandIndex = FMath::RandRange(0, ValidSpawnPoints.Num() - 1);
 		return ValidSpawnPoints[RandIndex];
+	}
+
+	// 모든 지점이 점유되었다면 팀 포인트 중 하나 랜덤 선택 (백업)
+	TArray<ABrawlSpawnPoint*> FallbackPoints;
+	for (AActor* Actor : FoundSpawnPoints)
+	{
+		if (ABrawlSpawnPoint* SP = Cast<ABrawlSpawnPoint>(Actor))
+		{
+			if (SP->SpawnPointType == EBrawlSpawnPointType::Brawler && (TargetTeamID == -1 || SP->TeamID == TargetTeamID || SP->TeamID == 255))
+			{
+				FallbackPoints.Add(SP);
+			}
+		}
+	}
+
+	if (FallbackPoints.Num() > 0)
+	{
+		return FallbackPoints[FMath::RandRange(0, FallbackPoints.Num() - 1)];
 	}
 
 	return Super::ChoosePlayerStart_Implementation(Player);
@@ -196,10 +219,8 @@ void ABrawlStarsTPSGameMode::SpawnBots()
 		{
 			if (SpawnPoint->SpawnPointType == EBrawlSpawnPointType::Brawler)
 			{
-				// Skip if occupied (very basic check)
-				TArray<AActor*> Overlapping;
-				SpawnPoint->GetOverlappingActors(Overlapping, ABrawlCharacter::StaticClass());
-				if (Overlapping.Num() > 0) continue;
+				// 신규 IsOccupied 함수 사용
+				if (SpawnPoint->IsOccupied(100.0f)) continue;
 
 				TSubclassOf<ABrawlCharacter> BotClass = AICharacterClasses[FMath::RandRange(0, AICharacterClasses.Num() - 1)];
 				if (BotClass)

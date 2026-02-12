@@ -33,4 +33,8 @@ public:
 	// (선택 사항) 브롤러인 경우 팀 ID 지정
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Spawn", meta = (EditCondition = "SpawnPointType == EBrawlSpawnPointType::Brawler"))
 	int32 TeamID = 0;
+
+	/** 현재 이 위치가 다른 브롤러나 오브젝트에 의해 점유되어 있는지 확인 */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Spawn")
+	bool IsOccupied(float CheckRadius = 100.0f) const;
 };

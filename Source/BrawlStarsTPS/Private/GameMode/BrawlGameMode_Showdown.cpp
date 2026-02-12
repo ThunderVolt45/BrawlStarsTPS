@@ -145,6 +145,9 @@ void ABrawlGameMode_Showdown::SpawnPowerCubeBoxes()
 			{
 				if (SpawnedCount >= MaxPowerCubeBoxes) break;
 
+				// 신규 IsOccupied 함수 사용 (상자 크기를 고려해 반경 조정 가능)
+				if (SpawnPoint->IsOccupied(50.0f)) continue;
+
 				FActorSpawnParameters SpawnParams;
 				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
