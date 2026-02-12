@@ -1,16 +1,22 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #include "BrawlStarsTPSGameMode.h"
 #include "UObject/ConstructorHelpers.h"
 #include "BrawlGameState.h"
 #include "BrawlGameInstance.h"
 #include "BrawlCharacter.h"
 #include "Data/BrawlerClassData.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameMode/BrawlSpawnPoint.h"
+#include "BrawlPlayerState.h"
+#include "AI/BrawlAIController.h"
+#include "Environment/BrawlPoisonZone.h"
+#include "AbilitySystemComponent.h"
+#include "BrawlStarsTPSPlayerController.h"
 
 ABrawlStarsTPSGameMode::ABrawlStarsTPSGameMode()
 {
-	// GameState 클래스 설정
+	// GameState 및 PlayerState 클래스 설정
 	GameStateClass = ABrawlGameState::StaticClass();
+	PlayerStateClass = ABrawlPlayerState::StaticClass();
 
 	// set default pawn class to our Blueprinted character
 	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnBPClass(TEXT("/Game/ThirdPerson/Blueprints/BP_ThirdPersonCharacter"));
@@ -18,6 +24,26 @@ ABrawlStarsTPSGameMode::ABrawlStarsTPSGameMode()
 	{
 		DefaultPawnClass = PlayerPawnBPClass.Class;
 	}
+
+	PrimaryActorTick.bCanEverTick = true;
+}
+
+void ABrawlStarsTPSGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
+	{
+		GS->SetMatchState(EBrawlMatchState::Intro);
+
+		FTimerHandle StartTimerHandle;
+		GetWorldTimerManager().SetTimer(StartTimerHandle, this, &ABrawlStarsTPSGameMode::StartMatch, StartDelay, false);
+	}
+}
+
+void ABrawlStarsTPSGameMode::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
 }
 
 UClass* ABrawlStarsTPSGameMode::GetDefaultPawnClassForController_Implementation(AController* InController)
@@ -44,22 +70,223 @@ UClass* ABrawlStarsTPSGameMode::GetDefaultPawnClassForController_Implementation(
 	return Super::GetDefaultPawnClassForController_Implementation(InController);
 }
 
+AActor* ABrawlStarsTPSGameMode::ChoosePlayerStart_Implementation(AController* Player)
+{
+	int32 TargetTeamID = -1;
+	if (ABrawlPlayerState* PS = Player->GetPlayerState<ABrawlPlayerState>())
+	{
+		TargetTeamID = PS->GetTeamID();
+	}
+
+	TArray<AActor*> FoundSpawnPoints;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlSpawnPoint::StaticClass(), FoundSpawnPoints);
+	
+	TArray<ABrawlSpawnPoint*> ValidSpawnPoints;
+	for (AActor* Actor : FoundSpawnPoints)
+	{
+		if (ABrawlSpawnPoint* SpawnPoint = Cast<ABrawlSpawnPoint>(Actor))
+		{
+			if (SpawnPoint->SpawnPointType == EBrawlSpawnPointType::Brawler)
+			{
+				// 팀 ID가 지정된 경우 필터링
+				if (TargetTeamID != -1 && SpawnPoint->TeamID != TargetTeamID && SpawnPoint->TeamID != 255)
+				{
+					continue;
+				}
+				ValidSpawnPoints.Add(SpawnPoint);
+			}
+		}
+	}
+
+	if (ValidSpawnPoints.Num() > 0)
+	{
+		int32 RandIndex = FMath::RandRange(0, ValidSpawnPoints.Num() - 1);
+		return ValidSpawnPoints[RandIndex];
+	}
+
+	return Super::ChoosePlayerStart_Implementation(Player);
+}
+
+void ABrawlStarsTPSGameMode::StartMatch()
+{
+	if (bHasMatchStarted) return;
+	bHasMatchStarted = true;
+
+	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
+	{
+		GS->SetMatchState(EBrawlMatchState::Playing);
+	}
+}
+
+void ABrawlStarsTPSGameMode::EndGame(bool bIsPlayerWinner, int32 RankOrTeam)
+{
+	GetWorld()->GetTimerManager().ClearTimer(PoisonUpdateTimerHandle);
+	GetWorld()->GetTimerManager().ClearTimer(PoisonDamageTimerHandle);
+
+	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
+	{
+		GS->SetMatchState(EBrawlMatchState::GameOver);
+	}
+
+	if (ABrawlStarsTPSPlayerController* PC = Cast<ABrawlStarsTPSPlayerController>(UGameplayStatics::GetPlayerController(this, 0)))
+	{
+		PC->ShowMatchResultUI(bIsPlayerWinner, RankOrTeam);
+	}
+}
+
 void ABrawlStarsTPSGameMode::NotifyKill(AActor* Killer, AActor* Victim)
 {
-	// 1. 서버 전용 로직 (점수 계산 등) - 필요 시 추가
-
-	// 2. 모든 클라이언트에게 알림
 	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
 	{
 		GS->NotifyBrawlerKilled(Killer, Victim);
-		UE_LOG(LogGameMode, Log, TEXT("GameMode: Called NotifyBrawlerKilled on GameState."));
-	}
-	else
-	{
-		UE_LOG(LogGameMode, Error, TEXT("GameMode: Failed to cast GameState to ABrawlGameState!"));
 	}
 	
 	UE_LOG(LogGameMode, Log, TEXT("Kill Confirmed: [%s] killed [%s]"), 
 		Killer ? *Killer->GetName() : TEXT("Environment"), 
 		Victim ? *Victim->GetName() : TEXT("Unknown"));
+}
+
+void ABrawlStarsTPSGameMode::SpawnBots()
+{
+	if (AICharacterClasses.Num() == 0 || MaxBots <= 0) return;
+
+	TArray<AActor*> FoundSpawnPoints;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlSpawnPoint::StaticClass(), FoundSpawnPoints);
+	
+	// Shuffle spawn points
+	for (int32 i = 0; i < FoundSpawnPoints.Num(); i++)
+	{
+		int32 RandIndex = FMath::RandRange(i, FoundSpawnPoints.Num() - 1);
+		FoundSpawnPoints.Swap(i, RandIndex);
+	}
+
+	int32 SpawnedCount = 0;
+	for (AActor* Actor : FoundSpawnPoints)
+	{
+		if (SpawnedCount >= MaxBots) break;
+
+		if (ABrawlSpawnPoint* SpawnPoint = Cast<ABrawlSpawnPoint>(Actor))
+		{
+			if (SpawnPoint->SpawnPointType == EBrawlSpawnPointType::Brawler)
+			{
+				// Skip if occupied (very basic check)
+				TArray<AActor*> Overlapping;
+				SpawnPoint->GetOverlappingActors(Overlapping, ABrawlCharacter::StaticClass());
+				if (Overlapping.Num() > 0) continue;
+
+				TSubclassOf<ABrawlCharacter> BotClass = AICharacterClasses[FMath::RandRange(0, AICharacterClasses.Num() - 1)];
+				if (BotClass)
+				{
+					FActorSpawnParameters SpawnParams;
+					SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+					
+					ABrawlCharacter* NewBot = GetWorld()->SpawnActor<ABrawlCharacter>(BotClass, SpawnPoint->GetActorLocation(), SpawnPoint->GetActorRotation(), SpawnParams);
+					if (NewBot)
+					{
+						NewBot->SpawnDefaultController();
+						ConfigureAI(NewBot->GetController(), SpawnPoint->TeamID);
+						SpawnedCount++;
+					}
+				}
+			}
+		}
+	}
+}
+
+void ABrawlStarsTPSGameMode::ConfigureAI(AController* AIController, int32 TeamID)
+{
+	if (AIController == nullptr) return;
+
+	if (ABrawlCharacter* BrawlChar = Cast<ABrawlCharacter>(AIController->GetPawn()))
+	{
+		BrawlChar->SetGenericTeamId(FGenericTeamId(TeamID));
+	}
+
+	if (ABrawlAIController* BrawlAI = Cast<ABrawlAIController>(AIController))
+	{
+		if (GameModeAITree)
+		{
+			BrawlAI->InjectGameModeSubtree(GameModeAITree);
+		}
+	}
+}
+
+void ABrawlStarsTPSGameMode::StartPoisonLogic()
+{
+	CurrentSafeZoneRadius = InitialSafeZoneRadius;
+
+	if (PoisonZoneClass)
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		PoisonZoneInstance = GetWorld()->SpawnActor<ABrawlPoisonZone>(PoisonZoneClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+
+		if (PoisonZoneInstance)
+		{
+			PoisonZoneInstance->SetZoneRadius(CurrentSafeZoneRadius);
+		}
+	}
+
+	if (PoisonStartDelay > 0.0f)
+	{
+		FTimerHandle StartDelayHandle;
+		GetWorldTimerManager().SetTimer(StartDelayHandle, [this]()
+		{
+			GetWorldTimerManager().SetTimer(PoisonUpdateTimerHandle, this, &ABrawlStarsTPSGameMode::UpdatePoisonZone, 0.1f, true);
+			GetWorldTimerManager().SetTimer(PoisonDamageTimerHandle, this, &ABrawlStarsTPSGameMode::CheckPoisonDamage, PoisonDamageInterval, true);
+		}, PoisonStartDelay, false);
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(PoisonUpdateTimerHandle, this, &ABrawlStarsTPSGameMode::UpdatePoisonZone, 0.1f, true);
+		GetWorldTimerManager().SetTimer(PoisonDamageTimerHandle, this, &ABrawlStarsTPSGameMode::CheckPoisonDamage, PoisonDamageInterval, true);
+	}
+}
+
+void ABrawlStarsTPSGameMode::UpdatePoisonZone()
+{
+	CurrentSafeZoneRadius -= PoisonShrinkSpeed * 0.1f;
+	if (CurrentSafeZoneRadius < MinSafeZoneRadius)
+	{
+		CurrentSafeZoneRadius = MinSafeZoneRadius;
+	}
+
+	if (PoisonZoneInstance)
+	{
+		PoisonZoneInstance->SetZoneRadius(CurrentSafeZoneRadius);
+	}
+}
+
+void ABrawlStarsTPSGameMode::CheckPoisonDamage()
+{
+	TArray<AActor*> FoundBrawlers;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlCharacter::StaticClass(), FoundBrawlers);
+
+	for (AActor* Actor : FoundBrawlers)
+	{
+		if (ABrawlCharacter* Brawler = Cast<ABrawlCharacter>(Actor))
+		{
+			if (Brawler->IsDead()) continue;
+
+			FVector Loc = Brawler->GetActorLocation();
+			float DistX = FMath::Abs(Loc.X);
+			float DistY = FMath::Abs(Loc.Y);
+			
+			if (DistX > CurrentSafeZoneRadius || DistY > CurrentSafeZoneRadius)
+			{
+				if (UAbilitySystemComponent* ASC = Brawler->GetAbilitySystemComponent())
+				{
+					FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+					ContextHandle.AddInstigator(PoisonZoneInstance, PoisonZoneInstance);
+
+					FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(PoisonDamageEffectClass, 1.0f, ContextHandle);
+					if (SpecHandle.IsValid())
+					{
+						SpecHandle.Data.Get()->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Damage")), PoisonDamage);
+						ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+					}
+				}
+			}
+		}
+	}
 }

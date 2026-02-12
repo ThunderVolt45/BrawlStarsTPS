@@ -286,9 +286,9 @@ void ABrawlGameMode_Bounty::SpawnBots()
 			{
 				NewBot->SetGenericTeamId(FGenericTeamId(TeamID));
 				
-				if (BountyAITree)
+				if (GameModeAITree)
 				{
-					AIC->InjectGameModeSubtree(BountyAITree);
+					AIC->InjectGameModeSubtree(GameModeAITree);
 				}
 
 				// 행동 트리 시작
@@ -496,9 +496,10 @@ void ABrawlGameMode_Bounty::RequestRespawn(AController* Controller)
 					if (ABrawlCharacter* NewBot = Cast<ABrawlCharacter>(NewPawn))
 					{
 						NewBot->SetGenericTeamId(FGenericTeamId(TeamID));
-						if (BountyAITree) NewAIC->InjectGameModeSubtree(BountyAITree);
-						
-						// 매치가 진행 중일 때만 행동 트리 시작
+
+						if (GameModeAITree) NewAIC->InjectGameModeSubtree(GameModeAITree);
+
+						// 매치 가 진행 중일 때만 행동 트리 시작
 						if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
 						{
 							if (GS->IsMatchInProgress())
@@ -607,63 +608,51 @@ void ABrawlGameMode_Bounty::CheckWinCondition()
 	int32 Score0 = GS->GetTeamScore(0);
 	int32 Score1 = GS->GetTeamScore(1);
 
+	// 플레이어 팀 ID 확인 (보통 0)
+	int32 PlayerTeam = 0;
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		if (ABrawlPlayerState* PS = PC->GetPlayerState<ABrawlPlayerState>())
+		{
+			PlayerTeam = PS->GetTeamID();
+		}
+	}
+
 	// 1. 점수 선점 체크
 	if (Score0 >= TargetScore)
 	{
-		EndGame(0);
+		EndGame(PlayerTeam == 0, 0);
 		return;
 	}
 	if (Score1 >= TargetScore)
 	{
-		EndGame(1);
+		EndGame(PlayerTeam == 1, 1);
 		return;
 	}
 
 	// 2. 시간 종료 체크
 	if (GS->GetRemainingTime() <= 0)
 	{
-		if (Score0 > Score1) EndGame(0);
-		else if (Score1 > Score0) EndGame(1);
+		int32 WinningTeam = 0;
+		if (Score0 > Score1) WinningTeam = 0;
+		else if (Score1 > Score0) WinningTeam = 1;
 		else
 		{
 			// 동점 시 타이 브레이커 체크
 			if (TieBreakerOwnerState)
 			{
-				EndGame(TieBreakerOwnerState->GetTeamID());
-			}
-			else
-			{
-				EndGame(0); // 기권? 보통 타이 브레이커가 반드시 스폰되므로 여기까지 안옴
+				WinningTeam = TieBreakerOwnerState->GetTeamID();
 			}
 		}
+		EndGame(PlayerTeam == WinningTeam, WinningTeam);
 	}
 }
 
-void ABrawlGameMode_Bounty::EndGame(int32 WinningTeam)
+void ABrawlGameMode_Bounty::EndGame(bool bIsPlayerWinner, int32 WinningTeam)
 {
 	GetWorldTimerManager().ClearTimer(MatchTimerHandle);
 
-	if (ABrawlGameState_Bounty* GS = GetGameState<ABrawlGameState_Bounty>())
-	{
-		GS->SetMatchState(EBrawlMatchState::GameOver);
-	}
-
-	// 승패 결과 알림
-	bool bIsPlayerWinner = false;
-	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
-	if (PC)
-	{
-		ABrawlPlayerState* PS = PC->GetPlayerState<ABrawlPlayerState>();
-		if (PS && PS->GetTeamID() == WinningTeam)
-		{
-			bIsPlayerWinner = true;
-		}
-		
-		if (ABrawlStarsTPSPlayerController* BrawlPC = Cast<ABrawlStarsTPSPlayerController>(PC))
-		{
-			BrawlPC->ShowMatchResultUI(bIsPlayerWinner, bIsPlayerWinner ? 1 : 2);
-		}
-	}
+	Super::EndGame(bIsPlayerWinner, WinningTeam);
 
 	UE_LOG(LogTemp, Log, TEXT("Bounty Match Over! Winning Team: %d"), WinningTeam);
 }
