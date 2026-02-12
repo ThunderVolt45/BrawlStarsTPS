@@ -6,6 +6,8 @@
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
 #include "BrawlGameInstance.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Components/SizeBox.h"
 #include "UI/BrawlLobbyPlayerController.h"
 
 void UBrawlGameModeButton::NativeConstruct()
@@ -27,7 +29,7 @@ void UBrawlGameModeButton::NativePreConstruct()
 	RefreshWidget();
 }
 
-void UBrawlGameModeButton::InitializeButton(FName InRowId, FText InModeName, TSoftObjectPtr<UTexture2D> InModeIcon, FText InMapName, TSoftObjectPtr<UTexture2D> InThemeIcon)
+void UBrawlGameModeButton::InitializeButton(FName InRowId, FText InModeName, TSoftObjectPtr<UTexture2D> InModeIcon, FText InMapName, TSoftObjectPtr<UTexture2D> InThemeIcon, FVector2D InImageIconSize)
 {
 	ModeRowId = InRowId;
 	ModeName = InModeName;

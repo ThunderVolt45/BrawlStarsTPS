@@ -23,7 +23,7 @@ class BRAWLSTARSTPS_API UBrawlGameModeButton : public UBrawlUserWidget
 public:
 	/** 위젯 초기화 및 데이터 설정 */
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
-	void InitializeButton(FName InRowId, FText InModeName, TSoftObjectPtr<UTexture2D> InModeIcon, FText InMapName, TSoftObjectPtr<UTexture2D> InThemeIcon);
+	void InitializeButton(FName InRowId, FText InModeName, TSoftObjectPtr<UTexture2D> InModeIcon, FText InMapName, TSoftObjectPtr<UTexture2D> InThemeIcon, FVector2D InImageIconSize = FVector2D(64.0f, 64.0f));
 
 	/** UI 요소들을 현재 변수값에 맞춰 갱신 */
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
