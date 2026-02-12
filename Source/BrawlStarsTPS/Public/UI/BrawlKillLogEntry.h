@@ -57,6 +57,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Animation")
 	FVector2D SlideOffset = FVector2D(500.0f, 0.0f);
 
+	// --- SFX ---
+	// 아군이 적을 처치했을 때 재생할 사운드
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Sound")
+	TObjectPtr<USoundBase> GoodKillSFX;
+
+	// 적이 아군을 처치했을 때 재생할 사운드
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Sound")
+	TObjectPtr<USoundBase> BadKillSFX;
+
 public:
 	// 킬 정보 설정 (액터 전달)
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
