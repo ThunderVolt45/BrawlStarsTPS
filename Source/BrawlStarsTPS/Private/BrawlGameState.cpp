@@ -66,30 +66,11 @@ void ABrawlGameState::SetAllAIActive(bool bActive)
 		TArray<AActor*> FoundAI;
 		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlAIController::StaticClass(), FoundAI);
 
-		if (bActive)
+		for (AActor* Actor : FoundAI)
 		{
-			// 1.5초 대기 후 AI 활성화
-			FTimerHandle TimerHandle;
-			GetWorldTimerManager().SetTimer(TimerHandle, [FoundAI]()
+			if (ABrawlAIController* AIC = Cast<ABrawlAIController>(Actor))
 			{
-				for (AActor* Actor : FoundAI)
-				{
-					if (ABrawlAIController* AIC = Cast<ABrawlAIController>(Actor))
-					{
-						AIC->SetAIActive(true);
-					}
-				}
-			}, 1.5f, false);
-		}
-		else
-		{
-			// 즉시 비활성화
-			for (AActor* Actor : FoundAI)
-			{
-				if (ABrawlAIController* AIC = Cast<ABrawlAIController>(Actor))
-				{
-					AIC->SetAIActive(false);
-				}
+				AIC->SetAIActive(bActive);
 			}
 		}
 	}

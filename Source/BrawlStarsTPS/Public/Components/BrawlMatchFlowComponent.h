@@ -50,6 +50,7 @@ protected:
 
 	/** 각 상태별 연출 시작 함수 */
 	void HandleIntroStarted();
+	void HandleMatchStartStarted();
 	void HandlePlayingStarted();
 	void HandleIntermissionStarted();
 

@@ -53,10 +53,20 @@ void ABrawlGameMode_Bounty::StartMatch()
 
 	if (ABrawlGameState_Bounty* GS = GetGameState<ABrawlGameState_Bounty>())
 	{
-		GS->SetMatchState(EBrawlMatchState::Playing);
-		
-		// 매치 타이머 시작
-		GetWorldTimerManager().SetTimer(MatchTimerHandle, this, &ABrawlGameMode_Bounty::UpdateMatchTimer, 1.0f, true);
+		// 1. MatchStart 상태로 전이
+		GS->SetMatchState(EBrawlMatchState::MatchStart);
+
+		// 2. 1.5초 뒤 Playing 상태로 전이 및 타이머 시작
+		FTimerHandle PlayingStateTimerHandle;
+		GetWorldTimerManager().SetTimer(PlayingStateTimerHandle, [this, GS]()
+		{
+			if (GS)
+			{
+				GS->SetMatchState(EBrawlMatchState::Playing);
+				// 매치 타이머 시작
+				GetWorldTimerManager().SetTimer(MatchTimerHandle, this, &ABrawlGameMode_Bounty::UpdateMatchTimer, 1.0f, true);
+			}
+		}, 1.5f, false);
 	}
 }
 

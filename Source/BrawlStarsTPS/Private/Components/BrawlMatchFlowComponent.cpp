@@ -88,6 +88,9 @@ void UBrawlMatchFlowComponent::OnMatchStateChanged()
 	case EBrawlMatchState::Intro:
 		HandleIntroStarted();
 		break;
+	case EBrawlMatchState::MatchStart:
+		HandleMatchStartStarted();
+		break;
 	case EBrawlMatchState::Playing:
 		HandlePlayingStarted();
 		break;
@@ -97,6 +100,55 @@ void UBrawlMatchFlowComponent::OnMatchStateChanged()
 	case EBrawlMatchState::GameOver:
 		UE_LOG(LogTemp, Warning, TEXT("MatchFlow: GameOver state detected. Waiting for RPC..."));
 		break;
+	}
+}
+
+void UBrawlMatchFlowComponent::HandleMatchStartStarted()
+{
+	UE_LOG(LogTemp, Warning, TEXT("MatchFlow: HandleMatchStartStarted. START Animation!"));
+
+	bIsOrbiting = false;
+	OwnerController = CastChecked<ABrawlStarsTPSPlayerController>(GetOwner());
+	
+	// 폰으로 시점 복귀
+	OwnerController->SetViewTargetWithBlend(OwnerController->GetPawn(), 1.0f);
+
+	if (UBrawlMatchStartWidget* StartWidget = Cast<UBrawlMatchStartWidget>(MatchStartWidget))
+	{
+		StartWidget->HideInfoText();
+		StartWidget->PlayStartAnimation();
+	}
+
+	// "START" 사운드 재생
+	PlayBGM(MatchStartBGM, 0.1f, 0.0f);
+}
+
+void UBrawlMatchFlowComponent::HandlePlayingStarted()
+{
+	UE_LOG(LogTemp, Warning, TEXT("MatchFlow: HandlePlayingStarted. Enabling Input!"));
+
+	OwnerController = CastChecked<ABrawlStarsTPSPlayerController>(GetOwner());
+
+	// 실제 게임플레이 BGM으로 전환
+	PlayBGM(GameplayBGM, 0.0f, 0.0f);
+
+	if (MatchStartWidget)
+	{
+		MatchStartWidget->RemoveFromParent();
+		MatchStartWidget = nullptr;
+	}
+
+	// 입력 활성화
+	if (OwnerController)
+	{
+		if (APawn* MyPawn = OwnerController->GetPawn())
+		{
+			MyPawn->EnableInput(OwnerController);
+		}
+		
+		FInputModeGameOnly InputMode;
+		OwnerController->SetInputMode(InputMode);
+		OwnerController->bShowMouseCursor = false;
 	}
 }
 
@@ -190,50 +242,6 @@ void UBrawlMatchFlowComponent::HandleIntroStarted()
 			bIsOrbiting = true;
 		}
 	}, 2.0f, false);
-}
-
-void UBrawlMatchFlowComponent::HandlePlayingStarted()
-{
-	UE_LOG(LogTemp, Warning, TEXT("MatchFlow: HandlePlayingStarted. Input will be enabled shortly."));
-
-	bIsOrbiting = false;
-	OwnerController->SetViewTargetWithBlend(OwnerController->GetPawn(), 1.0f);
-
-	if (UBrawlMatchStartWidget* StartWidget = Cast<UBrawlMatchStartWidget>(MatchStartWidget))
-	{
-		StartWidget->HideInfoText();
-		StartWidget->PlayStartAnimation();
-	}
-
-	// 1. "START" 사운드 즉시 재생
-	PlayBGM(MatchStartBGM, 0.1f, 0.0f);
-
-	// 1.5초 뒤 연출 종료 시점에 실제 게임 BGM으로 전환
-	GetWorld()->GetTimerManager().SetTimer(SequenceTimerHandle, [this]()
-	{
-		// 2. 실제 게임플레이 BGM 즉시 재생 (페이드 인 없음)
-		PlayBGM(GameplayBGM, 0.0f, 0.0f);
-
-		if (MatchStartWidget)
-		{
-			MatchStartWidget->RemoveFromParent();
-			MatchStartWidget = nullptr;
-		}
-
-		if (OwnerController)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("MatchFlow: Enabling Input!"));
-
-			if (APawn* MyPawn = OwnerController->GetPawn())
-			{
-				MyPawn->EnableInput(OwnerController);
-			}
-			
-			FInputModeGameOnly InputMode;
-			OwnerController->SetInputMode(InputMode);
-			OwnerController->bShowMouseCursor = false;
-		}
-	}, 1.5f, false);
 }
 
 void UBrawlMatchFlowComponent::StartOutroSequence(bool bIsWinner, int32 Rank)

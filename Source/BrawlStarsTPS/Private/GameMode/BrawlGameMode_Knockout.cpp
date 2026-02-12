@@ -87,11 +87,25 @@ void ABrawlGameMode_Knockout::SetupTeams()
 void ABrawlGameMode_Knockout::StartMatch()
 {
 	if (bHasMatchStarted) return;
+	bHasMatchStarted = true;
 	
-	Super::StartMatch();
+	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
+	{
+		// 1. MatchStart 상태로 전이 (START 연출)
+		GS->SetMatchState(EBrawlMatchState::MatchStart);
 
-	// 독구름 로직 시작
-	StartPoisonLogic();
+		// 2. 연출 시간 뒤 Playing 상태로 전이
+		FTimerHandle PlayingStateTimerHandle;
+		GetWorldTimerManager().SetTimer(PlayingStateTimerHandle, [this, GS]()
+		{
+			if (GS)
+			{
+				GS->SetMatchState(EBrawlMatchState::Playing);
+				// 첫 라운드도 Playing 상태 진입 시 독구름 시작
+				StartPoisonLogic();
+			}
+		}, 1.5f, false);
+	}
 
 	// 생존자 수 초기화
 	Team1AliveCount = 0;
@@ -300,9 +314,15 @@ void ABrawlGameMode_Knockout::StartNewRound()
 {
 	ResetBrawlersForRound();
 	
-	// StartMatch 호출 (Intro 시간 고려)
-	FTimerHandle StartTimerHandle;
-	GetWorldTimerManager().SetTimer(StartTimerHandle, this, &ABrawlGameMode_Knockout::StartMatch, StartDelay, false);
+	// 다음 라운드는 "START" 연출 없이 바로 Playing으로 즉시 전이
+	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
+	{
+		bHasMatchStarted = true;
+		GS->SetMatchState(EBrawlMatchState::Playing);
+			
+		// 독구름 다시 시작
+		StartPoisonLogic();
+	}
 }
 
 void ABrawlGameMode_Knockout::ResetBrawlersForRound()

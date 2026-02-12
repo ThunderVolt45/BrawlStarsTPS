@@ -114,7 +114,18 @@ void ABrawlStarsTPSGameMode::StartMatch()
 
 	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
 	{
-		GS->SetMatchState(EBrawlMatchState::Playing);
+		// 1. 먼저 MatchStart 상태로 전이 (START 연출)
+		GS->SetMatchState(EBrawlMatchState::MatchStart);
+
+		// 2. 연출 시간(1.5초) 뒤에 실제 Playing 상태로 전이
+		FTimerHandle PlayingStateTimerHandle;
+		GetWorldTimerManager().SetTimer(PlayingStateTimerHandle, [this, GS]()
+		{
+			if (GS)
+			{
+				GS->SetMatchState(EBrawlMatchState::Playing);
+			}
+		}, 1.5f, false);
 	}
 }
 
