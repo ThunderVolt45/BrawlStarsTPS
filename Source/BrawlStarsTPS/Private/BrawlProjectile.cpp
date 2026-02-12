@@ -55,7 +55,10 @@ void ABrawlProjectile::InitializeProjectile(const FGameplayEffectSpecHandle& InD
 	
 	if (!DamageSpecHandle.IsValid())
 	{
-		UE_LOG(LogTemp, Error, TEXT("Projectile Initialized with INVALID Damage Spec!"));
+		UE_LOG(LogTemp, Error, TEXT("Projectile [%s] Initialized with INVALID Damage Spec! Make sure DamageEffectClass is assigned in the calling Ability."), *GetName());
+		
+		// 개발 중 에디터에서 즉시 문제를 인지할 수 있도록 ensure 추가
+		ensureAlwaysMsgf(false, TEXT("Projectile [%s] has no valid Damage Spec. Damage will not be applied."), *GetName());
 	}
 }
 
@@ -301,7 +304,7 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 		{
 			if (DamageSpecHandle.IsValid())
 			{
-				FActiveGameplayEffectHandle ActiveGE = TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpecHandle.Data.Get());
+				TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpecHandle.Data.Get());
 			}
 		}
 	}
