@@ -20,7 +20,7 @@
 ABrawlGameMode_Showdown::ABrawlGameMode_Showdown()
 {
 	MaxPowerCubeBoxes = 15;
-	MaxBots = 5;
+	MaxBots = 9; // 플레이어 포함 10명
 	StartDelay = 5.0f;
 	PoisonStartDelay = 5.0f;
 }
@@ -32,8 +32,11 @@ void ABrawlGameMode_Showdown::BeginPlay()
 	// 상자 및 봇 스폰
 	SpawnPowerCubeBoxes();
 	SpawnBots();
+	
+	// 플레이어 팀 설정
+	SetupTeams();
 
-	// 초기 생존자 수 계산 (플레이어 + AI) - 상자는 제외
+	// 초기 생존자 수 계산 (플레이어 + AI)
 	TArray<AActor*> FoundBrawlers;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlCharacter::StaticClass(), FoundBrawlers);
 	
@@ -46,10 +49,59 @@ void ABrawlGameMode_Showdown::BeginPlay()
 		}
 	}
 
-	// GameState 동기화
 	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
 	{
 		GS->SetAliveBrawlerCount(AliveBrawlerCount);
+	}
+}
+
+void ABrawlGameMode_Showdown::SetupTeams()
+{
+	// 쇼다운은 모두가 적 (255 할당)
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		if (ABrawlPlayerState* PS = PC->GetPlayerState<ABrawlPlayerState>())
+		{
+			PS->SetTeamID(255);
+			AssignedTeams.Add(PC, 255);
+			
+			if (ABrawlCharacter* Char = Cast<ABrawlCharacter>(PC->GetPawn()))
+			{
+				Char->SetGenericTeamId(FGenericTeamId(255));
+			}
+		}
+	}
+}
+
+void ABrawlGameMode_Showdown::SpawnBots()
+{
+	if (AICharacterClasses.Num() == 0 || MaxBots <= 0) return;
+
+	TArray<AActor*> FoundSpawnPoints;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlSpawnPoint::StaticClass(), FoundSpawnPoints);
+	
+	for (int32 i = 0; i < FoundSpawnPoints.Num(); i++)
+	{
+		int32 RandIndex = FMath::RandRange(i, FoundSpawnPoints.Num() - 1);
+		FoundSpawnPoints.Swap(i, RandIndex);
+	}
+
+	int32 SpawnedCount = 0;
+	for (AActor* Actor : FoundSpawnPoints)
+	{
+		if (SpawnedCount >= MaxBots) break;
+
+		if (ABrawlSpawnPoint* SP = Cast<ABrawlSpawnPoint>(Actor))
+		{
+			if (SP->SpawnPointType == EBrawlSpawnPointType::Brawler)
+			{
+				// 모두 255 팀으로 설정 (서로 적)
+				if (SpawnBotAt(255, SP))
+				{
+					SpawnedCount++;
+				}
+			}
+		}
 	}
 }
 
@@ -57,35 +109,27 @@ void ABrawlGameMode_Showdown::StartMatch()
 {
 	if (bHasMatchStarted) return;
 	
-	Super::StartMatch();
+	Super::StartMatch(); // MatchStart -> Playing 전이 포함
 
-	// 독구름 로직 시작
+	// 독구름 로직은 Playing 상태 진입 시점에 맞춰 StartMatch(부모) 내부 혹은 여기서 직접 시작
+	// 부모 StartMatch는 1.5초 뒤에 Playing으로 바꾸므로, 여기서 바로 시작하거나 타이머 사용
 	StartPoisonLogic();
-
-	UE_LOG(LogTemp, Log, TEXT("Showdown Match Officially Started!"));
 }
 
 void ABrawlGameMode_Showdown::NotifyKill(AActor* Killer, AActor* Victim)
 {
 	Super::NotifyKill(Killer, Victim);
 
-	// 상자가 아닌 경우에만 파워 큐브 추가 드랍 및 생존 카운트 감소
 	if (Victim && !Victim->IsA<ABrawlPowerCubeBox>())
 	{
-		// 브롤러가 죽었을 때만 큐브 드랍 (상자는 본인의 Die()에서 드랍)
 		DropPowerCubes(Victim);
-
-		// 생존자 수 감소
 		AliveBrawlerCount--;
 		
-		// GameState 동기화
-		if (ABrawlGameState* BrawlGameState = GetGameState<ABrawlGameState>())
+		if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
 		{
-			BrawlGameState->SetAliveBrawlerCount(AliveBrawlerCount);
+			GS->SetAliveBrawlerCount(AliveBrawlerCount);
 		}
 		
-		UE_LOG(LogTemp, Log, TEXT("Brawler Killed. Alive Brawlers: %d"), AliveBrawlerCount);
-
 		CheckGameEndCondition();
 	}
 }
@@ -95,12 +139,10 @@ void ABrawlGameMode_Showdown::DropPowerCubes(AActor* Victim)
 	if (!Victim || !PowerCubeClass) return;
 
 	int32 DropCount = 1;
-
 	if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Victim))
 	{
 		bool bFound = false;
 		float CurrentCubes = ASC->GetGameplayAttributeValue(UBrawlAttributeSet::GetPowerCubeCountAttribute(), bFound);
-		
 		if (bFound && CurrentCubes > 0.0f)
 		{
 			DropCount += FMath::FloorToInt(CurrentCubes / 2.0f);
@@ -108,8 +150,6 @@ void ABrawlGameMode_Showdown::DropPowerCubes(AActor* Victim)
 	}
 
 	FVector CenterLocation = Victim->GetActorLocation();
-	CenterLocation.Z -= 40.0f;
-
 	for (int32 i = 0; i < DropCount; i++)
 	{
 		FVector2D RandomOffset = FMath::RandPointInCircle(100.0f);
@@ -118,7 +158,6 @@ void ABrawlGameMode_Showdown::DropPowerCubes(AActor* Victim)
 
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
 		GetWorld()->SpawnActor<ABrawlPowerCube>(PowerCubeClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
 	}
 }
@@ -139,19 +178,16 @@ void ABrawlGameMode_Showdown::SpawnPowerCubeBoxes()
 
 	for (AActor* Actor : FoundSpawnPoints)
 	{
-		if (ABrawlSpawnPoint* SpawnPoint = Cast<ABrawlSpawnPoint>(Actor))
+		if (ABrawlSpawnPoint* SP = Cast<ABrawlSpawnPoint>(Actor))
 		{
-			if (SpawnPoint->SpawnPointType == EBrawlSpawnPointType::PowerCubeBox)
+			if (SP->SpawnPointType == EBrawlSpawnPointType::PowerCubeBox)
 			{
 				if (SpawnedCount >= MaxPowerCubeBoxes) break;
-
-				// 신규 IsOccupied 함수 사용 (상자 크기를 고려해 반경 조정 가능)
-				if (SpawnPoint->IsOccupied(50.0f)) continue;
+				if (SP->IsOccupied(100.0f)) continue;
 
 				FActorSpawnParameters SpawnParams;
 				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-				if (GetWorld()->SpawnActor<AActor>(PowerCubeBoxClass, SpawnPoint->GetActorLocation(), SpawnPoint->GetActorRotation(), SpawnParams))
+				if (GetWorld()->SpawnActor<AActor>(PowerCubeBoxClass, SP->GetActorLocation(), SP->GetActorRotation(), SpawnParams))
 				{
 					SpawnedCount++;
 				}
@@ -159,6 +195,7 @@ void ABrawlGameMode_Showdown::SpawnPowerCubeBoxes()
 		}
 	}
 
+	// 부족한 경우 랜덤 위치 스폰 (NavMesh 기반)
 	if (SpawnedCount < MaxPowerCubeBoxes)
 	{
 		UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
@@ -175,12 +212,19 @@ void ABrawlGameMode_Showdown::SpawnPowerCubeBoxes()
 					FVector SpawnLocation = RandomLocation.Location;
 					SpawnLocation.Z += 50.0f;
 
-					FActorSpawnParameters SpawnParams;
-					SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
-
-					if (GetWorld()->SpawnActor<AActor>(PowerCubeBoxClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams))
+					// 주변에 다른 상자가 있는지 확인 (IsOccupied 대용)
+					TArray<AActor*> Overlapping;
+					TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+					ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
+					
+					if (!UKismetSystemLibrary::SphereOverlapActors(GetWorld(), SpawnLocation, 150.0f, ObjectTypes, ABrawlPowerCubeBox::StaticClass(), TArray<AActor*>(), Overlapping))
 					{
-						SpawnedCount++;
+						FActorSpawnParameters SpawnParams;
+						SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
+						if (GetWorld()->SpawnActor<AActor>(PowerCubeBoxClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams))
+						{
+							SpawnedCount++;
+						}
 					}
 				}
 			}

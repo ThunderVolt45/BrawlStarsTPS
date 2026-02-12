@@ -5,12 +5,9 @@
 #include "BrawlGameState_Bounty.h"
 #include "BrawlPlayerState.h"
 #include "BrawlCharacter.h"
-#include "BrawlStarsTPSPlayerController.h"
 #include "AI/BrawlAIController.h"
 #include "GameMode/BrawlSpawnPoint.h"
-#include "Environment/BrawlTieBreaker.h"
 #include "Kismet/GameplayStatics.h"
-#include "Net/UnrealNetwork.h"
 
 ABrawlGameMode_Bounty::ABrawlGameMode_Bounty()
 {
@@ -87,145 +84,106 @@ void ABrawlGameMode_Bounty::UpdateMatchTimer()
 
 void ABrawlGameMode_Bounty::PostLogin(APlayerController* NewPlayer)
 {
+	// 1. Super::PostLogin 호출 전에 맵에 먼저 등록 (ChoosePlayerStart에서 참조할 수 있도록)
+	if (NewPlayer)
+	{
+		AssignedTeams.Add(NewPlayer, 0);
+	}
+
+	// 2. 부모 클래스 호출 (여기서 InitPlayerState 및 RestartPlayer가 실행됨)
 	Super::PostLogin(NewPlayer);
 
+	// 3. 이제 생성되었을 PlayerState에 팀 및 바운티 설정
 	if (ABrawlPlayerState* PS = NewPlayer->GetPlayerState<ABrawlPlayerState>())
 	{
-		if (PS->GetTeamID() == 255) PS->SetTeamID(0);
-		AssignedTeams.Add(NewPlayer, 0); // 플레이어 팀 등록
-		
-		// 바운티 모드 초기 점수 설정
+		PS->SetTeamID(0);
 		PS->SetBounty(2);
-		
-		UE_LOG(LogTemp, Log, TEXT("BountyGameMode: PostLogin - Player [%s] TeamID: %d"), *NewPlayer->GetName(), PS->GetTeamID());
 	}
 }
 
 AActor* ABrawlGameMode_Bounty::ChoosePlayerStart_Implementation(AController* Player)
 {
-	if (!Player) return nullptr;
-
-	int32 TeamID = -1;
-
-	// 1. GameMode에서 직접 관리하는 팀 맵 확인 (가장 확실함)
-	if (AssignedTeams.Contains(Player))
-	{
-		TeamID = AssignedTeams[Player];
-	}
-	// 2. PlayerState에서 확인
-	else if (ABrawlPlayerState* PS = Player->GetPlayerState<ABrawlPlayerState>())
-	{
-		TeamID = PS->GetTeamID();
-	}
-
-	// 3. 플레이어 컨트롤러 기본값
-	if ((TeamID == -1 || TeamID == 255) && Player->IsPlayerController())
-	{
-		TeamID = 0;
-	}
-
-	UE_LOG(LogTemp, Log, TEXT("BountyGameMode: ChoosePlayerStart for [%s], Final TeamID: %d"), *Player->GetName(), TeamID);
-
-	TArray<AActor*> FoundSpawnPoints;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlSpawnPoint::StaticClass(), FoundSpawnPoints);
-
-	TArray<ABrawlSpawnPoint*> TeamSpawnPoints;
-	TArray<ABrawlSpawnPoint*> ValidSpawnPoints;
-
-	for (AActor* Actor : FoundSpawnPoints)
-	{
-		ABrawlSpawnPoint* SP = Cast<ABrawlSpawnPoint>(Actor);
-		if (SP && SP->SpawnPointType == EBrawlSpawnPointType::Brawler && SP->TeamID == TeamID)
-		{
-			TeamSpawnPoints.Add(SP);
-
-			TArray<AActor*> OverlappingActors;
-			TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
-			ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
-			
-			if (!UKismetSystemLibrary::SphereOverlapActors(GetWorld(), SP->GetActorLocation(), 100.0f, ObjectTypes, ABrawlCharacter::StaticClass(), TArray<AActor*>(), OverlappingActors))
-			{
-				ValidSpawnPoints.Add(SP);
-			}
-		}
-	}
-
-	AActor* SelectedSpot = nullptr;
-	if (ValidSpawnPoints.Num() > 0)
-	{
-		SelectedSpot = ValidSpawnPoints[FMath::RandRange(0, ValidSpawnPoints.Num() - 1)];
-		UE_LOG(LogTemp, Log, TEXT("BountyGameMode: Found empty spot [%s] for Team %d"), *SelectedSpot->GetName(), TeamID);
-	}
-	else if (TeamSpawnPoints.Num() > 0)
-	{
-		SelectedSpot = TeamSpawnPoints[FMath::RandRange(0, TeamSpawnPoints.Num() - 1)];
-		UE_LOG(LogTemp, Log, TEXT("BountyGameMode: All spots occupied. Forced [%s] for Team %d"), *SelectedSpot->GetName(), TeamID);
-	}
-
-	if (SelectedSpot) return SelectedSpot;
-
-	UE_LOG(LogTemp, Error, TEXT("BountyGameMode: FAILED to find any SpawnPoint for Team %d! Falling back to engine default."), TeamID);
+	// 부모 클래스의 팀 기반 선택 로직 사용
 	return Super::ChoosePlayerStart_Implementation(Player);
 }
 
 UClass* ABrawlGameMode_Bounty::GetDefaultPawnClassForController_Implementation(AController* InController)
 {
-	if (!InController) return nullptr;
-
-	// 1. AI인 경우 할당된 클래스 반환
-	if (AssignedAIClasses.Contains(InController))
-	{
-		UClass* FoundClass = AssignedAIClasses[InController];
-		UE_LOG(LogTemp, Log, TEXT("BountyGameMode: GetDefaultPawnClass for AI Controller [%s] -> [%s]"), 
-			*InController->GetName(), FoundClass ? *FoundClass->GetName() : TEXT("NULL"));
-		return FoundClass;
-	}
-
-	// 2. 플레이어인 경우 부모 클래스(BrawlStarsTPSGameMode)의 로직 사용 (데이터 테이블 기반)
-	UClass* DefaultClass = Super::GetDefaultPawnClassForController_Implementation(InController);
-	UE_LOG(LogTemp, Log, TEXT("BountyGameMode: GetDefaultPawnClass for Player Controller [%s] -> [%s]"), 
-		*InController->GetName(), DefaultClass ? *DefaultClass->GetName() : TEXT("NULL"));
-	return DefaultClass;
+	// 부모 클래스의 데이터 테이블/할당 기반 로직 사용
+	return Super::GetDefaultPawnClassForController_Implementation(InController);
 }
 
 void ABrawlGameMode_Bounty::SetupTeams()
 {
-	// 한 프레임 뒤에 실행하여 월드 로드 및 초기 스폰 완료를 기다림
-	GetWorldTimerManager().SetTimerForNextTick([this]()
+	// Bounty 전용 팀 할당 (3v3) 수행
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		if (APlayerController* PC = It->Get())
 		{
-			if (APlayerController* PC = It->Get())
+			if (ABrawlPlayerState* PS = PC->GetPlayerState<ABrawlPlayerState>())
 			{
-				if (ABrawlPlayerState* PS = PC->GetPlayerState<ABrawlPlayerState>())
+				// 플레이어는 무조건 팀 0
+				PS->SetTeamID(0);
+				AssignedTeams.Add(PC, 0);
+				PS->SetBounty(2);
+				
+				APawn* P = PC->GetPawn();
+				bool bNeedsRestart = false;
+
+				if (!P)
 				{
-					// 플레이어는 무조건 팀 0
-					PS->SetTeamID(0);
-					
-					if (APawn* P = PC->GetPawn())
+					bNeedsRestart = true;
+				}
+				else
+				{
+					// 현재 위치가 비정상적이거나 (Z < -100) 너무 0에 가깝거나
+					if (P->GetActorLocation().Z < -100.0f || P->GetActorLocation().IsNearlyZero(1.0f))
 					{
-						// (0,0,0)에 있거나 너무 낮게 스폰된 경우 재배치
-						if (P->GetActorLocation().Z < -100.0f || P->GetActorLocation().IsNearlyZero(1.0f))
-						{
-							UE_LOG(LogTemp, Warning, TEXT("Brawler [%s] is at invalid location %s. Restarting..."), 
-								*P->GetName(), *P->GetActorLocation().ToString());
-							RestartPlayer(PC);
-						}
-						
-						if (ABrawlCharacter* Char = Cast<ABrawlCharacter>(PC->GetPawn()))
-						{
-							Char->SetGenericTeamId(FGenericTeamId(0));
-						}
+						bNeedsRestart = true;
 					}
 					else
 					{
-						// 폰이 아예 없다면 생성 요청
-						RestartPlayer(PC);
+						// 현재 위치 주변의 스폰 포인트를 찾아 팀 확인
+						TArray<AActor*> NearbySpawnPoints;
+						TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+						ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_WorldStatic)); // 스폰 포인트는 대개 Static 또는 Dynamic
+						ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
+						
+						TArray<AActor*> OutActors;
+						UKismetSystemLibrary::SphereOverlapActors(GetWorld(), P->GetActorLocation(), 200.0f, ObjectTypes, ABrawlSpawnPoint::StaticClass(), TArray<AActor*>(), OutActors);
+						
+						for (AActor* Actor : OutActors)
+						{
+							if (ABrawlSpawnPoint* SP = Cast<ABrawlSpawnPoint>(Actor))
+							{
+								if (SP->SpawnPointType == EBrawlSpawnPointType::Brawler && SP->TeamID != 255 && SP->TeamID != 0)
+								{
+									// 적 진영 스폰 지점 근처에 있다면 재배치 필요
+									bNeedsRestart = true;
+									UE_LOG(LogTemp, Warning, TEXT("SetupTeams: Player [%s] spawned at WRONG Team SpawnPoint [%d]. Restarting..."), *PC->GetName(), SP->TeamID);
+									break;
+								}
+							}
+						}
+					}
+				}
+
+				if (bNeedsRestart)
+				{
+					RestartPlayer(PC);
+					P = PC->GetPawn();
+				}
+
+				if (P)
+				{
+					if (ABrawlCharacter* Char = Cast<ABrawlCharacter>(P))
+					{
+						Char->SetGenericTeamId(FGenericTeamId(0));
 					}
 				}
 			}
 		}
-	});
+	}
 }
 
 void ABrawlGameMode_Bounty::SpawnBots()
@@ -235,84 +193,9 @@ void ABrawlGameMode_Bounty::SpawnBots()
 	TArray<AActor*> FoundSpawnPoints;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlSpawnPoint::StaticClass(), FoundSpawnPoints);
 
-	auto SpawnBotForTeam = [&](int32 TeamID, ABrawlSpawnPoint* SP)
-	{
-		// 스폰 지점 점유 확인
-		TArray<AActor*> OverlappingActors;
-		TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
-		ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
-		if (UKismetSystemLibrary::SphereOverlapActors(GetWorld(), SP->GetActorLocation(), 
-			50.0f, ObjectTypes, ABrawlCharacter::StaticClass(), TArray<AActor*>(), OverlappingActors))
-		{
-			return false;
-		}
-
-		int32 CharIndex = FMath::RandRange(0, AICharacterClasses.Num() - 1);
-		TSubclassOf<ABrawlCharacter> BotClass = AICharacterClasses[CharIndex];
-
-		// 1. AI 컨트롤러를 먼저 직접 스폰 (폰에 의해 자동 생성되지 않게 함)
-		FActorSpawnParameters AICSpawnParams;
-		AICSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		
-		// AIController 클래스가 지정되어 있지 않다면 ABrawlAIController를 기본으로 사용
-		// 보통 Brawler 클래스에 설정된 AIControllerClass를 사용하는 것이 좋음
-		UClass* AICClass = ABrawlAIController::StaticClass();
-		if (BotClass.GetDefaultObject()->AIControllerClass)
-		{
-			AICClass = BotClass.GetDefaultObject()->AIControllerClass;
-		}
-
-		ABrawlAIController* AIC = GetWorld()->SpawnActor<ABrawlAIController>(AICClass, SP->GetActorLocation(), SP->GetActorRotation(), AICSpawnParams);
-		
-		if (AIC)
-		{
-			// AI 컨트롤러의 PlayerState를 즉시 생성 및 초기화
-			AIC->InitPlayerState();
-
-			// 리스폰 및 팀 판별을 위해 매핑 저장
-			AssignedAIClasses.Add(AIC, BotClass);
-			AssignedTeams.Add(AIC, TeamID);
-			
-			UE_LOG(LogTemp, Log, TEXT("BountyGameMode: Spawned AI Controller [%s] for Team %d. Assigned Class: %s"), 
-				*AIC->GetName(), TeamID, *BotClass->GetName());
-
-			// PlayerState에 팀 설정
-			if (ABrawlPlayerState* PS = AIC->GetPlayerState<ABrawlPlayerState>())
-			{
-				PS->SetTeamID(TeamID);
-				PS->SetBounty(2); // 바운티 모드 기본값 설정
-			}
-			else
-			{
-				UE_LOG(LogTemp, Error, TEXT("BountyGameMode: FAILED to initialize PlayerState for AI [%s]"), *AIC->GetName());
-			}
-
-			// 2. RestartPlayer를 통해 폰 스폰 (ChoosePlayerStart 로직을 타게 됨)
-			// 현재 SP 위치를 직접 사용하기 위해 SP를 인자로 넘기는 RestartPlayerAtPlayerStart 사용 가능
-			RestartPlayerAtPlayerStart(AIC, SP);
-
-			// 스폰된 폰에 팀 ID 설정
-			if (ABrawlCharacter* NewBot = Cast<ABrawlCharacter>(AIC->GetPawn()))
-			{
-				NewBot->SetGenericTeamId(FGenericTeamId(TeamID));
-				
-				if (GameModeAITree)
-				{
-					AIC->InjectGameModeSubtree(GameModeAITree);
-				}
-
-				// 행동 트리 시작
-				AIC->SetAIActive(true);
-			}
-			return true;
-		}
-		return false;
-	};
-
 	int32 Team0BotsToSpawn = 2;
 	int32 Team1BotsToSpawn = 3;
 
-	// 스폰 포인트를 순회하며 가능한 곳에 스폰
 	for (AActor* Actor : FoundSpawnPoints)
 	{
 		ABrawlSpawnPoint* SP = Cast<ABrawlSpawnPoint>(Actor);
@@ -320,11 +203,23 @@ void ABrawlGameMode_Bounty::SpawnBots()
 
 		if (SP->TeamID == 0 && Team0BotsToSpawn > 0)
 		{
-			if (SpawnBotForTeam(0, SP)) Team0BotsToSpawn--;
+			if (SpawnBotAt(0, SP)) Team0BotsToSpawn--;
 		}
 		else if (SP->TeamID == 1 && Team1BotsToSpawn > 0)
 		{
-			if (SpawnBotForTeam(1, SP)) Team1BotsToSpawn--;
+			if (SpawnBotAt(1, SP)) Team1BotsToSpawn--;
+		}
+	}
+
+	// 모든 스폰된 AI에게 바운티 기본값 2 부여
+	for (auto& Pair : AssignedTeams)
+	{
+		if (Pair.Key->IsA<AAIController>())
+		{
+			if (ABrawlPlayerState* PS = Pair.Key->GetPlayerState<ABrawlPlayerState>())
+			{
+				PS->SetBounty(2);
+			}
 		}
 	}
 }
@@ -336,12 +231,9 @@ void ABrawlGameMode_Bounty::NotifyKill(AActor* Killer, AActor* Victim)
 	ABrawlCharacter* VictimChar = Cast<ABrawlCharacter>(Victim);
 	if (!VictimChar) return;
 
-	// Victim의 컨트롤러 미리 확보
 	AController* VictimController = VictimChar->GetController();
-	UE_LOG(LogTemp, Log, TEXT("BountyGameMode: NotifyKill - Victim: [%s], Controller: [%s]"), 
-		*VictimChar->GetName(), VictimController ? *VictimController->GetName() : TEXT("NULL"));
-
-	// Killer의 컨트롤러 확보
+	
+	// Killer 정보 확보
 	AActor* KillerPawn = Killer;
 	if (AController* KillerController = Cast<AController>(Killer))
 	{
@@ -350,71 +242,36 @@ void ABrawlGameMode_Bounty::NotifyKill(AActor* Killer, AActor* Victim)
 	ABrawlCharacter* KillerChar = Cast<ABrawlCharacter>(KillerPawn);
 	AController* KillerController = KillerChar ? KillerChar->GetController() : Cast<AController>(Killer);
 
-	// PlayerState 찾기 (캐릭터 또는 컨트롤러 양쪽에서 시도)
-	auto GetPS = [](AActor* Actor, AController* Controller) -> ABrawlPlayerState*
-	{
-		if (ABrawlCharacter* C = Cast<ABrawlCharacter>(Actor))
-		{
-			if (ABrawlPlayerState* PS = C->GetPlayerState<ABrawlPlayerState>()) return PS;
-		}
-		if (Controller)
-		{
-			return Controller->GetPlayerState<ABrawlPlayerState>();
-		}
-		return nullptr;
-	};
-
-	ABrawlPlayerState* KillerPS = GetPS(KillerChar, KillerController);
-	ABrawlPlayerState* VictimPS = GetPS(VictimChar, VictimController);
+	ABrawlPlayerState* KillerPS = KillerController ? KillerController->GetPlayerState<ABrawlPlayerState>() : nullptr;
+	ABrawlPlayerState* VictimPS = VictimController ? VictimController->GetPlayerState<ABrawlPlayerState>() : nullptr;
 
 	if (KillerPS && VictimPS)
 	{
 		int32 VictimBounty = VictimPS->GetBounty();
 		int32 KillerTeam = KillerPS->GetTeamID();
 
-		UE_LOG(LogTemp, Log, TEXT("BountyGameMode: Killer %s (Team %d) earned %d points from %s"), 
-			*KillerPS->GetPlayerName(), KillerTeam, VictimBounty, *VictimPS->GetPlayerName());
-
-		// 1. 킬러의 팀에 피해자의 현상금만큼 점수 추가
 		if (ABrawlGameState_Bounty* GS = GetGameState<ABrawlGameState_Bounty>())
 		{
 			GS->AddTeamScore(KillerTeam, VictimBounty);
 		}
 
-		// 2. 킬러의 개인 현상금 증가 (+1, 최대 7)
 		KillerPS->AddBounty(1);
 		KillerPS->AddScoreContribution(VictimBounty);
-
-		// 3. 피해자의 현상금 초기화
 		VictimPS->ResetBounty();
 
-		// 4. 타이 브레이커 강탈 로직
 		if (VictimPS->HasTieBreaker())
 		{
-			// 피해자 해제
 			VictimPS->SetHasTieBreaker(false);
-			
-			// 킬러에게 부여
 			KillerPS->SetHasTieBreaker(true);
 			TieBreakerOwnerState = KillerPS;
 
-			// GameState 동기화
 			if (ABrawlGameState_Bounty* GS = GetGameState<ABrawlGameState_Bounty>())
 			{
 				GS->SetTieBreakerTeam(KillerPS->GetTeamID());
 			}
-
-			UE_LOG(LogTemp, Log, TEXT("Tie Breaker STOLEN by %s (Team %d)"), *KillerPS->GetPlayerName(), KillerPS->GetTeamID());
 		}
 
-		// 5. 승리 조건 체크
 		CheckWinCondition();
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("BountyGameMode: Failed to find PS. KillerPS: %s, VictimPS: %s"), 
-			KillerPS ? TEXT("Valid") : TEXT("NULL"), 
-			VictimPS ? TEXT("Valid") : TEXT("NULL"));
 	}
 
 	if (VictimController)
@@ -427,103 +284,14 @@ void ABrawlGameMode_Bounty::RequestRespawn(AController* Controller)
 {
 	if (!Controller) return;
 
-	// 리스폰에 필요한 정보를 미리 캡처
 	TWeakObjectPtr<AController> WeakController(Controller);
-	int32 TeamID = 0;
-	if (ABrawlPlayerState* PS = Controller->GetPlayerState<ABrawlPlayerState>())
-	{
-		TeamID = PS->GetTeamID();
-	}
 	
-	TSubclassOf<ABrawlCharacter> BrawlerClass = nullptr;
-	if (AssignedAIClasses.Contains(Controller))
-	{
-		BrawlerClass = AssignedAIClasses[Controller];
-	}
-
-	UE_LOG(LogTemp, Log, TEXT("BountyGameMode: RequestRespawn for [%s] (Team %d) in %.1f seconds"), 
-		*Controller->GetName(), TeamID, RespawnDelay);
-
 	FTimerHandle RespawnTimerHandle;
-	GetWorldTimerManager().SetTimer(RespawnTimerHandle, [this, WeakController, TeamID, BrawlerClass]()
+	GetWorldTimerManager().SetTimer(RespawnTimerHandle, [this, WeakController]()
 	{
 		if (WeakController.IsValid())
 		{
-			UE_LOG(LogTemp, Log, TEXT("BountyGameMode: Respawn Timer Fired for [%s]. Calling RespawnBrawler."), *WeakController->GetName());
 			RespawnBrawler(WeakController.Get());
-		}
-		else if (BrawlerClass != nullptr)
-		{
-			// 컨트롤러가 소실된 경우 (AI 전용 복구 로직)
-			UE_LOG(LogTemp, Warning, TEXT("BountyGameMode: Controller lost. Re-spawning AI for Team %d"), TeamID);
-			
-			// 1. 직접 스폰 지점 찾기 (RestartPlayer에게 맡기지 않고 명시적으로 찾음)
-			AActor* FoundSP = nullptr;
-			TArray<AActor*> FoundSpawnPoints;
-			UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlSpawnPoint::StaticClass(), FoundSpawnPoints);
-			for (AActor* Actor : FoundSpawnPoints)
-			{
-				ABrawlSpawnPoint* SP = Cast<ABrawlSpawnPoint>(Actor);
-				if (SP && SP->SpawnPointType == EBrawlSpawnPointType::Brawler && SP->TeamID == TeamID)
-				{
-					FoundSP = SP;
-					break; 
-				}
-			}
-
-			if (!FoundSP)
-			{
-				UE_LOG(LogTemp, Error, TEXT("BountyGameMode: Backup Respawn failed - No SpawnPoint found for Team %d"), TeamID);
-				return;
-			}
-
-			FActorSpawnParameters AICSpawnParams;
-			AICSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-			
-			UClass* AICClass = ABrawlAIController::StaticClass();
-			if (BrawlerClass.GetDefaultObject()->AIControllerClass)
-			{
-				AICClass = BrawlerClass.GetDefaultObject()->AIControllerClass;
-			}
-
-			if (ABrawlAIController* NewAIC = GetWorld()->SpawnActor<ABrawlAIController>(AICClass, FoundSP->GetActorLocation(), FoundSP->GetActorRotation(), AICSpawnParams))
-			{
-				AssignedAIClasses.Add(NewAIC, BrawlerClass);
-				AssignedTeams.Add(NewAIC, TeamID);
-				
-				if (ABrawlPlayerState* PS = NewAIC->GetPlayerState<ABrawlPlayerState>())
-				{
-					PS->SetTeamID(TeamID);
-				}
-
-				RestartPlayerAtPlayerStart(NewAIC, FoundSP);
-
-				if (APawn* NewPawn = NewAIC->GetPawn())
-				{
-					FVector SpawnLocation = FoundSP->GetActorLocation();
-					NewPawn->SetActorLocationAndRotation(SpawnLocation, FoundSP->GetActorRotation());
-
-					if (ABrawlCharacter* NewBot = Cast<ABrawlCharacter>(NewPawn))
-					{
-						NewBot->SetGenericTeamId(FGenericTeamId(TeamID));
-
-						if (GameModeAITree) NewAIC->InjectGameModeSubtree(GameModeAITree);
-
-						// 매치 가 진행 중일 때만 행동 트리 시작
-						if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
-						{
-							if (GS->IsMatchInProgress())
-							{
-								NewAIC->SetAIActive(true);
-							}
-						}
-					}
-				}
-			}
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("BountyGameMode: Respawn failed. Controller and Class info both missing."));
 		}
 	}, RespawnDelay, false);
 }
@@ -532,19 +300,14 @@ void ABrawlGameMode_Bounty::RespawnBrawler(AController* Controller)
 {
 	if (!Controller) return;
 
-	UE_LOG(LogTemp, Log, TEXT("BountyGameMode: RespawnBrawler starting for [%s]"), *Controller->GetName());
-
 	ABrawlCharacter* Character = Cast<ABrawlCharacter>(Controller->GetPawn());
 	
-	// 1. 만약 폰이 소실되었다면 RestartPlayer로 새로 생성
 	if (!Character)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("BountyGameMode: Pawn lost for [%s]. Restarting player."), *Controller->GetName());
 		RestartPlayer(Controller);
 		Character = Cast<ABrawlCharacter>(Controller->GetPawn());
 	}
 
-	// 2. 캐릭터 리스폰 처리 (위치 이동 및 활성화)
 	if (Character)
 	{
 		AActor* SpawnSpot = FindPlayerStart(Controller);
@@ -553,7 +316,6 @@ void ABrawlGameMode_Bounty::RespawnBrawler(AController* Controller)
 
 		Character->RespawnAt(SpawnLoc, SpawnRot);
 
-		// AI 행동 트리 재시작 (매치 진행 중일 때만)
 		if (ABrawlAIController* AIC = Cast<ABrawlAIController>(Controller))
 		{
 			if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
@@ -579,24 +341,19 @@ void ABrawlGameMode_Bounty::OnTieBreakerPickedUp(ABrawlCharacter* Picker)
 	ABrawlPlayerState* PS = Picker->GetPlayerState<ABrawlPlayerState>();
 	if (PS)
 	{
-		// 1. 기존 소유자 해제
 		if (TieBreakerOwnerState)
 		{
 			TieBreakerOwnerState->SetHasTieBreaker(false);
 		}
 
-		// 2. 새 소유자 설정
 		PS->SetHasTieBreaker(true);
 		TieBreakerOwnerState = PS;
 
-		// 3. 팀 점수 1점 추가 및 GameState 동기화
 		if (ABrawlGameState_Bounty* GS = GetGameState<ABrawlGameState_Bounty>())
 		{
 			GS->AddTeamScore(PS->GetTeamID(), 1);
 			GS->SetTieBreakerTeam(PS->GetTeamID());
 		}
-
-		UE_LOG(LogTemp, Log, TEXT("Tie Breaker picked up by Team %d (+1 Point)"), PS->GetTeamID());
 	}
 }
 
@@ -604,7 +361,6 @@ void ABrawlGameMode_Bounty::SpawnTieBreaker()
 {
 	if (!TieBreakerClass) return;
 
-	// 맵 중앙에 스폰 (0,0,0 가정 혹은 특정 스폰 포인트)
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 	GetWorld()->SpawnActor<AActor>(TieBreakerClass, FVector(0, 0, 100.0f), FRotator::ZeroRotator, SpawnParams);
@@ -618,7 +374,6 @@ void ABrawlGameMode_Bounty::CheckWinCondition()
 	int32 Score0 = GS->GetTeamScore(0);
 	int32 Score1 = GS->GetTeamScore(1);
 
-	// 플레이어 팀 ID 확인 (보통 0)
 	int32 PlayerTeam = 0;
 	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 	{
@@ -628,7 +383,6 @@ void ABrawlGameMode_Bounty::CheckWinCondition()
 		}
 	}
 
-	// 1. 점수 선점 체크
 	if (Score0 >= TargetScore)
 	{
 		EndGame(PlayerTeam == 0, 0);
@@ -640,7 +394,6 @@ void ABrawlGameMode_Bounty::CheckWinCondition()
 		return;
 	}
 
-	// 2. 시간 종료 체크
 	if (GS->GetRemainingTime() <= 0)
 	{
 		int32 WinningTeam = 0;
@@ -648,7 +401,6 @@ void ABrawlGameMode_Bounty::CheckWinCondition()
 		else if (Score1 > Score0) WinningTeam = 1;
 		else
 		{
-			// 동점 시 타이 브레이커 체크
 			if (TieBreakerOwnerState)
 			{
 				WinningTeam = TieBreakerOwnerState->GetTeamID();
@@ -661,8 +413,5 @@ void ABrawlGameMode_Bounty::CheckWinCondition()
 void ABrawlGameMode_Bounty::EndGame(bool bIsPlayerWinner, int32 WinningTeam)
 {
 	GetWorldTimerManager().ClearTimer(MatchTimerHandle);
-
 	Super::EndGame(bIsPlayerWinner, WinningTeam);
-
-	UE_LOG(LogTemp, Log, TEXT("Bounty Match Over! Winning Team: %d"), WinningTeam);
 }

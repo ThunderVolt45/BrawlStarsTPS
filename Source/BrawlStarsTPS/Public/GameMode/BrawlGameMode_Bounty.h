@@ -90,16 +90,7 @@ protected:
 
 private:
 	FTimerHandle MatchTimerHandle;
-	bool bHasMatchStarted = false;
 	
-	// AI 컨트롤러와 할당된 캐릭터 클래스 매핑 (리스폰용)
-	UPROPERTY()
-	TMap<TObjectPtr<AController>, TSubclassOf<ABrawlCharacter>> AssignedAIClasses;
-
-	// 컨트롤러별 팀 ID 직접 매핑 (PlayerState가 준비되기 전 스폰 단계에서 사용)
-	UPROPERTY()
-	TMap<TObjectPtr<AController>, int32> AssignedTeams;
-
 	// 타이 브레이커 현재 소유자 (PlayerState)
 	UPROPERTY()
 	TObjectPtr<class ABrawlPlayerState> TieBreakerOwnerState;

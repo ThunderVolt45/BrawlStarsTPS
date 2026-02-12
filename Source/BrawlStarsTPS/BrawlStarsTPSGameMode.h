@@ -23,7 +23,6 @@ public:
 	ABrawlStarsTPSGameMode();
 
 	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaSeconds) override;
 
 	// 처치 발생 시 호출
 	virtual void NotifyKill(AActor* Killer, AActor* Victim);
@@ -43,6 +42,12 @@ public:
 
 	/** 게임 종료 처리 */
 	virtual void EndGame(bool bIsPlayerWinner, int32 RankOrTeam);
+
+	/** 플레이어 입장 시 호출 (팀 할당 로직 포함) */
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+
+	/** 플레이어 스폰 전 초기화 (RestartPlayer 호출 전) */
+	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 
 	/** 브롤러 ID와 클래스 매핑을 위한 데이터 테이블 */
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Data")
@@ -65,7 +70,8 @@ public:
 
 	bool bHasMatchStarted = false;
 
-	// --- AI & Spawning ---
+protected:
+	// --- AI & Spawning (공통 로직으로 통합) ---
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|GameMode")
 	TArray<TSubclassOf<class ABrawlCharacter>> AICharacterClasses;
 
@@ -75,7 +81,27 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|AI")
 	TObjectPtr<class UBehaviorTree> GameModeAITree;
 
+	/** 컨트롤러별 팀 관리 (Bounty/Knockout 공통 사용) */
+	UPROPERTY()
+	TMap<TObjectPtr<AController>, int32> AssignedTeams;
+
+	/** 컨트롤러의 팀 ID를 안전하게 조회 (맵 또는 게임 모드 규칙 기반) */
+	virtual int32 GetControllerTeamID(AController* InController) const;
+
+	/** AI 컨트롤러별 캐릭터 클래스 관리 */
+	UPROPERTY()
+	TMap<TObjectPtr<AController>, TSubclassOf<class ABrawlCharacter>> AssignedAIClasses;
+
+	/** 초기 팀 설정 (플레이어 자동 배치 등) */
+	virtual void SetupTeams();
+
+	/** AI 봇 생성 공통 로직 */
 	virtual void SpawnBots();
+
+	/** 특정 팀과 위치에 봇 하나 스폰 (헬퍼) */
+	virtual bool SpawnBotAt(int32 TeamID, class ABrawlSpawnPoint* SP);
+
+	/** AI 컨트롤러 설정 (팀 ID 주입 등) */
 	virtual void ConfigureAI(class AController* AIController, int32 TeamID);
 
 	// --- Poison Zone Logic (Common to Showdown/Knockout) ---

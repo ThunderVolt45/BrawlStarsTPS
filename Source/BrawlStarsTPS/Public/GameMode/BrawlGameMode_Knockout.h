@@ -20,14 +20,9 @@ public:
 	ABrawlGameMode_Knockout();
 
 	virtual void BeginPlay() override;
-	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void NotifyKill(AActor* Killer, AActor* Victim) override;
 	virtual void StartMatch() override;
-
-	virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
-
-	// 스폰 포인트 선택 로직 (Bounty 로직 이식)
-	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+	virtual void PostLogin(APlayerController* NewPlayer) override;
 
 	// 녹아웃은 라운드 종료 후 일괄 리스폰하므로 캐릭터를 파괴하지 않음
 	virtual bool ShouldRespawn(AActor* Victim) const override { return true; }
@@ -76,14 +71,6 @@ protected:
 	// 라운드 간 대기 시간
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Knockout")
 	float RoundResetDelay = 3.0f;
-
-	// 컨트롤러별 팀 관리 (Bounty 로직 이식)
-	UPROPERTY()
-	TMap<AController*, int32> AssignedTeams;
-
-	// AI 컨트롤러별 캐릭터 클래스 관리
-	UPROPERTY()
-	TMap<AController*, TSubclassOf<class ABrawlCharacter>> AssignedAIClasses;
 
 	FTimerHandle RoundStartTimerHandle;
 };

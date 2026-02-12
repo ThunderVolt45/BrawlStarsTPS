@@ -47,6 +47,10 @@ protected:
 	// 남은 플레이어 수 확인 및 게임 종료 체크
 	void CheckGameEndCondition();
 
+	// 팀 및 봇 설정 오버라이드
+	virtual void SetupTeams() override;
+	virtual void SpawnBots() override;
+
 protected:
 	// 스폰할 상자 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Showdown")
