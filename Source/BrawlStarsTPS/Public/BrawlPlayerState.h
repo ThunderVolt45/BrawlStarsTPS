@@ -79,9 +79,9 @@ protected:
 	void OnRep_HasTieBreaker();
 
 protected:
-	// 현재 현상금 (2~7점)
+	// 현재 현상금 (바운티 모드에서 2~7점, 그 외엔 0)
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentBounty, VisibleInstanceOnly, Category = "Brawl|PlayerState")
-	int32 CurrentBounty = 2;
+	int32 CurrentBounty = 0;
 
 	// 팀 점수 기여도
 	UPROPERTY(Replicated, VisibleInstanceOnly, Category = "Brawl|PlayerState")

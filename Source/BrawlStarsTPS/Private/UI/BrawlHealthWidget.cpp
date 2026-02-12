@@ -183,7 +183,23 @@ void UBrawlHealthWidget::UpdateTieBreakerDisplay(bool bHasTieBreaker)
 		
 		if (BountyIcon)
 		{
-			BountyIcon->SetVisibility(bHasTieBreaker ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+			// 타이 브레이커가 있으면 숨김, 없으면 현상금 개수가 0보다 클 때만 표시
+			if (bHasTieBreaker)
+			{
+				BountyIcon->SetVisibility(ESlateVisibility::Collapsed);
+			}
+			else
+			{
+				int32 CurrentBounty = 0;
+				if (ABrawlCharacter* TargetChar = TargetCharacter.Get())
+				{
+					if (ABrawlPlayerState* PS = TargetChar->GetPlayerState<ABrawlPlayerState>())
+					{
+						CurrentBounty = PS->GetBounty();
+					}
+				}
+				BountyIcon->SetVisibility(CurrentBounty > 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+			}
 		}
 	}
 }
