@@ -662,6 +662,7 @@ void ABrawlCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABrawlCharacter, bIsDead);
+	DOREPLIFETIME(ABrawlCharacter, TeamID);
 }
 
 void ABrawlCharacter::OnRep_IsDead()

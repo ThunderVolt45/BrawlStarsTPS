@@ -79,7 +79,14 @@ void ABrawlSpikeLifePlant::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 체력 초기화
+	// 1. 소환사의 팀 ID 상속
+	if (ABrawlCharacter* Summoner = Cast<ABrawlCharacter>(GetInstigator()))
+	{
+		SetGenericTeamId(FGenericTeamId(Summoner->GetTeamID()));
+		UE_LOG(LogTemp, Log, TEXT("SpikeLifePlant: Inherited TeamID %d from Summoner %s"), GetTeamID(), *Summoner->GetName());
+	}
+
+	// 2. 체력 초기화
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxHealthAttribute(), DefaultMaxHealth);

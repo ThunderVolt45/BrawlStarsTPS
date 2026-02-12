@@ -237,7 +237,7 @@ protected:
 
 protected:
 	// --- Internal Variables (Accessible to derived classes) ---
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
 	uint8 TeamID = 255;
 
 private:
