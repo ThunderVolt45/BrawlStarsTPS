@@ -16,7 +16,9 @@ UBTT_MoveToIdealRange::UBTT_MoveToIdealRange()
 	NodeName = TEXT("Move To Ideal Range");
 	bNotifyTick = true; // Tick 활성화
 	
+	// Actor(Object)와 Vector3(Vector) 모두 허용하도록 필터 설정
 	TargetActorKey.AddObjectFilter(this, GET_MEMBER_NAME_CHECKED(UBTT_MoveToIdealRange, TargetActorKey), AActor::StaticClass());
+	TargetActorKey.AddVectorFilter(this, GET_MEMBER_NAME_CHECKED(UBTT_MoveToIdealRange, TargetActorKey));
 }
 
 EBTNodeResult::Type UBTT_MoveToIdealRange::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
@@ -47,7 +49,26 @@ void UBTT_MoveToIdealRange::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 	}
 
 	AActor* TargetActor = Cast<AActor>(Blackboard->GetValueAsObject(TargetActorKey.SelectedKeyName));
-	if (!TargetActor)
+	FVector TargetLoc = FVector::ZeroVector;
+	bool bHasValidTarget = false;
+
+	if (TargetActor)
+	{
+		TargetLoc = TargetActor->GetActorLocation();
+		bHasValidTarget = true;
+	}
+	else
+	{
+		// 액터가 없다면 벡터 값 시도
+		TargetLoc = Blackboard->GetValueAsVector(TargetActorKey.SelectedKeyName);
+		// 블랙보드 벡터 기본값(유효하지 않은 값) 체크
+		if (TargetLoc != FNavigationSystem::InvalidLocation)
+		{
+			bHasValidTarget = true;
+		}
+	}
+
+	if (!bHasValidTarget)
 	{
 		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
 		return;
@@ -55,20 +76,27 @@ void UBTT_MoveToIdealRange::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 
 	// 1. 거리 및 설정 확인
 	const FAICombatSettings& Settings = MyPawn->GetAICombatSettings();
-	float Distance = MyPawn->GetDistanceTo(TargetActor);
+	float Distance = FVector::Dist(MyPawn->GetActorLocation(), TargetLoc);
 	float PreferredRange = Settings.PreferredCombatRange;
 
-	// 타겟이 상자(Etc)라면 이상 거리를 100으로 잡아서 바짝 붙도록 함
-	if (ABrawlCharacter* TargetBrawler = Cast<ABrawlCharacter>(TargetActor))
+	// 타겟이 액터이고 상자(Etc)라면 이상 거리를 100으로 잡아서 바짝 붙도록 함
+	if (TargetActor)
 	{
-		if (TargetBrawler->GetCharacterType() == EBrawlCharacterType::Etc)
+		if (ABrawlCharacter* TargetBrawler = Cast<ABrawlCharacter>(TargetActor))
 		{
-			PreferredRange = 100.0f;
+			if (TargetBrawler->GetCharacterType() == EBrawlCharacterType::Etc)
+			{
+				PreferredRange = 100.0f;
+			}
 		}
+	}
+	else
+	{
+		// 좌표(Vector)로 이동할 때는 해당 지점 도달이 목적이므로 이상 거리를 0으로 잡음
+		PreferredRange = 0.0f;
 	}
 
 	FVector MyLoc = MyPawn->GetActorLocation();
-	FVector TargetLoc = TargetActor->GetActorLocation();
 
 	// 독구름(안전 구역) 정보 가져오기
 	ABrawlPoisonZone* PoisonZone = Cast<ABrawlPoisonZone>(UGameplayStatics::GetActorOfClass(GetWorld(), ABrawlPoisonZone::StaticClass()));
