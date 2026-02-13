@@ -58,7 +58,7 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 	const FAICombatSettings& Settings = MyPawn->GetAICombatSettings();
 	float Distance = MyPawn->GetDistanceTo(TargetActor);
 	
-	// 블랙보드에 거리 업데이트 (다른 데코레이터 등에서 쓸 수 있게)
+	// 블랙보드에 거리 업데이트
 	Blackboard->SetValueAsFloat(DistanceToTargetKey.SelectedKeyName, Distance);
 
 	// 현재 체력 비율 계산
@@ -73,10 +73,17 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 
 	// 타겟 체력 비율 계산
 	float TargetHealthRatio = 1.0f;
-	bool bIsTargetCharacter = false;
+	bool bIsCombatant = false; // 실제로 위협이 되는 대상(브롤러, 소환물 등)인가?
+
 	if (const ABrawlCharacter* TargetBrawlChar = Cast<ABrawlCharacter>(TargetActor))
 	{
-		bIsTargetCharacter = true;
+		// Hero(브롤러)나 Summon(소환물)인 경우에만 교전 대상으로 간주하고 도주를 고려함
+		EBrawlCharacterType TargetType = TargetBrawlChar->GetCharacterType();
+		if (TargetType == EBrawlCharacterType::Hero || TargetType == EBrawlCharacterType::Summon)
+		{
+			bIsCombatant = true;
+		}
+
 		if (UAbilitySystemComponent* TargetASC = TargetBrawlChar->GetAbilitySystemComponent())
 		{
 			if (const UBrawlAttributeSet* TargetAttribSet = TargetASC->GetSet<UBrawlAttributeSet>())
@@ -90,69 +97,75 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 
 	// 3. 현재 전략 상태 가져오기
 	EBrawlAIStrategy CurrentStrategy = (EBrawlAIStrategy)Blackboard->GetValueAsEnum(StrategyStateKey.SelectedKeyName);
-	EBrawlAIStrategy NewStrategy = CurrentStrategy;
+	
+	// 타겟이 있으므로 더 이상 Patrol 상태는 불가능함 (기본값 설정)
+	EBrawlAIStrategy NewStrategy = EBrawlAIStrategy::Combat;
 
 	// 4. 전략 결정 로직
-	// 4-1. 도주(Flee) 판정
+	// 4-1. 도주(Flee) 여부 판정
 	bool bShouldFlee = false;
 	
-	if (CurrentStrategy == EBrawlAIStrategy::Flee)
+	// 오직 위협적인 대상(Hero, Summon)을 상대로 할 때만 도주를 고려함 (상자 등 Etc 타입은 무시)
+	if (bIsCombatant)
 	{
-		bShouldFlee = true;
-		
-		// 이미 도주 중이라면: 충분히 회복하고 적과 멀어져야 도주 해제 (Hysteresis)
-		bool bRecovered = (HealthRatio >= Settings.ResumeCombatHealthRatio);
-		bool bSafeDistance = (Distance > Settings.MinCombatRange * 1.5f); 
-
-		// [추가] 시야가 가려지면(안전하면) 도주 중단
-		bool bLineOfSight = true;
+		if (CurrentStrategy == EBrawlAIStrategy::Flee)
 		{
-			FVector Start = MyPawn->GetPawnViewLocation();
-			FVector End = TargetActor->GetActorLocation();
-			FHitResult HitResult;
-			FCollisionQueryParams Params;
-			Params.AddIgnoredActor(MyPawn);
+			// 이미 도주 중이라면: 충분히 회복하고 적과 멀어지거나 시야가 차단되어야 도주 해제
+			bool bRecovered = (HealthRatio >= Settings.ResumeCombatHealthRatio);
+			bool bSafeDistance = (Distance > Settings.MinCombatRange * 1.5f); 
 
-			bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, TraceChannel, Params);
-			if (bHit && HitResult.GetActor() != TargetActor)
+			bool bLineOfSight = true;
 			{
-				bLineOfSight = false; // 장애물에 가려짐
+				FVector Start = MyPawn->GetPawnViewLocation();
+				FVector End = TargetActor->GetActorLocation();
+				FHitResult HitResult;
+				FCollisionQueryParams Params;
+				Params.AddIgnoredActor(MyPawn);
+
+				if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, TraceChannel, Params))
+				{
+					if (HitResult.GetActor() != TargetActor)
+					{
+						bLineOfSight = false; // 장애물에 가려짐
+					}
+				}
 			}
-		}
 
-		// 회복되었거나, 안전 거리이거나, *시야가 가려져서 숨었으면* 도주 종료
-		if ((bRecovered && bSafeDistance) || !bLineOfSight)
-		{
-			bShouldFlee = false;
-		}
-	}
-	else
-	{
-		// 도주 중이 아님: 진입 조건 검사
-		bool bTargetIsLow = (TargetHealthRatio <= Settings.PursuitTargetHealthRatio);
-		bool bMyHealthIsLow = (HealthRatio <= Settings.FleeHealthRatio);
-		bool bTooClose = (Distance < Settings.MinCombatRange);
-
-		// (내 체력 낮음 AND 타겟 체력 안 낮음) OR (너무 가까움)
-		// 단, 타겟이 캐릭터일 때만 도주 (상자는 위협이 아님)
-		if (bIsTargetCharacter && ((bMyHealthIsLow && !bTargetIsLow) || bTooClose))
-		{
-			bShouldFlee = true;
-			NewStrategy = EBrawlAIStrategy::Flee;
-		}
-	}
-
-	if (!bShouldFlee)
-	{
-		// [이동(Move) vs 교전(Combat) 판정]
-		if (Distance > Settings.MaxCombatRange)
-		{
-			NewStrategy = EBrawlAIStrategy::Move;
+			// 아직 위험한 상황(시야 확보됨 & 미회복)이라면 도주 유지
+			if (!((bRecovered && bSafeDistance) || !bLineOfSight))
+			{
+				bShouldFlee = true;
+			}
 		}
 		else
 		{
-			NewStrategy = EBrawlAIStrategy::Combat;
+			// 도주 중이 아님: 진입 조건 검사
+			bool bTargetIsLow = (TargetHealthRatio <= Settings.PursuitTargetHealthRatio);
+			bool bMyHealthIsLow = (HealthRatio <= Settings.FleeHealthRatio);
+			bool bTooClose = (Distance < Settings.MinCombatRange);
+
+			// (내 체력 낮음 & 상대 체력 안 낮음) 혹은 (너무 가까움) 이면 도주
+			if ((bMyHealthIsLow && !bTargetIsLow) || bTooClose)
+			{
+				bShouldFlee = true;
+			}
 		}
+	}
+
+	// 4-2. 최종 전략 확정
+	if (bShouldFlee)
+	{
+		NewStrategy = EBrawlAIStrategy::Flee;
+	}
+	else if (Distance > Settings.MaxCombatRange)
+	{
+		// 사거리 밖이면 이동
+		NewStrategy = EBrawlAIStrategy::Move;
+	}
+	else
+	{
+		// 사거리 안이면 교전
+		NewStrategy = EBrawlAIStrategy::Combat;
 	}
 
 	// 5. 변경사항 적용

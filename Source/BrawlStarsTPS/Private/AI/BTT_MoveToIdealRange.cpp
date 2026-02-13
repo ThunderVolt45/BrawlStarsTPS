@@ -58,6 +58,15 @@ void UBTT_MoveToIdealRange::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 	float Distance = MyPawn->GetDistanceTo(TargetActor);
 	float PreferredRange = Settings.PreferredCombatRange;
 
+	// 타겟이 상자(Etc)라면 이상 거리를 0으로 잡아서 바짝 붙도록 함
+	if (ABrawlCharacter* TargetBrawler = Cast<ABrawlCharacter>(TargetActor))
+	{
+		if (TargetBrawler->GetCharacterType() == EBrawlCharacterType::Etc)
+		{
+			PreferredRange = 0.0f;
+		}
+	}
+
 	FVector MyLoc = MyPawn->GetActorLocation();
 	FVector TargetLoc = TargetActor->GetActorLocation();
 
