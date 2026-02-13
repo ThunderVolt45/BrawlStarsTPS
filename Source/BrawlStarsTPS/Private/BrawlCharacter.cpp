@@ -199,6 +199,7 @@ FGenericTeamId ABrawlCharacter::GetGenericTeamId() const
 bool ABrawlCharacter::IsAlly(AActor* Other) const
 {
 	if (!Other) return false;
+	if (Other == this) return true;
 
 	// 1. 생성자 관계 체크
 	AActor* MyInstigator = GetInstigator();

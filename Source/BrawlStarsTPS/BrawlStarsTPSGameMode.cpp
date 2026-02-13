@@ -44,7 +44,7 @@ void ABrawlStarsTPSGameMode::BeginPlay()
 			FText ModeName = FText::FromStringTable(TableID, BaseKey + TEXT("_Name"));
 			FText ModeDesc = FText::FromStringTable(TableID, BaseKey + TEXT("_Desc"));
 
-			GS->SetModeInfo(ModeName, ModeDesc);
+			GS->SetModeInfo(GameModeType, ModeName, ModeDesc);
 			
 			UE_LOG(LogTemp, Log, TEXT("GameMode: Loaded strings from Table [%s] using ID [%s]"), 
 				*GameModeStringTable.ToString(), *TableID.ToString());

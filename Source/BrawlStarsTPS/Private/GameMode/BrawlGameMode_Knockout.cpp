@@ -9,6 +9,7 @@
 
 ABrawlGameMode_Knockout::ABrawlGameMode_Knockout()
 {
+	GameModeType = EBrawlGameModeType::KnockOut;
 	GameStateClass = ABrawlGameState_Knockout::StaticClass();
 	MaxBots = 5; // 플레이어 포함 6명을 만들기 위해 5명의 봇 추가
 	StartDelay = 5.0f;

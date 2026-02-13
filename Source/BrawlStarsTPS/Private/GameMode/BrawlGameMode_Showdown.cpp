@@ -19,6 +19,7 @@
 
 ABrawlGameMode_Showdown::ABrawlGameMode_Showdown()
 {
+	GameModeType = EBrawlGameModeType::Showdown;
 	MaxPowerCubeBoxes = 15;
 	MaxBots = 9; // 플레이어 포함 10명
 	StartDelay = 5.0f;
@@ -183,7 +184,7 @@ void ABrawlGameMode_Showdown::SpawnPowerCubeBoxes()
 			if (SP->SpawnPointType == EBrawlSpawnPointType::PowerCubeBox)
 			{
 				if (SpawnedCount >= MaxPowerCubeBoxes) break;
-				if (SP->IsOccupied(100.0f)) continue;
+				if (SP->IsOccupied(50.0f)) continue;
 
 				FActorSpawnParameters SpawnParams;
 				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -217,7 +218,7 @@ void ABrawlGameMode_Showdown::SpawnPowerCubeBoxes()
 					TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
 					ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
 					
-					if (!UKismetSystemLibrary::SphereOverlapActors(GetWorld(), SpawnLocation, 150.0f, ObjectTypes, ABrawlPowerCubeBox::StaticClass(), TArray<AActor*>(), Overlapping))
+					if (!UKismetSystemLibrary::SphereOverlapActors(GetWorld(), SpawnLocation, 100.0f, ObjectTypes, ABrawlPowerCubeBox::StaticClass(), TArray<AActor*>(), Overlapping))
 					{
 						FActorSpawnParameters SpawnParams;
 						SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;

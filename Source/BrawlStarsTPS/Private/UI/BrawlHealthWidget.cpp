@@ -6,6 +6,8 @@
 #include "BrawlAttributeSet.h"
 #include "BrawlCharacter.h"
 #include "BrawlPlayerState.h"
+#include "BrawlGameState.h"
+#include "Data/BrawlTypes.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
@@ -63,12 +65,33 @@ void UBrawlHealthWidget::SetupPlayerStateBindings()
 	if (LocalChar)
 	{
 		// IsAlly 함수가 Instigator 관계를 포함하므로 소환물 판별 가능
-		// 단, 둘 중 하나라도 TeamID가 NoTeam(255)이면 false를 반환하므로 주의
-		if (LocalChar->GetGenericTeamId() != FGenericTeamId::NoTeam && 
-			TargetChar->GetGenericTeamId() != FGenericTeamId::NoTeam)
+		bool bIsAlly = LocalChar->IsAlly(TargetChar);
+		
+		if (bIsAlly)
 		{
-			bIsEnemy = !LocalChar->IsAlly(TargetChar);
+			// 아군인 경우 (본인 또는 본인의 소환물) 즉시 확정
+			bIsEnemy = false;
 			bTeamIdentified = true;
+		}
+		else if (LocalChar->GetGenericTeamId() != FGenericTeamId::NoTeam && 
+				 TargetChar->GetGenericTeamId() != FGenericTeamId::NoTeam)
+		{
+			// 둘 다 유효한 팀이 설정된 경우 비교 결과 확정
+			bIsEnemy = true; // IsAlly가 false였으므로 적
+			bTeamIdentified = true;
+		}
+		else
+		{
+			// 둘 중 하나가 255(NoTeam)인 경우: 쇼다운 모드인지 확인
+			if (ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>())
+			{
+				if (GS->GetGameModeType() == EBrawlGameModeType::Showdown)
+				{
+					// 쇼다운에서는 255(NoTeam)가 기본이므로, IsAlly가 false면 확실히 적
+					bIsEnemy = true;
+					bTeamIdentified = true;
+				}
+			}
 		}
 	}
 	else

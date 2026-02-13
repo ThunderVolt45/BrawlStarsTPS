@@ -11,6 +11,7 @@
 
 ABrawlGameMode_Bounty::ABrawlGameMode_Bounty()
 {
+	GameModeType = EBrawlGameModeType::Bounty;
 	GameStateClass = ABrawlGameState_Bounty::StaticClass();
 	PlayerStateClass = ABrawlPlayerState::StaticClass();
 	PrimaryActorTick.bCanEverTick = true;
