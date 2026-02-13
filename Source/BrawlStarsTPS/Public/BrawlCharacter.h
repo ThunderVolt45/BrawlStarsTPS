@@ -149,6 +149,9 @@ protected:
 	virtual void OnHyperChargeTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
 	
 	UFUNCTION()
+	void OnMatchStateChanged();
+
+	UFUNCTION()
 	void OnRep_IsDead();
 
 	// --- Visual Effects ---

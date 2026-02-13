@@ -4,6 +4,7 @@
 #include "BrawlCharacter.h"
 #include "BrawlAbilitySystemComponent.h"
 #include "BrawlAttributeSet.h"
+#include "BrawlGameState.h"
 #include "BrawlStarsTPS.h"
 #include "BrawlStarsTPSGameMode.h"
 #include "BrawlPlayerState.h"
@@ -179,6 +180,20 @@ void ABrawlCharacter::BeginPlay()
 	// 궁극기와 하이퍼차지 게이지 초기화는 여기서 한번만 수행한다
 	AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargeAttribute(), 0.0f);
 	AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargeAttribute(), 0.0f);
+
+	// 게임 상태 변경 감지 바인딩
+	if (ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>())
+	{
+		GS->OnMatchStateChanged.AddDynamic(this, &ABrawlCharacter::OnMatchStateChanged);
+	}
+
+	// 초기 가시성 설정
+	UpdateMeshVisibility();
+}
+
+void ABrawlCharacter::OnMatchStateChanged()
+{
+	UpdateMeshVisibility();
 }
 
 UAbilitySystemComponent* ABrawlCharacter::GetAbilitySystemComponent() const
@@ -571,6 +586,13 @@ void ABrawlCharacter::UpdateMeshVisibility()
 	// 죽었다면 무조건 숨김 (최우선 순위)
 	bool bShouldHideAll = bIsDead;
 
+	// 매치가 진행 중인지 확인 (Intro, MatchStart 등에서는 체력바 숨김)
+	bool bMatchInProgress = false;
+	if (ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>())
+	{
+		bMatchInProgress = GS->IsMatchInProgress();
+	}
+
 	// 최종 은신 여부 판별 (수풀 속 + 전투 중 아님 + 발각 안 됨)
 	bool bFinalHidden = bIsHiddenInBush && !bIsRevealed && !bIsRevealedByCombat && !bIsCombatState;
 
@@ -583,7 +605,8 @@ void ABrawlCharacter::UpdateMeshVisibility()
 		}
 		if (HealthBarComponent)
 		{
-			HealthBarComponent->SetHiddenInGame(false);
+			// 매치 시작 전이면 숨김
+			HealthBarComponent->SetHiddenInGame(!bMatchInProgress);
 		}
 	}
 	// 적(AI) 또는 사망한 플레이어 처리
@@ -598,7 +621,8 @@ void ABrawlCharacter::UpdateMeshVisibility()
 		
 		if (HealthBarComponent)
 		{
-			HealthBarComponent->SetHiddenInGame(bHide);
+			// 은신/죽음 상태거나 매치 시작 전이면 숨김
+			HealthBarComponent->SetHiddenInGame(bHide || !bMatchInProgress);
 		}
 	}
 }
