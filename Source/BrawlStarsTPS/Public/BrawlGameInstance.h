@@ -24,6 +24,8 @@ class BRAWLSTARSTPS_API UBrawlGameInstance : public UGameInstance
 public:
 	UBrawlGameInstance();
 
+	virtual void Init() override;
+
 	/** 선택된 브롤러의 RowName (DT_BrawlerData 기준) */
 	UPROPERTY(BlueprintReadWrite, Category = "Brawl|State")
 	FName SelectedBrawlerRowName = TEXT("Shelly");
@@ -60,7 +62,24 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Game")
 	void StartGame();
 
+	/** 로딩 화면 표시 */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
+	void ShowLoadingScreen();
+
+	/** 로딩 화면 숨김 */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
+	void HideLoadingScreen();
+
+	/** 로딩 화면 위젯 클래스 */
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
+	TSubclassOf<UUserWidget> LoadingWidgetClass;
+
 	/** 게임 모드 데이터 테이블 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Data")
 	TObjectPtr<UDataTable> GameModeDataTable;
+
+private:
+	/** 현재 생성된 로딩 위젯 인스턴스 */
+	UPROPERTY()
+	TObjectPtr<UUserWidget> LoadingWidgetInstance;
 };

@@ -32,9 +32,9 @@ void ABrawlStarsTPSGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 1. 게임 모드 정보 즉시 로드 (로딩 화면 중에 완료)
 	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
 	{
-		// 스트링 테이블에서 게임 모드 정보 로드
 		if (!GameModeStringTable.IsNull())
 		{
 			// 에셋의 경로 자체가 스트링 테이블의 고유 ID가 됩니다.
@@ -51,7 +51,24 @@ void ABrawlStarsTPSGameMode::BeginPlay()
 		}
 
 		GS->SetMatchState(EBrawlMatchState::Intro);
+	}
 
+	// 2. 로딩 화면은 일정 시간 후에 (1초) 부드럽게 제거
+	if (UBrawlGameInstance* GI = Cast<UBrawlGameInstance>(GetGameInstance()))
+	{
+		FTimerHandle LoadingTimerHandle;
+		GetWorldTimerManager().SetTimer(LoadingTimerHandle, [GI]()
+		{
+			if (GI)
+			{
+				GI->HideLoadingScreen();
+			}
+		}, 1.0f, false);
+	}
+
+	// 3. 매치 시작 타이머 설정
+	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
+	{
 		FTimerHandle StartTimerHandle;
 		GetWorldTimerManager().SetTimer(StartTimerHandle, this, &ABrawlStarsTPSGameMode::StartMatch, StartDelay, false);
 	}
