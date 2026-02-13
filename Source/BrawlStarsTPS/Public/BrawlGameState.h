@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
+#include "Data/BrawlTypes.h"
 #include "BrawlGameState.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnBrawlerKilledDelegate, AActor*, Killer, AActor*, Victim);
@@ -65,7 +66,10 @@ public:
 	void SetAllAIActive(bool bActive);
 
 	// 게임 모드 정보 설정 (서버 전용)
-	void SetModeInfo(FText InName, FText InDescription);
+	void SetModeInfo(EBrawlGameModeType InType, FText InName, FText InDescription);
+
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Game")
+	EBrawlGameModeType GetGameModeType() const { return GameModeType; }
 
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Game")
 	FText GetModeName() const { return ModeName; }
@@ -89,6 +93,10 @@ protected:
 	// 현재 매치 상태 (Replicated)
 	UPROPERTY(ReplicatedUsing = OnRep_MatchState, VisibleInstanceOnly, Category = "Brawl|Game")
 	EBrawlMatchState MatchState = EBrawlMatchState::Waiting;
+
+	// 현재 게임 모드 타입 (Replicated)
+	UPROPERTY(Replicated, VisibleInstanceOnly, Category = "Brawl|Game")
+	EBrawlGameModeType GameModeType = EBrawlGameModeType::None;
 
 	// 게임 모드 이름 (Replicated)
 	UPROPERTY(Replicated, VisibleInstanceOnly, Category = "Brawl|Game")

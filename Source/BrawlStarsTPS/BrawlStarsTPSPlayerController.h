@@ -79,7 +79,7 @@ protected:
 
 	// 조준 보조 회전 속도 (Interpolation Speed)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Brawl|Aim")
-	float AimAssistInterpSpeed = 5.0f;
+	float AimAssistInterpSpeed = 7.5f;
 
 	// 현재 조준된 타겟
 	TWeakObjectPtr<class ABrawlCharacter> CurrentAimTarget;

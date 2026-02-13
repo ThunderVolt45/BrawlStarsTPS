@@ -8,6 +8,7 @@
 #include "GameplayTagContainer.h"
 #include "GenericTeamAgentInterface.h"
 #include "Data/BrawlCharacterData.h"
+#include "Data/BrawlTypes.h"
 #include "BrawlCharacter.generated.h"
 
 struct FOnAttributeChangeData;
@@ -129,6 +130,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|AI")
 	class UBehaviorTree* GetCombatBehaviorTree() const;
 
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Character")
+	EBrawlCharacterType GetCharacterType() const { return CharacterType; }
+
 	// --- Components & Getters ---
 	UBrawlAbilitySystemComponent* GetBrawlAbilitySystemComponent() const { return AbilitySystemComponent; }
 	FORCEINLINE USpringArmComponent* GetCameraBoom() { return CameraBoom; }
@@ -149,6 +153,9 @@ protected:
 	virtual void OnHyperChargeTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
 	
 	UFUNCTION()
+	void OnMatchStateChanged();
+
+	UFUNCTION()
 	void OnRep_IsDead();
 
 	// --- Visual Effects ---
@@ -160,6 +167,9 @@ protected:
 	// --- Data Assets ---
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
 	FName CharacterID = FName("Colt");
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
+	EBrawlCharacterType CharacterType = EBrawlCharacterType::Hero;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Stats")
 	TObjectPtr<UDataTable> CharacterDataTable;

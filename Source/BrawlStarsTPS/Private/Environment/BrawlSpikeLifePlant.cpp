@@ -65,6 +65,7 @@ ABrawlSpikeLifePlant::ABrawlSpikeLifePlant()
 	// 팀 ID 및 캐릭터 ID 설정
 	TeamID = 255; // 기본 중립 (소환 시점에 소환사의 팀으로 변경 필요)
 	CharacterID = FName("SpikeLifePlant");
+	CharacterType = EBrawlCharacterType::Summon;
 }
 
 void ABrawlSpikeLifePlant::PostInitializeComponents()

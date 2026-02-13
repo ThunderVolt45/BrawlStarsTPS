@@ -33,6 +33,7 @@ void ABrawlGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 
 	DOREPLIFETIME(ABrawlGameState, AliveBrawlerCount);
 	DOREPLIFETIME(ABrawlGameState, MatchState);
+	DOREPLIFETIME(ABrawlGameState, GameModeType);
 	DOREPLIFETIME(ABrawlGameState, ModeName);
 	DOREPLIFETIME(ABrawlGameState, ModeDescription);
 }
@@ -60,10 +61,11 @@ void ABrawlGameState::OnRep_MatchState()
 	OnMatchStateChanged.Broadcast();
 }
 
-void ABrawlGameState::SetModeInfo(FText InName, FText InDescription)
+void ABrawlGameState::SetModeInfo(EBrawlGameModeType InType, FText InName, FText InDescription)
 {
 	if (HasAuthority())
 	{
+		GameModeType = InType;
 		ModeName = InName;
 		ModeDescription = InDescription;
 	}

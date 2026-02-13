@@ -23,6 +23,11 @@ public:
 
 protected:
 	virtual bool CalculateRawConditionValue(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) const override;
+	virtual void OnBecomeRelevant(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
+	virtual void OnCeaseRelevant(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
+
+	/** 블랙보드 값이 변경될 때 호출될 콜백 */
+	EBlackboardNotificationResult OnBlackboardChange(const UBlackboardComponent& Blackboard, FBlackboard::FKey KeyID);
 
 protected:
 	// 검사할 블랙보드 키 (StrategyState)

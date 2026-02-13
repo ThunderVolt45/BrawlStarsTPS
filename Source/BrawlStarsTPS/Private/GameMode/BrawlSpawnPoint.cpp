@@ -9,11 +9,15 @@ ABrawlSpawnPoint::ABrawlSpawnPoint()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-#if WITH_EDITOR
+	// 항상 일관된 루트 컴포넌트 사용 (패키지 빌드 안정성)
+	USceneComponent* SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
+	RootComponent = SceneRoot;
+
+#if WITH_EDITORONLY_DATA
 	BillboardComponent = CreateDefaultSubobject<UBillboardComponent>(TEXT("Billboard"));
 	if (BillboardComponent)
 	{
-		RootComponent = BillboardComponent;
+		BillboardComponent->SetupAttachment(RootComponent);
 		
 		// 에디터용 아이콘 설정 (기본 Target 아이콘 사용)
 		static ConstructorHelpers::FObjectFinder<UTexture2D> IconTexture(TEXT("/Engine/EditorResources/S_Target.S_Target"));
@@ -24,8 +28,6 @@ ABrawlSpawnPoint::ABrawlSpawnPoint()
 		
 		BillboardComponent->bIsScreenSizeScaled = true;
 	}
-#else
-	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 #endif
 }
 

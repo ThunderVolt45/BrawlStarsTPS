@@ -79,6 +79,7 @@ ABrawlPowerCubeBox::ABrawlPowerCubeBox()
 	// 팀 ID 설정 (기본 중립)
 	TeamID = 255;
 	CharacterID = FName("PowerCubeBox");
+	CharacterType = EBrawlCharacterType::Etc;
 }
 
 void ABrawlPowerCubeBox::PostInitializeComponents()

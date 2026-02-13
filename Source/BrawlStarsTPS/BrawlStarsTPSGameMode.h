@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "GenericTeamAgentInterface.h"
+#include "Data/BrawlTypes.h"
 #include "BrawlStarsTPSGameMode.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnBrawlerKilled, AActor*, Killer, AActor*, Victim);
@@ -60,6 +61,10 @@ public:
 	/** 이 게임 모드의 식별자 (스트링 테이블 키의 접두사로 사용) */
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Data")
 	FName GameModeID = FName("Showdown");
+
+	/** 이 게임 모드의 타입 */
+	UPROPERTY(EditDefaultsOnly, Category = "Brawl|Data")
+	EBrawlGameModeType GameModeType = EBrawlGameModeType::None;
 
 	// --- Match Flow ---
 	UPROPERTY(EditDefaultsOnly, Category = "Brawl|GameMode")

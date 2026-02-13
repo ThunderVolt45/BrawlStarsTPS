@@ -11,6 +11,7 @@
 
 ABrawlGameMode_Bounty::ABrawlGameMode_Bounty()
 {
+	GameModeType = EBrawlGameModeType::Bounty;
 	GameStateClass = ABrawlGameState_Bounty::StaticClass();
 	PlayerStateClass = ABrawlPlayerState::StaticClass();
 	PrimaryActorTick.bCanEverTick = true;
@@ -247,27 +248,28 @@ void ABrawlGameMode_Bounty::NotifyKill(AActor* Killer, AActor* Victim)
 
 	if (KillerPS && VictimPS)
 	{
-		int32 VictimBounty = VictimPS->GetBounty();
-		int32 KillerTeam = KillerPS->GetTeamID();
-
+		// 점수 집계는 매치가 진행 중일 때만 수행
 		if (ABrawlGameState_Bounty* GS = GetGameState<ABrawlGameState_Bounty>())
 		{
-			GS->AddTeamScore(KillerTeam, VictimBounty);
-		}
-
-		KillerPS->AddBounty(1);
-		KillerPS->AddScoreContribution(VictimBounty);
-		VictimPS->ResetBounty();
-
-		if (VictimPS->HasTieBreaker())
-		{
-			VictimPS->SetHasTieBreaker(false);
-			KillerPS->SetHasTieBreaker(true);
-			TieBreakerOwnerState = KillerPS;
-
-			if (ABrawlGameState_Bounty* GS = GetGameState<ABrawlGameState_Bounty>())
+			if (GS->GetMatchState() == EBrawlMatchState::Playing)
 			{
-				GS->SetTieBreakerTeam(KillerPS->GetTeamID());
+				int32 VictimBounty = VictimPS->GetBounty();
+				int32 KillerTeam = KillerPS->GetTeamID();
+
+				GS->AddTeamScore(KillerTeam, VictimBounty);
+
+				KillerPS->AddBounty(1);
+				KillerPS->AddScoreContribution(VictimBounty);
+				VictimPS->ResetBounty();
+
+				if (VictimPS->HasTieBreaker())
+				{
+					VictimPS->SetHasTieBreaker(false);
+					KillerPS->SetHasTieBreaker(true);
+					TieBreakerOwnerState = KillerPS;
+
+					GS->SetTieBreakerTeam(KillerPS->GetTeamID());
+				}
 			}
 		}
 
@@ -337,6 +339,12 @@ void ABrawlGameMode_Bounty::RespawnBrawler(AController* Controller)
 void ABrawlGameMode_Bounty::OnTieBreakerPickedUp(ABrawlCharacter* Picker)
 {
 	if (!Picker) return;
+
+	// 매치 진행 중일 때만 처리
+	if (ABrawlGameState* GS = GetGameState<ABrawlGameState>())
+	{
+		if (GS->GetMatchState() != EBrawlMatchState::Playing) return;
+	}
 
 	ABrawlPlayerState* PS = Picker->GetPlayerState<ABrawlPlayerState>();
 	if (PS)

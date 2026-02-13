@@ -43,7 +43,7 @@ void ABrawlProjectile_Spawner::OnHit(UPrimitiveComponent* HitComponent, AActor* 
 			FActorSpawnParameters SpawnParams;
 			SpawnParams.Owner = GetOwner();
 			SpawnParams.Instigator = GetInstigator();
-			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
 			// 스폰 위치 계산 (충돌 지점 + 법선 방향 오프셋)
 			// 보통 장판은 바닥(Hit.Normal이 위쪽)에 깔리므로 Location + ZOffset
