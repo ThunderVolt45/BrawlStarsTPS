@@ -45,6 +45,9 @@ private:
 	/** 날개들의 렌더 트랜스폼 데이터 */
 	TArray<TSharedPtr<class SImage>> Wings;
 
+	/** 중앙 로고 이미지 */
+	TSharedPtr<class SImage> CenterImage;
+
 	/** 날개 뒤를 채워줄 Filler 이미지 */
 	TSharedPtr<class SImage> FillerImage;
 

@@ -4,6 +4,7 @@
 #include "BrawlGameInstance.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SScaleBox.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
 #include "Brushes/SlateImageBrush.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -69,27 +70,38 @@ void SBrawlLoadingScreen::Construct(const FArguments& InArgs)
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Center)
 		[
-			SAssignNew(Canvas, SConstraintCanvas)
-			
-			// 2. 날개 뒤 Filler 이미지
-			+ SConstraintCanvas::Slot()
-			.Anchors(FAnchors(0.5f))
-			.Alignment(FVector2D(0.5f, 0.5f))
-			.AutoSize(true)
+			// 해상도 대응을 위한 스케일 박스
+			SNew(SScaleBox)
+			.Stretch(EStretch::ScaleToFill)
 			[
-				SAssignNew(FillerImage, SImage)
-				.Image(FillerBrush.Get())
-				.ColorAndOpacity(FLinearColor(1.0f, 0.514918f, 0.014444f, 1.0f))
-			]
-			
-			// 3. 중앙 이미지
-			+ SConstraintCanvas::Slot()
-			.Anchors(FAnchors(0.5f))
-			.Alignment(FVector2D(0.5f, 0.5f))
-			.AutoSize(true)
-			[
-				SNew(SImage)
-				.Image(CenterBrush.Get())
+				// 기준 해상도 (1920x1080) 설정
+				SNew(SBox)
+				.WidthOverride(1920.0f)
+				.HeightOverride(1080.0f)
+				[
+					SAssignNew(Canvas, SConstraintCanvas)
+					
+					// 2. 날개 뒤 Filler 이미지
+					+ SConstraintCanvas::Slot()
+					.Anchors(FAnchors(0.5f))
+					.Alignment(FVector2D(0.5f, 0.5f))
+					.AutoSize(true)
+					[
+						SAssignNew(FillerImage, SImage)
+						.Image(FillerBrush.Get())
+						.ColorAndOpacity(FLinearColor(1.0f, 0.514918f, 0.014444f, 1.0f))
+					]
+					
+					// 3. 중앙 이미지
+					+ SConstraintCanvas::Slot()
+					.Anchors(FAnchors(0.5f))
+					.Alignment(FVector2D(0.5f, 0.5f))
+					.AutoSize(true)
+					[
+						SAssignNew(CenterImage, SImage)
+						.Image(CenterBrush.Get())
+					]
+				]
 			]
 		]
 	];
