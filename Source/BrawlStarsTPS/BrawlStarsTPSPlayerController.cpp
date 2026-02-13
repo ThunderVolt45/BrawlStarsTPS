@@ -153,8 +153,8 @@ void ABrawlStarsTPSPlayerController::PlayerTick(float DeltaTime)
 		// 3. HUD 요소 업데이트
 		if (BrawlHUDWidget)
 		{
-			// HUD의 반경 설정을 컨트롤러에도 동기화
-			AimDetectionRadius = BrawlHUDWidget->ReticleCircleRadius;
+			// HUD의 반경 설정을 컨트롤러에 동기화하되 약간 더 크게 한다
+			AimDetectionRadius = BrawlHUDWidget->ReticleCircleRadius * 1.25f;
 
 			ABrawlCharacter* Target = CurrentAimTarget.Get();
 			
@@ -229,8 +229,12 @@ void ABrawlStarsTPSPlayerController::FindBestTarget()
 	float MaxWorldRange = MyChar->GetEstimatedProjectileSpeed() * MyChar->GetEstimatedProjectileLifetime();
 	float MaxWorldRangeSq = FMath::Square(MaxWorldRange);
 
+	// DPI 스케일을 고려하여 픽셀 기반 탐색 반경 보정
+	float DPIScale = UWidgetLayoutLibrary::GetViewportScale(this);
+	float ScaledAimRadius = AimDetectionRadius * DPIScale;
+
 	ABrawlCharacter* BestTarget = nullptr;
-	float BestDistSq = FMath::Square(AimDetectionRadius);
+	float BestDistSq = FMath::Square(ScaledAimRadius);
 	
 	int32 ViewportSizeX, ViewportSizeY;
 	GetViewportSize(ViewportSizeX, ViewportSizeY);
