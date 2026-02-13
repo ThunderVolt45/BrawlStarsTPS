@@ -264,6 +264,14 @@ void ABrawlGameMode_Knockout::ResetBrawlersForRound()
 	{
 		if (ABrawlCharacter* Brawler = Cast<ABrawlCharacter>(Actor))
 		{
+			// 1. 소환물(Summon)인 경우 제거
+			if (Brawler->GetCharacterType() == EBrawlCharacterType::Summon)
+			{
+				Brawler->Destroy();
+				continue;
+			}
+
+			// 2. 실제 브롤러 (Hero) 리셋 로직
 			AController* Controller = Brawler->GetController();
 			if (APlayerController* PC = Cast<APlayerController>(Controller))
 			{
