@@ -264,7 +264,13 @@ void ABrawlStarsTPSGameMode::SetupTeams()
 
 void ABrawlStarsTPSGameMode::SpawnBots()
 {
-	if (AICharacterClasses.Num() == 0 || MaxBots <= 0) return;
+	UE_LOG(LogTemp, Log, TEXT("GameMode: SpawnBots() called. MaxBots: %d, AICharacterClasses: %d"), MaxBots, AICharacterClasses.Num());
+
+	if (AICharacterClasses.Num() == 0 || MaxBots <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GameMode: Skipping SpawnBots because AICharacterClasses is empty or MaxBots <= 0"));
+		return;
+	}
 
 	TArray<AActor*> FoundSpawnPoints;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABrawlSpawnPoint::StaticClass(), FoundSpawnPoints);
