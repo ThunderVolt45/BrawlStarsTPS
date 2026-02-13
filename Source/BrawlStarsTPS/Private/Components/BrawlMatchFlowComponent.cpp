@@ -6,6 +6,8 @@
 #include "BrawlCharacter.h"
 #include "BrawlStarsTPSPlayerController.h"
 #include "BrawlGameState_Knockout.h"
+#include "BrawlGameInstance.h"
+#include "Data/BrawlGameModeData.h"
 #include "Blueprint/UserWidget.h"
 #include "UI/BrawlMatchStartWidget.h"
 #include "UI/BrawlMatchResultWidget.h"
@@ -209,13 +211,44 @@ void UBrawlMatchFlowComponent::HandleIntroStarted()
 		{
 			if (UBrawlMatchStartWidget* StartWidget = Cast<UBrawlMatchStartWidget>(MatchStartWidget))
 			{
-				FText ModeName = FText::FromString(TEXT("GAME MODE"));
-				FText ModeDesc = FText::FromString(TEXT("DEFEAT ENEMIES"));
+				FText ModeName = FText::GetEmpty();
+				FText ModeDesc = FText::GetEmpty();
 
-				if (ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>())
+				// 1. GameInstance에서 선택된 모드 정보를 직접 조회 및 스트링 테이블 참조
+				if (UBrawlGameInstance* GI = Cast<UBrawlGameInstance>(GetWorld()->GetGameInstance()))
 				{
-					ModeName = GS->GetModeName();
-					ModeDesc = GS->GetModeDescription();
+					if (GI->GameModeDataTable)
+					{
+						static const FString ContextString(TEXT("MatchFlow_Intro"));
+						FBrawlGameModeData* ModeData = GI->GameModeDataTable->FindRow<FBrawlGameModeData>(GI->SelectedGameModeRowName, ContextString);
+						
+						if (ModeData)
+						{
+							// GameModeType Enum을 문자열 키로 변환 (Showdown, Bounty, Knockout 등)
+							FString BaseKey = StaticEnum<EBrawlGameModeType>()->GetNameStringByValue((int64)ModeData->GameModeType);
+							
+							// 스트링 테이블 ID (패키지 경로)
+							FName TableID = TEXT("/Game/_BP/Data/ST_GameModeInfo.ST_GameModeInfo");
+
+							// 로컬라이즈된 텍스트 가져오기 (ST_GameModeInfo에 Showdown_Name, Showdown_Desc 등이 있다고 가정)
+							ModeName = FText::FromStringTable(TableID, BaseKey + TEXT("_Name"));
+							ModeDesc = FText::FromStringTable(TableID, BaseKey + TEXT("_Desc"));
+							
+							// 만약 스트링 테이블에서 못 가져왔다면 (Fallback) 데이터 테이블 값이라도 사용
+							if (ModeName.IsEmpty()) ModeName = ModeData->ModeName;
+							if (ModeDesc.IsEmpty()) ModeDesc = ModeData->MapDisplayName;
+						}
+					}
+				}
+
+				// 2. 혹시라도 GameInstance 정보가 없으면 GameState에서 복제된 데이터 사용 (Fallback)
+				if (ModeName.IsEmpty())
+				{
+					if (ABrawlGameState* GS = GetWorld()->GetGameState<ABrawlGameState>())
+					{
+						ModeName = GS->GetModeName();
+						ModeDesc = GS->GetModeDescription();
+					}
 				}
 
 				StartWidget->SetupMatchInfo(ModeName, ModeDesc);

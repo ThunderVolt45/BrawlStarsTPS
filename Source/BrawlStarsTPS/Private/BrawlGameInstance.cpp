@@ -30,6 +30,10 @@ void UBrawlGameInstance::Init()
 		LoadingFillerTexture = Cast<UTexture2D>(StaticLoadObject(UTexture2D::StaticClass(), nullptr, 
 			TEXT("/Game/Textures/WhiteDot.WhiteDot")));
 
+		// 스트링 테이블 프리로드
+		GameModeStringTable = StaticLoadObject(UObject::StaticClass(), nullptr, 
+			TEXT("/Game/Data/ST_GameModeInfo.ST_GameModeInfo"));
+
 		// 텍스처 리소스가 즉시 사용 가능하도록 보장
 		if (LoadingCenterTexture) LoadingCenterTexture->UpdateResource();
 		if (LoadingWingTexture) LoadingWingTexture->UpdateResource();

@@ -83,6 +83,10 @@ public:
 	UPROPERTY()
 	TObjectPtr<UTexture2D> LoadingFillerTexture;
 
+	/** 게임 모드 정보 스트링 테이블 프리로드용 */
+	UPROPERTY()
+	TObjectPtr<UObject> GameModeStringTable;
+
 	/** 게임 모드 데이터 테이블 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Data")
 	TObjectPtr<UDataTable> GameModeDataTable;

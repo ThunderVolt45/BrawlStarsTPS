@@ -11,6 +11,8 @@
 #include "Environment/BrawlPoisonZone.h"
 #include "AbilitySystemComponent.h"
 #include "BrawlStarsTPSPlayerController.h"
+#include "Internationalization/StringTable.h"
+#include "Internationalization/StringTableRegistry.h"
 
 ABrawlStarsTPSGameMode::ABrawlStarsTPSGameMode()
 {
@@ -37,17 +39,27 @@ void ABrawlStarsTPSGameMode::BeginPlay()
 	{
 		if (!GameModeStringTable.IsNull())
 		{
-			// 에셋의 경로 자체가 스트링 테이블의 고유 ID가 됩니다.
-			FName TableID = FName(*GameModeStringTable.ToSoftObjectPath().GetAssetPathString());
-			FString BaseKey = GameModeID.ToString();
+			// 소프트 레퍼런스를 동기 로드하여 메모리에 확실히 올리고 스트링 테이블 레지스트리에 등록되도록 유도
+			UStringTable* LoadedTable = GameModeStringTable.LoadSynchronous();
+			if (LoadedTable)
+			{
+				// 에셋 기반 스트링 테이블의 ID는 해당 에셋의 패키지 이름(Long Package Name)입니다.
+				FName TableID = LoadedTable->GetOutermost()->GetFName();
+				
+				FString BaseKey = GameModeID.ToString();
 
-			FText ModeName = FText::FromStringTable(TableID, BaseKey + TEXT("_Name"));
-			FText ModeDesc = FText::FromStringTable(TableID, BaseKey + TEXT("_Desc"));
+				FText ModeName = FText::FromStringTable(TableID, BaseKey + TEXT("_Name"));
+				FText ModeDesc = FText::FromStringTable(TableID, BaseKey + TEXT("_Desc"));
 
-			GS->SetModeInfo(GameModeType, ModeName, ModeDesc);
-			
-			UE_LOG(LogTemp, Log, TEXT("GameMode: Loaded strings from Table [%s] using ID [%s]"), 
-				*GameModeStringTable.ToString(), *TableID.ToString());
+				GS->SetModeInfo(GameModeType, ModeName, ModeDesc);
+				
+				UE_LOG(LogTemp, Log, TEXT("GameMode: Loaded strings from Table [%s] using ID [%s]. Name: %s"), 
+					*GameModeStringTable.ToString(), *TableID.ToString(), *ModeName.ToString());
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("GameMode: Failed to LoadSynchronous StringTable [%s]"), *GameModeStringTable.ToString());
+			}
 		}
 
 		GS->SetMatchState(EBrawlMatchState::Intro);
