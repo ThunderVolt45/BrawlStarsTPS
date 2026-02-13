@@ -70,16 +70,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void HideLoadingScreen();
 
-	/** 로딩 화면 위젯 클래스 */
-	UPROPERTY(EditDefaultsOnly, Category = "Brawl|UI")
-	TSubclassOf<UUserWidget> LoadingWidgetClass;
+	/** 로딩 화면 리소스 프리로드용 (메모리 상주 및 즉각적인 로딩 화면 표시 목적) */
+	UPROPERTY()
+	TObjectPtr<UMaterialInterface> LoadingBackgroundMaterial;
+	
+	UPROPERTY()
+	TObjectPtr<UTexture2D> LoadingCenterTexture;
+	
+	UPROPERTY()
+	TObjectPtr<UTexture2D> LoadingWingTexture;
+
+	UPROPERTY()
+	TObjectPtr<UTexture2D> LoadingFillerTexture;
 
 	/** 게임 모드 데이터 테이블 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Data")
 	TObjectPtr<UDataTable> GameModeDataTable;
 
-private:
-	/** 현재 생성된 로딩 위젯 인스턴스 */
-	UPROPERTY()
-	TObjectPtr<UUserWidget> LoadingWidgetInstance;
 };

@@ -4,22 +4,33 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
+#include "UObject/GCObject.h"
 
 /**
  * SBrawlLoadingScreen
  * 
  * MoviePlayer에서 사용할 Slate 기반 로딩 화면 위젯
  */
-class SBrawlLoadingScreen : public SCompoundWidget
+class SBrawlLoadingScreen : public SCompoundWidget, public FGCObject
 {
 public:
-	SLATE_BEGIN_ARGS(SBrawlLoadingScreen) {}
+	SLATE_BEGIN_ARGS(SBrawlLoadingScreen)
+		: _GameInstance(nullptr)
+	{}
+	SLATE_ARGUMENT(class UBrawlGameInstance*, GameInstance)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 
 	// 애니메이션을 위해 매 프레임 호출
 	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
+
+	// FGCObject 인터페이스 구현
+	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
+	virtual FString GetReferencerName() const override
+	{
+		return TEXT("SBrawlLoadingScreen");
+	}
 
 private:
 	/** 날개들을 회전시키기 위한 변수 */
@@ -38,16 +49,23 @@ private:
 	TSharedPtr<class SImage> FillerImage;
 
 	/** 동적 머티리얼 인스턴스 (배경 흐름 제어용) */
-	UPROPERTY()
 	TObjectPtr<class UMaterialInstanceDynamic> BackgroundMID;
 
 	/** UV 오프셋 및 설정값 */
 	FVector2D CurrentUVOffset = FVector2D::ZeroVector;
-	FVector2D ScrollSpeed = FVector2D(0.05f, 0.05f);
+	FVector2D ScrollSpeed = FVector2D(-0.03f, 0.1f);
+	float BackgroundAlpha = 1.0f;
+	float RotationAngle = -1.0f;
+	float BackgroundTiling = 8.0f;
 
 	/** 브러시 리소스를 유지하기 위한 포인터들 */
 	TSharedPtr<FSlateBrush> BackgroundBrush;
 	TSharedPtr<FSlateBrush> CenterBrush;
 	TSharedPtr<FSlateBrush> WingBrush;
 	TSharedPtr<FSlateBrush> FillerBrush;
+
+	/** 브러시가 사용하는 리소스가 GC되지 않도록 보호하기 위한 포인터들 */
+	TObjectPtr<UObject> CenterTexture;
+	TObjectPtr<UObject> WingTexture;
+	TObjectPtr<UObject> FillerTexture;
 };

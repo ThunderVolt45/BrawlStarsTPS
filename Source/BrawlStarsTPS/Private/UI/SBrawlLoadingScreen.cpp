@@ -1,38 +1,56 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "UI/SBrawlLoadingScreen.h"
+#include "BrawlGameInstance.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
 #include "Brushes/SlateImageBrush.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+#include "Engine/Texture2D.h"
 
 void SBrawlLoadingScreen::Construct(const FArguments& InArgs)
 {
+	// 인자로 전달받은 GameInstance 사용
+	UBrawlGameInstance* GI = InArgs._GameInstance;
+
 	// 1. 배경 머티리얼 로드 및 MID 생성
-	UMaterialInterface* BaseMat = Cast<UMaterialInterface>(
-		StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, 
+	UMaterialInterface* BaseMat = (GI && GI->LoadingBackgroundMaterial) ? GI->LoadingBackgroundMaterial.Get() : 
+		Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, 
 			TEXT("/Game/Materials/M_ScrollingBackground.M_ScrollingBackground")));
 	
 	if (BaseMat)
 	{
 		BackgroundMID = UMaterialInstanceDynamic::Create(BaseMat, nullptr);
+		if (BackgroundMID)
+		{
+			// 초기 파라미터 즉시 설정 (Tick을 기다리지 않음)
+			BackgroundMID->SetScalarParameterValue(TEXT("UOffset"), CurrentUVOffset.X);
+			BackgroundMID->SetScalarParameterValue(TEXT("VOffset"), CurrentUVOffset.Y);
+			BackgroundMID->SetScalarParameterValue(TEXT("Alpha"), BackgroundAlpha);
+			BackgroundMID->SetScalarParameterValue(TEXT("Tiling"), BackgroundTiling);
+			BackgroundMID->SetScalarParameterValue(TEXT("Rotation"), RotationAngle);
+		}
 	}
 	
 	// 브러시 생성 시 ResourceObject로 MID를 전달합니다.
 	BackgroundBrush = MakeShareable(new FSlateImageBrush(BackgroundMID, 
 		FVector2D(1920.0f, 1080.0f)));
 	
-	// 중앙 로고 및 날개 이미지
-	CenterBrush = MakeShareable(new FSlateImageBrush(TEXT("/Game/Textures/colt_portrait.colt_portrait"), 
-		FVector2D(128.0f, 128.0f)));
-	WingBrush = MakeShareable(new FSlateImageBrush(TEXT("/Game/Textures/WhiteDot.WhiteDot"), 
-		FVector2D(32.0f, 32.0f)));
+	// 중앙 로고 및 날개 이미지 텍스처 사용 (프리로드된 것 우선)
+	CenterTexture = (GI && GI->LoadingCenterTexture) ? GI->LoadingCenterTexture.Get() : 
+		StaticLoadObject(UObject::StaticClass(), nullptr, TEXT("/Game/UI/Textures/2239_10x.2239_10x"));
 	
-	// 날개 사이 빈 공간을 채워줄 Filler
-	FillerBrush = MakeShareable(new FSlateImageBrush(TEXT("/Game/Textures/WhiteDot.WhiteDot"), 
-		FVector2D(350.0f, 350.0f)));
+	WingTexture = (GI && GI->LoadingWingTexture) ? GI->LoadingWingTexture.Get() : 
+		StaticLoadObject(UObject::StaticClass(), nullptr, TEXT("/Game/UI/Textures/2238_10x.2238_10x"));
+	
+	FillerTexture = (GI && GI->LoadingFillerTexture) ? GI->LoadingFillerTexture.Get() : 
+		StaticLoadObject(UObject::StaticClass(), nullptr, TEXT("/Game/Textures/WhiteDot.WhiteDot"));
+
+	CenterBrush = MakeShareable(new FSlateImageBrush(CenterTexture, FVector2D(310.0f, 316.0f)));
+	WingBrush = MakeShareable(new FSlateImageBrush(WingTexture, FVector2D(207.5f, 117.0f)));
+	FillerBrush = MakeShareable(new FSlateImageBrush(FillerTexture, FVector2D(400.0f, 400.0f)));
 	
 	TSharedPtr<SConstraintCanvas> Canvas;
 	
@@ -61,7 +79,7 @@ void SBrawlLoadingScreen::Construct(const FArguments& InArgs)
 			[
 				SAssignNew(FillerImage, SImage)
 				.Image(FillerBrush.Get())
-				.ColorAndOpacity(FLinearColor(0.1f, 0.1f, 0.1f, 0.5f)) // 약간 어둡게 처리
+				.ColorAndOpacity(FLinearColor(1.0f, 0.514918f, 0.014444f, 1.0f))
 			]
 			
 			// 3. 중앙 이미지
@@ -97,7 +115,7 @@ void SBrawlLoadingScreen::Construct(const FArguments& InArgs)
 void SBrawlLoadingScreen::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
 {
 	// 1. 배경 머티리얼 파라미터 업데이트 (Lobby 위젯 로직 참고)
-	if (BackgroundMID)
+	if (::IsValid(BackgroundMID))
 	{
 		CurrentUVOffset += ScrollSpeed * InDeltaTime;
 		
@@ -138,7 +156,18 @@ void SBrawlLoadingScreen::Tick(const FGeometry& AllottedGeometry, const double I
 		FQuat2D RotationQuat(RotationRad);
 		FVector2D Translation(X, Y);
 		
-		Wings[i]->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
-		Wings[i]->SetRenderTransform(FSlateRenderTransform(RotationQuat, Translation));
+		if (Wings[i].IsValid())
+		{
+			Wings[i]->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+			Wings[i]->SetRenderTransform(FSlateRenderTransform(RotationQuat, Translation));
+		}
 	}
+}
+
+void SBrawlLoadingScreen::AddReferencedObjects(FReferenceCollector& Collector)
+{
+	Collector.AddReferencedObject(BackgroundMID);
+	Collector.AddReferencedObject(CenterTexture);
+	Collector.AddReferencedObject(WingTexture);
+	Collector.AddReferencedObject(FillerTexture);
 }
