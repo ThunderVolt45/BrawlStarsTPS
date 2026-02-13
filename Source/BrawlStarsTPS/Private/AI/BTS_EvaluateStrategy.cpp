@@ -44,14 +44,25 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 		return;
 	}
 
-	// 1. 타겟 확인
+	// 1. 타겟 확인 및 현재 전략 가져오기
 	AActor* TargetActor = Cast<AActor>(Blackboard->GetValueAsObject(TargetActorKey.SelectedKeyName));
-	
+	EBrawlAIStrategy CurrentStrategy = (EBrawlAIStrategy)Blackboard->GetValueAsEnum(StrategyStateKey.SelectedKeyName);
+
 	if (!TargetActor)
 	{
-		// 타겟이 없으면 무조건 "순찰(Patrol)"
-		Blackboard->SetValueAsEnum(StrategyStateKey.SelectedKeyName, (uint8)EBrawlAIStrategy::Patrol);
+		// 타겟이 없으면 무조건 "순찰(Patrol)"로 설정
+		if (CurrentStrategy != EBrawlAIStrategy::Patrol)
+		{
+			Blackboard->SetValueAsEnum(StrategyStateKey.SelectedKeyName, (uint8)EBrawlAIStrategy::Patrol);
+		}
 		return;
+	}
+
+	// 타겟이 존재하는데 상태가 여전히 Patrol이라면, 즉시 Combat으로 전환하여 Patrol 브랜치 탈출 유도
+	if (CurrentStrategy == EBrawlAIStrategy::Patrol)
+	{
+		Blackboard->SetValueAsEnum(StrategyStateKey.SelectedKeyName, (uint8)EBrawlAIStrategy::Combat);
+		CurrentStrategy = EBrawlAIStrategy::Combat;
 	}
 
 	// 2. 데이터 가져오기 (설정값, 현재 상태)
@@ -94,15 +105,12 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 			}
 		}
 	}
-
-	// 3. 현재 전략 상태 가져오기
-	EBrawlAIStrategy CurrentStrategy = (EBrawlAIStrategy)Blackboard->GetValueAsEnum(StrategyStateKey.SelectedKeyName);
 	
 	// 타겟이 있으므로 더 이상 Patrol 상태는 불가능함 (기본값 설정)
 	EBrawlAIStrategy NewStrategy = EBrawlAIStrategy::Combat;
 
-	// 4. 전략 결정 로직
-	// 4-1. 도주(Flee) 여부 판정
+	// 3. 전략 결정 로직
+	// 3-1. 도주(Flee) 여부 판정
 	bool bShouldFlee = false;
 	
 	// 오직 위협적인 대상(Hero, Summon)을 상대로 할 때만 도주를 고려함 (상자 등 Etc 타입은 무시)
@@ -152,7 +160,7 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 		}
 	}
 
-	// 4-2. 최종 전략 확정
+	// 3-2. 최종 전략 확정
 	if (bShouldFlee)
 	{
 		NewStrategy = EBrawlAIStrategy::Flee;
@@ -168,7 +176,7 @@ void UBTS_EvaluateStrategy::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* N
 		NewStrategy = EBrawlAIStrategy::Combat;
 	}
 
-	// 5. 변경사항 적용
+	// 4. 변경사항 적용
 	if (NewStrategy != CurrentStrategy)
 	{
 		Blackboard->SetValueAsEnum(StrategyStateKey.SelectedKeyName, (uint8)NewStrategy);
