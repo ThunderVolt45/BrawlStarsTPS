@@ -593,9 +593,6 @@ void ABrawlCharacter::UpdateMeshVisibility()
 		bMatchInProgress = GS->IsMatchInProgress();
 	}
 
-	// 최종 은신 여부 판별 (수풀 속 + 전투 중 아님 + 발각 안 됨)
-	bool bFinalHidden = bIsHiddenInBush && !bIsRevealed && !bIsRevealedByCombat && !bIsCombatState;
-
 	// 로컬 플레이어는 항상 보여야 함 (죽지 않았을 때만)
 	if (IsPlayerControlled() && !bIsDead)
 	{
@@ -609,10 +606,24 @@ void ABrawlCharacter::UpdateMeshVisibility()
 			HealthBarComponent->SetHiddenInGame(!bMatchInProgress);
 		}
 	}
-	// 적(AI) 또는 사망한 플레이어 처리
+	// 다른 캐릭터(AI 또는 다른 플레이어) 처리
 	else
 	{
-		bool bHide = bShouldHideAll || bFinalHidden;
+		// 관찰자(로컬 플레이어)의 팀 ID 가져오기
+		FGenericTeamId ObserverTeam = FGenericTeamId::NoTeam;
+		if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+		{
+			// PC가 조종 중인 Pawn이 있다면 그 Pawn의 팀을, 없다면 PC 자신의 팀(있다면)을 참조
+			AActor* ObserverActor = PC->GetPawn();
+			if (IGenericTeamAgentInterface* TeamAgent = Cast<IGenericTeamAgentInterface>(ObserverActor))
+			{
+				ObserverTeam = TeamAgent->GetGenericTeamId();
+			}
+		}
+
+		// IsVisibleTo 함수를 사용하여 관찰자 입장에서 보일지 결정 (수풀, 팀, 전투 상태 등 종합 판별)
+		bool bIsVisible = IsVisibleTo(ObserverTeam);
+		bool bHide = bShouldHideAll || !bIsVisible;
 
 		if (GetMesh())
 		{
