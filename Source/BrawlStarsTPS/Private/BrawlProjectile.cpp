@@ -81,37 +81,69 @@ void ABrawlProjectile::OnActivate()
 {
 	bIsActive = true;
 	SetActorHiddenInGame(false);
-	SetActorEnableCollision(true);
+	
+	// 1. 충돌 설정 초기화
+	if (SphereComponent)
+	{
+		SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		SphereComponent->SetCollisionObjectType(ECC_WorldDynamic);
+		SphereComponent->SetGenerateOverlapEvents(true);
+
+		// 이전에 설정된 무시 목록 초기화
+		SphereComponent->ClearMoveIgnoreActors();
+
+		if (bCanPierce)
+		{
+			// 관통형: 모든 채널을 Overlap으로 설정하여 멈추지 않게 함
+			SphereComponent->SetCollisionResponseToAllChannels(ECR_Overlap);
+		}
+		else
+		{
+			// 일반형: 기본 응답으로 복구 (Block) 및 발사체끼리만 무시
+			SphereComponent->SetCollisionResponseToAllChannels(ECR_Block);
+			SphereComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
+			// 가시성 채널 등 불필요한 채널 무시
+			SphereComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+		}
+
+		// 발사자/주인 무시 다시 설정
+		if (AActor* MyInstigator = GetInstigator()) SphereComponent->IgnoreActorWhenMoving(MyInstigator, true);
+		if (AActor* MyOwner = GetOwner()) SphereComponent->IgnoreActorWhenMoving(MyOwner, true);
+	}
+
+	// 2. 이동 초기화
+	if (ProjectileMovement)
+	{
+		// 기존 속도 및 상태 초기화
+		ProjectileMovement->StopMovementImmediately();
+		ProjectileMovement->Velocity = GetActorForwardVector() * ProjectileSpeed;
+		
+		// 컴포넌트 활성화 및 업데이트 강제
+		ProjectileMovement->Activate(true); 
+		ProjectileMovement->SetUpdatedComponent(SphereComponent);
+	}
+
+	// 3. 내부 상태 초기화
+	HitActors.Empty();
+	PreviousLocation = GetActorLocation();
 	
 	// 관통형 발사체는 직접 충돌을 검사해야하므로 Tick 활성화
 	SetActorTickEnabled(bCanPierce);
 
-	HitActors.Empty();
-	PreviousLocation = GetActorLocation();
-
-	// 수명 타이머 설정
+	// 수명 타이머 재설정
 	GetWorldTimerManager().SetTimer(LifeTimerHandle, this, &ABrawlProjectile::OnLifeTimeExpired, LifeTime, false);
-
-	// 이동 컴포넌트 초기화
-	if (ProjectileMovement)
-	{
-		ProjectileMovement->Velocity = GetActorForwardVector() * ProjectileSpeed;
-		ProjectileMovement->Activate();
-	}
-
-	// 발사자/주인 무시 설정
-	if (SphereComponent)
-	{
-		if (AActor* MyInstigator = GetInstigator()) SphereComponent->IgnoreActorWhenMoving(MyInstigator, true);
-		if (AActor* MyOwner = GetOwner()) SphereComponent->IgnoreActorWhenMoving(MyOwner, true);
-	}
 }
 
 void ABrawlProjectile::OnDeactivate()
 {
 	bIsActive = false;
 	SetActorHiddenInGame(true);
-	SetActorEnableCollision(false);
+	
+	if (SphereComponent)
+	{
+		SphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
 	SetActorTickEnabled(false);
 
 	// 타이머 해제
