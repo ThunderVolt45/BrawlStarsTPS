@@ -138,8 +138,8 @@ void ABrawlProjectile::OnActivate()
 	HitActors.Empty();
 	PreviousLocation = GetActorLocation();
 	
-	// 관통형 발사체는 직접 충돌을 검사해야하므로 Tick 활성화
-	SetActorTickEnabled(bCanPierce);
+	// 빠른 탄속에 의한 터널링 방지를 위해 모든 발사체 Tick 활성화 (정밀 Sweep 검사용)
+	SetActorTickEnabled(true);
 
 	// 수명 타이머 재설정
 	GetWorldTimerManager().SetTimer(LifeTimerHandle, this, &ABrawlProjectile::OnLifeTimeExpired, LifeTime, false);
@@ -202,13 +202,12 @@ void ABrawlProjectile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
-	// 관통형 발사체가 아니라면 중단
-	if (!bCanPierce || !SphereComponent)
+	if (!SphereComponent)
 	{
 		return;
 	}
 
-	// 관통형 발사체인 경우, 이동 경로에 대한 스윕(Sweep) 검사 수행 (터널링 방지)
+	// 이동 경로에 대한 스윕(Sweep) 검사 수행 (빠른 탄속에 의한 터널링 방지)
 	FVector CurrentLocation = GetActorLocation();
 
 	// 움직임이 거의 없으면 스킵
