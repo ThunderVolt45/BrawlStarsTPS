@@ -6,6 +6,18 @@
 #include "Kismet/GameplayStatics.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "BrawlPoolSubsystem.h"
+
+void ABrawlProjectile_Explosive::OnActivate()
+{
+	Super::OnActivate();
+	bHasExploded = false;
+}
+
+void ABrawlProjectile_Explosive::OnDeactivate()
+{
+	Super::OnDeactivate();
+}
 
 void ABrawlProjectile_Explosive::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
@@ -16,18 +28,14 @@ void ABrawlProjectile_Explosive::OnHit(UPrimitiveComponent* HitComponent, AActor
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator() 
 		|| OtherActor == this || OtherActor->IsA(ABrawlProjectile::StaticClass())) return;
 
-	// 부모의 OnHit 실행 (데미지 처리 등)
-	Super::OnHit(HitComponent, OtherActor, OtherComp, NormalImpulse, Hit);
-	
-	// 폭발 처리
+	// 폭발 처리 (부모의 OnHit에서 Deactivate될 수 있으므로 먼저 처리)
 	Explode(Hit);
-	
-	// 폭발 후 파괴 (부모 OnHit에서도 파괴할 수 있지만, 확실히 하기 위해)
-	// 하지만 부모 OnHit에서 Destroy()를 호출하면 Destroyed()가 불리고, 거기서 중복 Explode 될 수 있으므로
-	// bHasExploded 플래그가 중요함.
+
+	// 부모의 OnHit 실행 (데미지 처리 및 Deactivate 호출)
+	Super::OnHit(HitComponent, OtherActor, OtherComp, NormalImpulse, Hit);
 }
 
-void ABrawlProjectile_Explosive::Destroyed()
+void ABrawlProjectile_Explosive::OnLifeTimeExpired()
 {
 	// 수명이 다해서 죽는 경우 (OnHit을 거치지 않음)
 	if (!bHasExploded)
@@ -39,7 +47,7 @@ void ABrawlProjectile_Explosive::Destroyed()
 		Explode(DummyHit);
 	}
 
-	Super::Destroyed();
+	Super::OnLifeTimeExpired();
 }
 
 void ABrawlProjectile_Explosive::Explode(const FHitResult& HitResult)
@@ -157,28 +165,20 @@ void ABrawlProjectile_Explosive::SpawnSplinters(const FVector& Location, const F
 	// 스파이크의 경우 보통 터진 자리에서 6방향으로 퍼짐.
 	// 여기서는 단순히 월드 기준 6방향(Hexagon)으로 퍼지게 구현.
 	float AngleStep = 360.0f / (float)SplinterCount;
-	FRotator BaseRot = FRotator(0, 0, 0); // 월드 0도 기준
+	UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>();
 
 	for (int32 i = 0; i < SplinterCount; i++)
 	{
 		float CurrentYaw = i * AngleStep;
 		FRotator SplinterRot = FRotator(0, CurrentYaw, 0);
 		
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.Owner = GetOwner();
-		SpawnParams.Instigator = GetInstigator();
-		
 		// 충돌 방지를 위해 약간 띄움
 		FVector SpawnLocation = Location + (FVector::UpVector * 10.0f);
 		FTransform SpawnTransform(SplinterRot, SpawnLocation);
 
-		AActor* SpawnedActor = GetWorld()->SpawnActorDeferred<AActor>(
-			SplinterClass, 
-			SpawnTransform, 
-			GetOwner(), 
-			GetInstigator(), 
-			ESpawnActorCollisionHandlingMethod::AlwaysSpawn
-		);
+		AActor* SpawnedActor = PoolSubsystem ?
+			PoolSubsystem->GetFromPool(SplinterClass, SpawnTransform, GetOwner(), GetInstigator()) :
+			GetWorld()->SpawnActor<AActor>(SplinterClass, SpawnTransform);
 
 		if (ABrawlProjectile* Splinter = Cast<ABrawlProjectile>(SpawnedActor))
 		{
@@ -210,14 +210,11 @@ void ABrawlProjectile_Explosive::SpawnSplinters(const FVector& Location, const F
 							NewHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, OriginalDamage * SplinterDamageScale);
 						}
 						
-						// 자탄에 주입 (FinishSpawning 전)
+						// 자탄에 주입
 						Splinter->InitializeProjectile(NewHandle);
 					}
 				}
 			}
-
-			// 최종 스폰 완료 (물리 시작)
-			UGameplayStatics::FinishSpawningActor(SpawnedActor, SpawnTransform);
 		}
 	}
 }

@@ -6,6 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/EffectActors/BrawlAreaEffect.h"
+#include "BrawlPoolSubsystem.h"
 
 void ABrawlProjectile_Spawner::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
@@ -38,19 +39,17 @@ void ABrawlProjectile_Spawner::OnHit(UPrimitiveComponent* HitComponent, AActor* 
 	if (HasAuthority() && ActorClassToSpawn)
 	{
 		UWorld* World = GetWorld();
+		UBrawlPoolSubsystem* PoolSubsystem = World ? World->GetSubsystem<UBrawlPoolSubsystem>() : nullptr;
 		if (World)
 		{
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.Owner = GetOwner();
-			SpawnParams.Instigator = GetInstigator();
-			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
 			// 스폰 위치 계산 (충돌 지점 + 법선 방향 오프셋)
-			// 보통 장판은 바닥(Hit.Normal이 위쪽)에 깔리므로 Location + ZOffset
 			FVector SpawnLocation = Hit.Location + (Hit.Normal * SpawnZOffset);
-			FRotator SpawnRotation = FRotator::ZeroRotator; // 보통 장판은 회전 없이(0,0,0) 생성
+			FRotator SpawnRotation = FRotator::ZeroRotator;
+			FTransform SpawnTransform(SpawnRotation, SpawnLocation);
 
-			AActor* SpawnedActor = World->SpawnActor<AActor>(ActorClassToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
+			AActor* SpawnedActor = PoolSubsystem ?
+				PoolSubsystem->GetFromPool(ActorClassToSpawn, SpawnTransform, GetOwner(), GetInstigator()) :
+				World->SpawnActor<AActor>(ActorClassToSpawn, SpawnLocation, SpawnRotation);
 			
 			// 만약 스폰된 액터가 BrawlAreaEffect라면, 데미지 정보(SpecHandle) 전달
 			if (ABrawlAreaEffect* AreaEffect = Cast<ABrawlAreaEffect>(SpawnedActor))
@@ -60,6 +59,6 @@ void ABrawlProjectile_Spawner::OnHit(UPrimitiveComponent* HitComponent, AActor* 
 		}
 	}
 
-	// 발사체 파괴
-	Destroy();
+	// 발사체 비활성화 (풀 반환)
+	Deactivate();
 }

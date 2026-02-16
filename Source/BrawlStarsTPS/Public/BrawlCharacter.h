@@ -253,17 +253,17 @@ protected:
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
 	uint8 TeamID = 255;
 
-private:
-	void OnMovementSpeedChanged(const FOnAttributeChangeData& Data);
-
-private:
-	// --- Internal Variables ---
 	UPROPERTY(ReplicatedUsing = OnRep_IsDead, VisibleInstanceOnly, Category = "Brawl|Health")
 	bool bIsDead = false;
 
 	UPROPERTY()
 	TObjectPtr<AActor> LastHitInstigator;
 
+private:
+	void OnMovementSpeedChanged(const FOnAttributeChangeData& Data);
+
+private:
+	// --- Internal Variables ---
 	UPROPERTY()
 	TObjectPtr<class UMaterialInstanceDynamic> PoisonPPMaterialInstance;
 

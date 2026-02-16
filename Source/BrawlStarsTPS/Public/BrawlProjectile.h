@@ -6,13 +6,14 @@
 #include "GameFramework/Actor.h"
 #include "GameplayEffectTypes.h"
 #include "GameplayTagContainer.h"
+#include "BrawlPoolableInterface.h"
 #include "BrawlProjectile.generated.h"
 
 class USphereComponent;
 class UProjectileMovementComponent;
 
 UCLASS()
-class BRAWLSTARSTPS_API ABrawlProjectile : public AActor
+class BRAWLSTARSTPS_API ABrawlProjectile : public AActor, public IBrawlPoolableInterface
 {
 	GENERATED_BODY()
 	
@@ -24,8 +25,20 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
+	// --- IBrawlPoolableInterface 구현 ---
+	virtual void OnActivate() override;
+	virtual void OnDeactivate() override;
+	virtual bool IsActive() const override { return bIsActive; }
+	// ----------------------------------
+
 protected:
 	virtual void BeginPlay() override;
+
+	/** 풀로 반환 (Destroy 대신 사용) */
+	void Deactivate();
+
+	/** 수명 종료 시 호출 */
+	virtual void OnLifeTimeExpired();
 
 	// 충돌(Block) 시 호출
 	UFUNCTION()
@@ -94,4 +107,8 @@ private:
 
 	// 레이캐스트(Sweep)를 위한 이전 프레임 위치
 	FVector PreviousLocation;
+
+	bool bIsActive = false;
+
+	FTimerHandle LifeTimerHandle;
 };

@@ -12,11 +12,14 @@
 #include "Environment/BrawlDestructibleInterface.h"
 #include "Environment/BrawlBush.h" 
 #include "GenericTeamAgentInterface.h"
+#include "BrawlPoolSubsystem.h"
 
 ABrawlProjectile::ABrawlProjectile()
 {
 	PrimaryActorTick.bCanEverTick = true; // 관통 및 레이캐스트 로직을 위해 Tick 활성화
 	bReplicates = true;
+
+	bIsActive = true; // 기본적으로 true (SpawnActor로 생성될 때 대응)
 
 	// 1. 충돌체 설정
 	SphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComponent"));
@@ -66,45 +69,77 @@ void ABrawlProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	PreviousLocation = GetActorLocation();
+	// 처음 생성될 때는 OnActivate를 수동으로 부르지 않으므로 여기서 초기화
+	// (단, 풀 서브시스템을 통해 생성되는 경우 GetFromPool에서 호출됨)
+	if (bIsActive)
+	{
+		OnActivate();
+	}
+}
 
+void ABrawlProjectile::OnActivate()
+{
+	bIsActive = true;
+	SetActorHiddenInGame(false);
+	SetActorEnableCollision(true);
+	
 	// 관통형 발사체는 직접 충돌을 검사해야하므로 Tick 활성화
 	SetActorTickEnabled(bCanPierce);
-	
-	// 발사자(Instigator)는 무시
-	if (AActor* MyInstigator = GetInstigator())
+
+	HitActors.Empty();
+	PreviousLocation = GetActorLocation();
+
+	// 수명 타이머 설정
+	GetWorldTimerManager().SetTimer(LifeTimerHandle, this, &ABrawlProjectile::OnLifeTimeExpired, LifeTime, false);
+
+	// 이동 컴포넌트 초기화
+	if (ProjectileMovement)
 	{
-		SphereComponent->IgnoreActorWhenMoving(MyInstigator, true);
+		ProjectileMovement->Velocity = GetActorForwardVector() * ProjectileSpeed;
+		ProjectileMovement->Activate();
 	}
 
-	// 주인(Owner)도 무시 (보통 Instigator와 같지만 다를 수 있음)
-	if (AActor* MyOwner = GetOwner())
-	{
-		SphereComponent->IgnoreActorWhenMoving(MyOwner, true);
-	}
-	
+	// 발사자/주인 무시 설정
 	if (SphereComponent)
 	{
-		// 충돌 활성화 강제 (QueryOnly: 물리 시뮬레이션 없이 오버랩/히트 감지)
-		SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		SphereComponent->SetCollisionObjectType(ECC_WorldDynamic);
-		
-		// 블루프린트 설정 무시하고 강제로 Overlap 이벤트 활성화
-		SphereComponent->SetGenerateOverlapEvents(true);
-
-		if (bCanPierce)
-		{
-			// 관통형 발사체는 물리적으로 멈추면 안 되므로 모든 채널과 Overlap 해야 함
-			SphereComponent->SetCollisionResponseToAllChannels(ECR_Overlap);
-		}
-		else
-		{
-			// 일반 발사체는 발사체(WorldDynamic)끼리만 충돌 무시(Overlap)
-			SphereComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
-		}
+		if (AActor* MyInstigator = GetInstigator()) SphereComponent->IgnoreActorWhenMoving(MyInstigator, true);
+		if (AActor* MyOwner = GetOwner()) SphereComponent->IgnoreActorWhenMoving(MyOwner, true);
 	}
+}
 
-	SetLifeSpan(LifeTime);
+void ABrawlProjectile::OnDeactivate()
+{
+	bIsActive = false;
+	SetActorHiddenInGame(true);
+	SetActorEnableCollision(false);
+	SetActorTickEnabled(false);
+
+	// 타이머 해제
+	GetWorldTimerManager().ClearTimer(LifeTimerHandle);
+
+	// 이동 정지
+	if (ProjectileMovement)
+	{
+		ProjectileMovement->StopMovementImmediately();
+		ProjectileMovement->Deactivate();
+	}
+}
+
+void ABrawlProjectile::Deactivate()
+{
+	if (UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>())
+	{
+		PoolSubsystem->ReturnToPool(this);
+	}
+	else
+	{
+		Destroy();
+	}
+}
+
+void ABrawlProjectile::OnLifeTimeExpired()
+{
+	Deactivate();
 }
 
 void ABrawlProjectile::Tick(float DeltaTime)
@@ -267,10 +302,10 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 	if (!OtherActor) return;
 	
 	// 디버그 구체 그리기
-	// if (GetWorld())
-	// {
-	// 	DrawDebugSphere(GetWorld(), HitLocation, 10.0f, 12, FColor::Red, false, 2.0f);
-	// }
+	if (GetWorld())
+	{
+		DrawDebugSphere(GetWorld(), HitLocation, 10.0f, 12, FColor::Red, false, 2.0f);
+	}
 
 	// 팀 관계 확인
 	bool bIsHostile = true;
@@ -329,7 +364,7 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 		// 장애물 관통 능력이 없다면 파괴
 		if (!bCanPierceHardObstacle && bIsHardObstacle)
 		{
-			Destroy();
+			Deactivate();
 			return;
 		}
 		
@@ -349,7 +384,7 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 	// 관통 능력이 없다면 파괴
 	if (!bCanPierce)
 	{
-		Destroy();
+		Deactivate();
 	}
 }
 
