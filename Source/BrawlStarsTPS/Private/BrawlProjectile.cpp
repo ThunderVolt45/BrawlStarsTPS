@@ -258,10 +258,20 @@ void ABrawlProjectile::Tick(float DeltaTime)
 			AActor* HitActor = Result.GetActor();
 			UPrimitiveComponent* HitComp = Result.GetComponent();
 
-			// 수풀의 감지용 스피어는 무시
-			if (HitActor && HitActor->IsA(ABrawlBush::StaticClass()) && HitComp && HitComp->GetName().Contains(TEXT("ProximitySphere")))
+			// 수풀 처리
+			if (HitActor && HitActor->IsA(ABrawlBush::StaticClass()))
 			{
-				continue;
+				// 감지용 스피어는 어떤 경우에도 무시
+				if (HitComp && HitComp->GetName().Contains(TEXT("ProximitySphere")))
+				{
+					continue;
+				}
+
+				// 지형 파괴 옵션이 꺼져 있다면 무시
+				if (!bDestroyObstacles)
+				{
+					continue;
+				}
 			}
 
 			if (HitActor && !HitActors.Contains(HitActor))
@@ -287,15 +297,25 @@ void ABrawlProjectile::Tick(float DeltaTime)
 
 void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	// 발사자(Instigator)는 무시
+	// 발사자(Instigator) 무시
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator() 
 		|| OtherActor == this || OtherActor->IsA(StaticClass())) 
 		return;
 
-	// 수풀의 감지용 스피어는 무시
-	if (OtherActor->IsA(ABrawlBush::StaticClass()) && OtherComp && OtherComp->GetName().Contains(TEXT("ProximitySphere")))
+	// 수풀 처리
+	if (OtherActor->IsA(ABrawlBush::StaticClass()))
 	{
-		return;
+		// 감지용 스피어는 항상 무시
+		if (OtherComp && OtherComp->GetName().Contains(TEXT("ProximitySphere")))
+		{
+			return;
+		}
+
+		// 지형 파괴 옵션이 꺼져 있다면 무시
+		if (!bDestroyObstacles)
+		{
+			return;
+		}
 	}
 
 	// 이미 처리된 액터면 무시 (관통 시 중복 방지)
@@ -311,15 +331,25 @@ void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherAct
 
 void ABrawlProjectile::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	// 발사자(Instigator)는 무시
+	// 발사자(Instigator) 무시
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator()
 		|| OtherActor == this || OtherActor->IsA(StaticClass()))
 		return;
 
-	// 수풀의 감지용 스피어는 무시
-	if (OtherActor->IsA(ABrawlBush::StaticClass()) && OtherComp && OtherComp->GetName().Contains(TEXT("ProximitySphere")))
+	// 수풀 처리
+	if (OtherActor->IsA(ABrawlBush::StaticClass()))
 	{
-		return;
+		// 감지용 스피어는 항상 무시
+		if (OtherComp && OtherComp->GetName().Contains(TEXT("ProximitySphere")))
+		{
+			return;
+		}
+
+		// 지형 파괴 옵션이 꺼져 있다면 무시
+		if (!bDestroyObstacles)
+		{
+			return;
+		}
 	}
 
 	// 이미 처리된 액터면 무시
