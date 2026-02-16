@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "BrawlCharacter.h"
+#include "BrawlPoolableInterface.h"
 #include "BrawlSpikeLifePlant.generated.h"
 
 /**
@@ -13,12 +14,18 @@
  * 파괴 시 주변 아군을 치유하는 기능을 가집니다.
  */
 UCLASS()
-class BRAWLSTARSTPS_API ABrawlSpikeLifePlant : public ABrawlCharacter
+class BRAWLSTARSTPS_API ABrawlSpikeLifePlant : public ABrawlCharacter, public IBrawlPoolableInterface
 {
 	GENERATED_BODY()
 
 public:
 	ABrawlSpikeLifePlant();
+
+	// --- IBrawlPoolableInterface 구현 ---
+	virtual void OnActivate() override;
+	virtual void OnDeactivate() override;
+	virtual bool IsActive() const override { return bIsActive; }
+	// ----------------------------------
 
 	//~ABrawlCharacter interface
 	virtual void Die() override;
@@ -27,6 +34,9 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
+
+	/** 풀로 반환 */
+	void Deactivate();
 
 	/** 파괴 시 주변 아군을 치유하는 로직 */
 	void HealNearbyAllies();
@@ -61,5 +71,5 @@ protected:
 	FGameplayTag HealCueTag;
 
 private:
-	bool bIsDeadInternal = false;
+	bool bIsActive = false;
 };

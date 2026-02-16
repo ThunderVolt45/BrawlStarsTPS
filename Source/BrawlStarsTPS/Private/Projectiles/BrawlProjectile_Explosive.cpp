@@ -6,6 +6,18 @@
 #include "Kismet/GameplayStatics.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "BrawlPoolSubsystem.h"
+
+void ABrawlProjectile_Explosive::OnActivate()
+{
+	Super::OnActivate();
+	bHasExploded = false;
+}
+
+void ABrawlProjectile_Explosive::OnDeactivate()
+{
+	Super::OnDeactivate();
+}
 
 void ABrawlProjectile_Explosive::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
@@ -16,18 +28,39 @@ void ABrawlProjectile_Explosive::OnHit(UPrimitiveComponent* HitComponent, AActor
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator() 
 		|| OtherActor == this || OtherActor->IsA(ABrawlProjectile::StaticClass())) return;
 
-	// 부모의 OnHit 실행 (데미지 처리 등)
-	Super::OnHit(HitComponent, OtherActor, OtherComp, NormalImpulse, Hit);
-	
-	// 폭발 처리
+	// 폭발 처리 (부모의 OnHit에서 Deactivate될 수 있으므로 먼저 처리)
 	Explode(Hit);
-	
-	// 폭발 후 파괴 (부모 OnHit에서도 파괴할 수 있지만, 확실히 하기 위해)
-	// 하지만 부모 OnHit에서 Destroy()를 호출하면 Destroyed()가 불리고, 거기서 중복 Explode 될 수 있으므로
-	// bHasExploded 플래그가 중요함.
+
+	// 부모의 OnHit 실행 (데미지 처리 및 Deactivate 호출)
+	Super::OnHit(HitComponent, OtherActor, OtherComp, NormalImpulse, Hit);
 }
 
-void ABrawlProjectile_Explosive::Destroyed()
+void ABrawlProjectile_Explosive::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	// 이미 폭발했으면 무시
+	if (bHasExploded) return;
+
+	// 발사자(Instigator)는 무시
+	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator()
+		|| OtherActor == this || OtherActor->IsA(ABrawlProjectile::StaticClass()))
+		return;
+
+	// 폭발 처리를 위한 더미 HitResult 생성 (또는 SweepResult 활용)
+	FHitResult Hit = SweepResult;
+	if (Hit.ImpactPoint.IsZero())
+	{
+		Hit.ImpactPoint = GetActorLocation();
+		Hit.Normal = (GetActorRotation().Vector() * -1.0f);
+	}
+
+	// 폭발 처리
+	Explode(Hit);
+
+	// 부모의 OnBeginOverlap 실행 (데미지 처리 및 Deactivate 호출)
+	Super::OnBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
+}
+
+void ABrawlProjectile_Explosive::OnLifeTimeExpired()
 {
 	// 수명이 다해서 죽는 경우 (OnHit을 거치지 않음)
 	if (!bHasExploded)
@@ -39,36 +72,40 @@ void ABrawlProjectile_Explosive::Destroyed()
 		Explode(DummyHit);
 	}
 
-	Super::Destroyed();
+	Super::OnLifeTimeExpired();
 }
 
 void ABrawlProjectile_Explosive::Explode(const FHitResult& HitResult)
 {
 	// 월드가 유효한지 검사
-	if (!GetWorld()) return;
-	
-	// 현재 월드가 "게임 월드" 가 아니라면 (즉, 에디터 프리뷰라면) 종료
-	if (!GetWorld()->IsGameWorld()) return;
+	if (!GetWorld() || !GetWorld()->IsGameWorld()) return;
 	
 	// 이미 폭발한 경우 종료
 	if (bHasExploded) return;
 	bHasExploded = true;
 	
-	// 폭발 시각/청각 효과 재생 (부모 클래스 함수 활용)
-	PlayHitEffects(HitResult.Location, HitResult.Normal, HitResult.GetActor());
+	// 실제 충돌 지점(표면)을 사용하도록 개선. 정보가 없으면 중심점 사용.
+	FVector BaseLocation = HitResult.ImpactPoint.IsZero() ? HitResult.Location : HitResult.ImpactPoint;
 
-	// 폭발 범위 데미지 처리
-	ExplodeDamage(HitResult.Location);
+	// 폭발 시각/청각 효과 재생 (모든 클라이언트)
+	PlayHitEffects(BaseLocation, HitResult.Normal, HitResult.GetActor());
 
-	// 파편 생성
-	SpawnSplinters(HitResult.Location, HitResult.Normal);
+	// 데미지 및 자탄 생성은 서버에서만 수행
+	if (HasAuthority())
+	{
+		// 폭발 범위 데미지 처리
+		ExplodeDamage(BaseLocation);
+
+		// 파편 생성
+		SpawnSplinters(BaseLocation, HitResult.Normal);
+	}
 }
 
 void ABrawlProjectile_Explosive::ExplodeDamage(const FVector& Location)
 {
+	// 범위 데미지 설정이 되어 있지 않으면 수행하지 않음 (에러가 아님)
 	if (ExplosionRadius <= 0.0f || ExplosionRadialDamage <= 0.0f)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ExplodeDamage Failed: ExplosionRadius/ExplosionRadialDamage <= 0"));
 		return;
 	}
 	
@@ -136,8 +173,8 @@ void ABrawlProjectile_Explosive::ExplodeDamage(const FVector& Location)
 	}
 
 	// 디버그 시각화 (개발용)
-	DrawDebugSphere(GetWorld(), ExplosionLocation, ExplosionRadius, 12, 
-		FColor::Orange, false, 2.0f);
+	// DrawDebugSphere(GetWorld(), ExplosionLocation, ExplosionRadius, 12, 
+	// 	FColor::Orange, false, 2.0f);
 }
 
 void ABrawlProjectile_Explosive::SpawnSplinters(const FVector& Location, const FVector& Normal)
@@ -157,67 +194,66 @@ void ABrawlProjectile_Explosive::SpawnSplinters(const FVector& Location, const F
 	// 스파이크의 경우 보통 터진 자리에서 6방향으로 퍼짐.
 	// 여기서는 단순히 월드 기준 6방향(Hexagon)으로 퍼지게 구현.
 	float AngleStep = 360.0f / (float)SplinterCount;
-	FRotator BaseRot = FRotator(0, 0, 0); // 월드 0도 기준
+	UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>();
 
 	for (int32 i = 0; i < SplinterCount; i++)
 	{
 		float CurrentYaw = i * AngleStep;
 		FRotator SplinterRot = FRotator(0, CurrentYaw, 0);
 		
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.Owner = GetOwner();
-		SpawnParams.Instigator = GetInstigator();
-		
-		// 충돌 방지를 위해 약간 띄움
-		FVector SpawnLocation = Location + (FVector::UpVector * 10.0f);
+		// 지면 바로 위에서 생성되도록 오프셋 최소화 (파묻힘 방지용)
+		FVector SpawnLocation = Location + (FVector::UpVector * 2.0f);
 		FTransform SpawnTransform(SplinterRot, SpawnLocation);
 
-		AActor* SpawnedActor = GetWorld()->SpawnActorDeferred<AActor>(
-			SplinterClass, 
-			SpawnTransform, 
-			GetOwner(), 
-			GetInstigator(), 
-			ESpawnActorCollisionHandlingMethod::AlwaysSpawn
-		);
-
-		if (ABrawlProjectile* Splinter = Cast<ABrawlProjectile>(SpawnedActor))
+		// 주입할 데미지 스펙 핸들 생성 로직
+		FGameplayEffectSpecHandle NewHandle;
+		if (DamageSpecHandle.IsValid())
 		{
-			// 데미지 Spec 복제 및 수정
-			if (DamageSpecHandle.IsValid())
+			FGameplayEffectSpec* OriginalSpec = DamageSpecHandle.Data.Get();
+			UAbilitySystemComponent* InstigatorASC = OriginalSpec->GetContext().GetInstigatorAbilitySystemComponent();
+			if (!InstigatorASC) InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner());
+
+			if (InstigatorASC && OriginalSpec->Def)
 			{
-				FGameplayEffectSpec* OriginalSpec = DamageSpecHandle.Data.Get();
-				
-				// 공격자(Instigator) ASC 가져오기
-				UAbilitySystemComponent* InstigatorASC = OriginalSpec->GetContext().GetInstigatorAbilitySystemComponent();
-				if (!InstigatorASC) InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner());
-
-				if (InstigatorASC && OriginalSpec->Def)
+				FGameplayEffectContextHandle Context = OriginalSpec->GetContext();
+				NewHandle = InstigatorASC->MakeOutgoingSpec(OriginalSpec->Def->GetClass(), OriginalSpec->GetLevel(), Context);
+				if (NewHandle.IsValid())
 				{
-					// 새 SpecHandle 생성
-					FGameplayEffectContextHandle Context = OriginalSpec->GetContext();
-					FGameplayEffectSpecHandle NewHandle = InstigatorASC->MakeOutgoingSpec(
-						OriginalSpec->Def->GetClass(), OriginalSpec->GetLevel(), Context);
-
-					if (NewHandle.IsValid())
+					static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
+					float OriginalDamage = OriginalSpec->GetSetByCallerMagnitude(DamageTag, false, -1.0f);
+					if (OriginalDamage > 0.0f)
 					{
-						// 원본 데미지 값 조회
-						static FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Data.Damage"));
-						float OriginalDamage = OriginalSpec->GetSetByCallerMagnitude(DamageTag, false, -1.0f);
-						
-						// 스케일 적용하여 설정
-						if (OriginalDamage > 0.0f)
-						{
-							NewHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, OriginalDamage * SplinterDamageScale);
-						}
-						
-						// 자탄에 주입 (FinishSpawning 전)
-						Splinter->InitializeProjectile(NewHandle);
+						NewHandle.Data.Get()->SetSetByCallerMagnitude(DamageTag, OriginalDamage * SplinterDamageScale);
 					}
 				}
 			}
+		}
 
-			// 최종 스폰 완료 (물리 시작)
-			UGameplayStatics::FinishSpawningActor(SpawnedActor, SpawnTransform);
+		AActor* SpawnedActor = nullptr;
+		if (PoolSubsystem)
+		{
+			// 콜백을 통해 OnActivate 이전에 데미지 초기화 수행
+			SpawnedActor = PoolSubsystem->GetFromPool(SplinterClass, SpawnTransform, GetOwner(), GetInstigator(), 
+				[&NewHandle](AActor* InActor)
+				{
+					if (ABrawlProjectile* Splinter = Cast<ABrawlProjectile>(InActor))
+					{
+						Splinter->InitializeProjectile(NewHandle);
+					}
+				});
+		}
+		else
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = GetOwner();
+			SpawnParams.Instigator = GetInstigator();
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			SpawnedActor = GetWorld()->SpawnActor<AActor>(SplinterClass, SpawnTransform, SpawnParams);
+			
+			if (ABrawlProjectile* Splinter = Cast<ABrawlProjectile>(SpawnedActor))
+			{
+				Splinter->InitializeProjectile(NewHandle);
+			}
 		}
 	}
 }

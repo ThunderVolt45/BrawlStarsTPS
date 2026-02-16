@@ -12,6 +12,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "BrawlStarsTPSPlayerController.h"
+#include "BrawlPoolSubsystem.h"
 
 UBrawlGameplayAbility_Fire::UBrawlGameplayAbility_Fire()
 {
@@ -84,6 +85,12 @@ void UBrawlGameplayAbility_Fire::OnFireEventReceived(FGameplayEventData Payload)
 {
 	// 이벤트 수신 시 발사체 스폰
 	SpawnProjectile();
+}
+
+void UBrawlGameplayAbility_Fire::GetProjectilePrewarmData(TMap<TSubclassOf<AActor>, int32>& OutData) const
+{
+	if (ProjectileClass) OutData.FindOrAdd(ProjectileClass) += PrewarmCount;
+	if (ProjectileClass_Hyper) OutData.FindOrAdd(ProjectileClass_Hyper) += PrewarmCount;
 }
 
 TSubclassOf<AActor> UBrawlGameplayAbility_Fire::GetProjectileClassToSpawn() const
@@ -269,6 +276,8 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile(FName AttachParentSocketName)
 	// 데미지 스펙 미리 생성
 	FGameplayEffectSpecHandle SpecHandle = MakeDamageSpecHandle(DamagePerPelletScale);
 
+	UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>();
+
 	for (int32 i = 0; i < RealCount; i++)
 	{
 		// 원뿔 내 무작위 방향 벡터 생성
@@ -279,13 +288,9 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile(FName AttachParentSocketName)
 
 		FTransform SpawnTransform(FinalRotation, MuzzleLocation);
 		
-		AActor* SpawnedActor = GetWorld()->SpawnActorDeferred<AActor>(
-			ClassToSpawn, 
-			SpawnTransform, 
-			Character, 
-			Character, 
-			ESpawnActorCollisionHandlingMethod::AlwaysSpawn
-		);
+		AActor* SpawnedActor = PoolSubsystem ? 
+			PoolSubsystem->GetFromPool(ClassToSpawn, SpawnTransform, Character, Character) :
+			GetWorld()->SpawnActor<AActor>(ClassToSpawn, SpawnTransform);
 		
 		if (ABrawlProjectile* Projectile = Cast<ABrawlProjectile>(SpawnedActor))
 		{
@@ -294,11 +299,6 @@ void UBrawlGameplayAbility_Fire::SpawnProjectile(FName AttachParentSocketName)
 			{
 				Projectile->InitializeProjectile(SpecHandle);
 			}
-		}
-
-		if (SpawnedActor)
-		{
-			UGameplayStatics::FinishSpawningActor(SpawnedActor, SpawnTransform);
 		}
 	}
 

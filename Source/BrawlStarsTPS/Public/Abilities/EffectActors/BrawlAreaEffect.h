@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "GameplayEffectTypes.h"
+#include "BrawlPoolableInterface.h"
 #include "BrawlAreaEffect.generated.h"
 
 class USphereComponent;
@@ -20,15 +21,27 @@ class UDecalComponent;
  * - 주기적 효과 실행 타이머
  */
 UCLASS()
-class BRAWLSTARSTPS_API ABrawlAreaEffect : public AActor
+class BRAWLSTARSTPS_API ABrawlAreaEffect : public AActor, public IBrawlPoolableInterface
 {
 	GENERATED_BODY()
 	
 public:	
 	ABrawlAreaEffect();
 
+	// --- IBrawlPoolableInterface 구현 ---
+	virtual void OnActivate() override;
+	virtual void OnDeactivate() override;
+	virtual bool IsActive() const override { return bIsActive; }
+	// ----------------------------------
+
 protected:
 	virtual void BeginPlay() override;
+
+	/** 풀로 반환 (Destroy 대신 사용) */
+	void Deactivate();
+
+	/** 지속 시간 종료 시 호출 */
+	void OnDurationExpired();
 
 public:
 	// 범위 내 액터가 들어왔을 때
@@ -69,4 +82,8 @@ protected:
 public:
 	// 이 장판을 생성한 어빌리티의 스펙 핸들 (데미지 등 정보 포함)
 	FGameplayEffectSpecHandle EffectSpecHandle;
+
+private:
+	bool bIsActive = false;
+	FTimerHandle DurationTimerHandle;
 };

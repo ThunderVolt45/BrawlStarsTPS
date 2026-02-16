@@ -11,11 +11,14 @@
 #include "Kismet/GameplayStatics.h"
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "Perception/AISense_Sight.h"
+#include "BrawlPoolSubsystem.h"
 
 ABrawlPowerCube::ABrawlPowerCube()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true; // 서버-클라이언트 동기화 활성화
+
+	bIsActive = true;
 
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
@@ -53,9 +56,48 @@ void ABrawlPowerCube::BeginPlay()
 		PickupSphere->OnComponentBeginOverlap.AddDynamic(this, &ABrawlPowerCube::OnOverlapBegin);
 	}
 
+	if (bIsActive)
+	{
+		OnActivate();
+	}
+}
+
+void ABrawlPowerCube::OnActivate()
+{
+	bIsActive = true;
+	SetActorHiddenInGame(false);
+	
+	if (PickupSphere)
+	{
+		PickupSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	}
+
 	if (SpawnSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, SpawnSound, GetActorLocation());
+	}
+}
+
+void ABrawlPowerCube::OnDeactivate()
+{
+	bIsActive = false;
+	SetActorHiddenInGame(true);
+
+	if (PickupSphere)
+	{
+		PickupSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+}
+
+void ABrawlPowerCube::Deactivate()
+{
+	if (UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>())
+	{
+		PoolSubsystem->ReturnToPool(this);
+	}
+	else
+	{
+		Destroy();
 	}
 }
 
@@ -96,8 +138,8 @@ void ABrawlPowerCube::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor
 					UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), PickupVFX, GetActorLocation());
 				}
 
-				// 획득 성공 후 제거
-				Destroy();
+				// 획득 성공 후 제거 대신 비활성화 (풀 반환)
+				Deactivate();
 			}
 		}
 		else

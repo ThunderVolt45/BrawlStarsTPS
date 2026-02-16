@@ -18,11 +18,19 @@ class BRAWLSTARSTPS_API ABrawlProjectile_Explosive : public ABrawlProjectile
 	GENERATED_BODY()
 	
 protected:
+	// --- IBrawlPoolableInterface 구현 ---
+	virtual void OnActivate() override;
+	virtual void OnDeactivate() override;
+	// ----------------------------------
+	
 	// 충돌 시 호출 (부모의 OnHit을 오버라이드하여 폭발 로직 추가)
 	virtual void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit) override;
 
-	// 수명 종료(최대 사거리 도달 등) 시 호출
-	virtual void Destroyed() override;
+	// 겹침 시 호출
+	virtual void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) override;
+
+	// 수명 종료 시 호출
+	virtual void OnLifeTimeExpired() override;
 
 	// 폭발 및 파편 생성 로직 실행
 	virtual void Explode(const FHitResult& HitResult);

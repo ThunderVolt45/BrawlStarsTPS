@@ -5,11 +5,14 @@
 #include "Components/SphereComponent.h"
 #include "Components/DecalComponent.h"
 #include "TimerManager.h"
+#include "BrawlPoolSubsystem.h"
 
 ABrawlAreaEffect::ABrawlAreaEffect()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true; // 서버에서 생성되어 클라이언트에 보여야 함
+
+	bIsActive = true;
 
 	// 1. Root Component (Scene)
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
@@ -43,14 +46,58 @@ void ABrawlAreaEffect::BeginPlay()
 		Area->OnComponentEndOverlap.AddDynamic(this, &ABrawlAreaEffect::OnOverlapEnd);
 	}
 
-	// 수명 설정 (자동 파괴)
-	SetLifeSpan(Duration);
+	if (bIsActive)
+	{
+		OnActivate();
+	}
+}
+
+void ABrawlAreaEffect::OnActivate()
+{
+	bIsActive = true;
+	SetActorHiddenInGame(false);
+	SetActorEnableCollision(true);
+	
+	OverlappingActors.Empty();
+
+	// 지속 시간 타이머 설정
+	GetWorldTimerManager().SetTimer(DurationTimerHandle, this, &ABrawlAreaEffect::OnDurationExpired, Duration, false);
 
 	// 주기적 효과 타이머 시작
 	if (Period > 0.0f)
 	{
-		GetWorld()->GetTimerManager().SetTimer(PeriodTimerHandle, this, &ABrawlAreaEffect::ApplyPeriodicEffect, Period, true);
+		GetWorldTimerManager().SetTimer(PeriodTimerHandle, this, &ABrawlAreaEffect::ApplyPeriodicEffect, Period, true);
 	}
+}
+
+void ABrawlAreaEffect::OnDeactivate()
+{
+	bIsActive = false;
+	SetActorHiddenInGame(true);
+	SetActorEnableCollision(false);
+
+	// 타이머 해제
+	GetWorldTimerManager().ClearTimer(DurationTimerHandle);
+	GetWorldTimerManager().ClearTimer(PeriodTimerHandle);
+	
+	OverlappingActors.Empty();
+}
+
+void ABrawlAreaEffect::Deactivate()
+{
+	if (UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>())
+	{
+		PoolSubsystem->ReturnToPool(this);
+	}
+	else
+	{
+		Destroy();
+	}
+}
+
+void ABrawlAreaEffect::OnDurationExpired()
+{
+	Deactivate();
 }
 
 void ABrawlAreaEffect::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)

@@ -27,7 +27,7 @@ public:
 	virtual void Init() override;
 
 	/** 선택된 브롤러의 RowName (DT_BrawlerData 기준) */
-	UPROPERTY(BlueprintReadWrite, Category = "Brawl|State")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Brawl|State")
 	FName SelectedBrawlerRowName = TEXT("Shelly");
 
 	/** 브롤러 변경 시 알림을 위한 델리게이트 */

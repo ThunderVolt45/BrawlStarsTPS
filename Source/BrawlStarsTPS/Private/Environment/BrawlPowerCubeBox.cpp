@@ -16,6 +16,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
+#include "BrawlPoolSubsystem.h"
 
 ABrawlPowerCubeBox::ABrawlPowerCubeBox()
 {
@@ -126,10 +127,16 @@ void ABrawlPowerCubeBox::Die()
 	// 파워 큐브 드롭
 	if (PowerCubeClass)
 	{
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-		GetWorld()->SpawnActor<ABrawlPowerCube>(PowerCubeClass, GetActorTransform(), SpawnParams);
+		if (UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>())
+		{
+			PoolSubsystem->GetFromPool(PowerCubeClass, GetActorTransform());
+		}
+		else
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+			GetWorld()->SpawnActor<ABrawlPowerCube>(PowerCubeClass, GetActorTransform(), SpawnParams);
+		}
 	}
 
 	// 파괴 연출 (ABrawlObstacle 로직 이식)

@@ -13,10 +13,14 @@
 #include "Camera/CameraComponent.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "BrawlPoolSubsystem.h"
+#include "BrawlStarsTPSGameMode.h"
 
 ABrawlSpikeLifePlant::ABrawlSpikeLifePlant()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	bIsActive = true;
 
 	// 1. 충돌체 설정
 	GetCapsuleComponent()->SetCapsuleSize(45.f, 60.f);
@@ -80,11 +84,29 @@ void ABrawlSpikeLifePlant::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (bIsActive)
+	{
+		OnActivate();
+	}
+}
+
+void ABrawlSpikeLifePlant::OnActivate()
+{
+	bIsActive = true;
+	bIsDead = false;
+	
+	SetBrawlerActive(true);
+
+	if (PlantMeshComponent)
+	{
+		PlantMeshComponent->SetHiddenInGame(false);
+	}
+
 	// 1. 소환사의 팀 ID 상속
 	if (ABrawlCharacter* Summoner = Cast<ABrawlCharacter>(GetInstigator()))
 	{
 		SetGenericTeamId(FGenericTeamId(Summoner->GetTeamID()));
-		UE_LOG(LogTemp, Log, TEXT("SpikeLifePlant: Inherited TeamID %d from Summoner %s"), GetTeamID(), *Summoner->GetName());
+		// UE_LOG(LogTemp, Log, TEXT("SpikeLifePlant: Inherited TeamID %d from Summoner %s"), GetTeamID(), *Summoner->GetName());
 	}
 
 	// 2. 체력 초기화
@@ -92,6 +114,34 @@ void ABrawlSpikeLifePlant::BeginPlay()
 	{
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxHealthAttribute(), DefaultMaxHealth);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHealthAttribute(), DefaultMaxHealth);
+	}
+
+	// 3. 가시성 강제 업데이트
+	UpdateMeshVisibility();
+}
+
+void ABrawlSpikeLifePlant::OnDeactivate()
+{
+	bIsActive = false;
+	bIsDead = true;
+	
+	SetBrawlerActive(false);
+
+	if (PlantMeshComponent)
+	{
+		PlantMeshComponent->SetHiddenInGame(true);
+	}
+}
+
+void ABrawlSpikeLifePlant::Deactivate()
+{
+	if (UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>())
+	{
+		PoolSubsystem->ReturnToPool(this);
+	}
+	else
+	{
+		Destroy();
 	}
 }
 
@@ -165,12 +215,32 @@ void ABrawlSpikeLifePlant::HealNearbyAllies()
 }
 void ABrawlSpikeLifePlant::Die()
 {
-	if (bIsDeadInternal) return;
-	bIsDeadInternal = true;
+	if (bIsDead) return;
+	
+	// Super::Die()를 호출하면 bIsDead = true가 되고 GameMode에 알림이 감
+	// 하지만 Summon은 Respawn하지 않으므로 Super::Die()에서 Destroy될 수 있음.
+	// 따라서 여기서 직접 처리하거나 Super::Die()의 로직을 제어해야 함.
+	
+	bIsDead = true;
+
+	// 사망 GameplayCue 호출
+	if (AbilitySystemComponent && DeathCueTag.IsValid())
+	{
+		AbilitySystemComponent->ExecuteGameplayCue(DeathCueTag);
+	}
 
 	// 주변 아군 치유
 	HealNearbyAllies();
 
-	// 파괴 처리
-	Destroy();
+	// 서버에서 알림 (Summon은 킬 카운트 등에 반영될 수 있음)
+	if (HasAuthority())
+	{
+		if (ABrawlStarsTPSGameMode* GM = GetWorld()->GetAuthGameMode<ABrawlStarsTPSGameMode>())
+		{
+			GM->NotifyKill(LastHitInstigator, this);
+		}
+	}
+
+	// 파괴 처리 대신 비활성화 (풀 반환)
+	Deactivate();
 }

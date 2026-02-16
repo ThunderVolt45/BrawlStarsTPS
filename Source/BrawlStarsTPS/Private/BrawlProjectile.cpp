@@ -12,11 +12,14 @@
 #include "Environment/BrawlDestructibleInterface.h"
 #include "Environment/BrawlBush.h" 
 #include "GenericTeamAgentInterface.h"
+#include "BrawlPoolSubsystem.h"
 
 ABrawlProjectile::ABrawlProjectile()
 {
 	PrimaryActorTick.bCanEverTick = true; // 관통 및 레이캐스트 로직을 위해 Tick 활성화
 	bReplicates = true;
+
+	bIsActive = true; // 기본적으로 true (SpawnActor로 생성될 때 대응)
 
 	// 1. 충돌체 설정
 	SphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComponent"));
@@ -26,8 +29,10 @@ ABrawlProjectile::ABrawlProjectile()
 	SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	SphereComponent->SetCollisionObjectType(ECC_WorldDynamic);
 	SphereComponent->SetCollisionResponseToAllChannels(ECR_Overlap);
+	SphereComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap); // Pawn은 항상 겹침 처리
 	SphereComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
 	SphereComponent->SetCollisionResponseToChannel(ECC_Destructible, ECR_Block);
+	SphereComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	SphereComponent->SetGenerateOverlapEvents(true);
 	SphereComponent->SetCanEverAffectNavigation(false); // NavMesh에 영향 주지 않음
 	
@@ -66,59 +71,153 @@ void ABrawlProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	PreviousLocation = GetActorLocation();
-
-	// 관통형 발사체는 직접 충돌을 검사해야하므로 Tick 활성화
-	SetActorTickEnabled(bCanPierce);
-	
-	// 발사자(Instigator)는 무시
-	if (AActor* MyInstigator = GetInstigator())
+	// 처음 생성될 때는 OnActivate를 수동으로 부르지 않으므로 여기서 초기화
+	// (단, 풀 서브시스템을 통해 생성되는 경우 GetFromPool에서 호출됨)
+	if (bIsActive)
 	{
-		SphereComponent->IgnoreActorWhenMoving(MyInstigator, true);
+		OnActivate();
 	}
+}
 
-	// 주인(Owner)도 무시 (보통 Instigator와 같지만 다를 수 있음)
-	if (AActor* MyOwner = GetOwner())
-	{
-		SphereComponent->IgnoreActorWhenMoving(MyOwner, true);
-	}
+void ABrawlProjectile::OnActivate()
+{
+	bIsActive = true;
+	SetActorHiddenInGame(false);
 	
+	// 1. 충돌 설정 초기화
 	if (SphereComponent)
 	{
-		// 충돌 활성화 강제 (QueryOnly: 물리 시뮬레이션 없이 오버랩/히트 감지)
-		SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		// 생성 즉시 충돌하여 사라지는 것을 방지하기 위해 일시적으로 비활성화
+		SphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		SphereComponent->SetCollisionObjectType(ECC_WorldDynamic);
-		
-		// 블루프린트 설정 무시하고 강제로 Overlap 이벤트 활성화
 		SphereComponent->SetGenerateOverlapEvents(true);
+
+		// 이전에 설정된 무시 목록 초기화
+		SphereComponent->ClearMoveIgnoreActors();
 
 		if (bCanPierce)
 		{
-			// 관통형 발사체는 물리적으로 멈추면 안 되므로 모든 채널과 Overlap 해야 함
+			// 관통형: 모든 채널을 Overlap으로 설정하여 멈추지 않게 함
 			SphereComponent->SetCollisionResponseToAllChannels(ECR_Overlap);
 		}
 		else
 		{
-			// 일반 발사체는 발사체(WorldDynamic)끼리만 충돌 무시(Overlap)
+			// 일반형: 기본 응답으로 복구 (Block)
+			SphereComponent->SetCollisionResponseToAllChannels(ECR_Block);
 			SphereComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
+			// Pawn은 관통 여부와 상관없이 항상 Overlap (캐릭터 밀침 방지)
+			SphereComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+			// 가시성 채널 등 불필요한 채널 무시
+			SphereComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 		}
+
+		// 카메라 충돌은 항상 무시 (카메라 튐 방지)
+		SphereComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+
+		// 발사자/주인 무시 다시 설정
+		if (AActor* MyInstigator = GetInstigator()) SphereComponent->IgnoreActorWhenMoving(MyInstigator, true);
+		if (AActor* MyOwner = GetOwner()) SphereComponent->IgnoreActorWhenMoving(MyOwner, true);
+
+		// 아주 짧은 시간 뒤에 충돌 활성화
+		GetWorldTimerManager().SetTimer(CollisionDelayTimerHandle, this, &ABrawlProjectile::EnableCollisionDelayed, 0.01f, false);
 	}
 
-	SetLifeSpan(LifeTime);
+	// 2. 이동 초기화
+	if (ProjectileMovement)
+	{
+		// 기존 속도 및 상태 초기화
+		ProjectileMovement->StopMovementImmediately();
+		ProjectileMovement->Velocity = GetActorForwardVector() * ProjectileSpeed;
+		
+		// 컴포넌트 활성화 및 업데이트 강제
+		ProjectileMovement->Activate(true); 
+		ProjectileMovement->SetUpdatedComponent(SphereComponent);
+	}
+
+	// 3. 내부 상태 초기화
+	HitActors.Empty();
+	PreviousLocation = GetActorLocation();
+	
+	// 빠른 탄속에 의한 터널링 방지를 위해 모든 발사체 Tick 활성화 (정밀 Sweep 검사용)
+	SetActorTickEnabled(true);
+
+	// 수명 타이머 재설정
+	GetWorldTimerManager().SetTimer(LifeTimerHandle, this, &ABrawlProjectile::OnLifeTimeExpired, LifeTime, false);
+}
+
+void ABrawlProjectile::OnDeactivate()
+{
+	bIsActive = false;
+	SetActorHiddenInGame(true);
+	
+	if (SphereComponent)
+	{
+		SphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	SetActorTickEnabled(false);
+
+	// 타이머 해제
+	GetWorldTimerManager().ClearTimer(LifeTimerHandle);
+	GetWorldTimerManager().ClearTimer(CollisionDelayTimerHandle);
+
+	// 상태 및 데이터 초기화
+	DamageSpecHandle = FGameplayEffectSpecHandle();
+	HitActors.Empty();
+
+	// 이동 정지
+	if (ProjectileMovement)
+	{
+		ProjectileMovement->StopMovementImmediately();
+		ProjectileMovement->Deactivate();
+	}
+}
+
+void ABrawlProjectile::EnableCollisionDelayed()
+{
+	if (SphereComponent && bIsActive)
+	{
+		SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	}
+}
+
+void ABrawlProjectile::Deactivate()
+{
+	if (UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>())
+	{
+		PoolSubsystem->ReturnToPool(this);
+	}
+	else
+	{
+		Destroy();
+	}
+}
+
+void ABrawlProjectile::OnLifeTimeExpired()
+{
+	Deactivate();
 }
 
 void ABrawlProjectile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
-	// 관통형 발사체가 아니라면 중단
-	if (!bCanPierce || !SphereComponent)
+	if (!SphereComponent)
 	{
 		return;
 	}
 
-	// 관통형 발사체인 경우, 이동 경로에 대한 스윕(Sweep) 검사 수행 (터널링 방지)
 	FVector CurrentLocation = GetActorLocation();
+
+	// 충돌 지연 시간 동안에는 수동 정밀 검사(Sweep)를 건너뛰지만, 위치 기록은 계속 갱신합니다.
+	// (충돌 활성화 시점에 이전 유예 기간의 궤적까지 훑는 현상 방지)
+	if (SphereComponent->GetCollisionEnabled() == ECollisionEnabled::NoCollision)
+	{
+		PreviousLocation = CurrentLocation;
+		return;
+	}
+
+	// 이동 경로에 대한 스윕(Sweep) 검사 수행 (빠른 탄속에 의한 터널링 방지)
 
 	// 움직임이 거의 없으면 스킵
 	if (FVector::DistSquared(PreviousLocation, CurrentLocation) < 1.0f)
@@ -159,10 +258,20 @@ void ABrawlProjectile::Tick(float DeltaTime)
 			AActor* HitActor = Result.GetActor();
 			UPrimitiveComponent* HitComp = Result.GetComponent();
 
-			// 수풀의 감지용 스피어는 무시
-			if (HitActor && HitActor->IsA(ABrawlBush::StaticClass()) && HitComp && HitComp->GetName().Contains(TEXT("ProximitySphere")))
+			// 수풀 처리
+			if (HitActor && HitActor->IsA(ABrawlBush::StaticClass()))
 			{
-				continue;
+				// 감지용 스피어는 어떤 경우에도 무시
+				if (HitComp && HitComp->GetName().Contains(TEXT("ProximitySphere")))
+				{
+					continue;
+				}
+
+				// 지형 파괴 옵션이 꺼져 있다면 무시
+				if (!bDestroyObstacles)
+				{
+					continue;
+				}
 			}
 
 			if (HitActor && !HitActors.Contains(HitActor))
@@ -188,15 +297,25 @@ void ABrawlProjectile::Tick(float DeltaTime)
 
 void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	// 발사자(Instigator)는 무시
+	// 발사자(Instigator) 무시
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator() 
 		|| OtherActor == this || OtherActor->IsA(StaticClass())) 
 		return;
 
-	// 수풀의 감지용 스피어는 무시
-	if (OtherActor->IsA(ABrawlBush::StaticClass()) && OtherComp && OtherComp->GetName().Contains(TEXT("ProximitySphere")))
+	// 수풀 처리
+	if (OtherActor->IsA(ABrawlBush::StaticClass()))
 	{
-		return;
+		// 감지용 스피어는 항상 무시
+		if (OtherComp && OtherComp->GetName().Contains(TEXT("ProximitySphere")))
+		{
+			return;
+		}
+
+		// 지형 파괴 옵션이 꺼져 있다면 무시
+		if (!bDestroyObstacles)
+		{
+			return;
+		}
 	}
 
 	// 이미 처리된 액터면 무시 (관통 시 중복 방지)
@@ -212,15 +331,25 @@ void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherAct
 
 void ABrawlProjectile::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	// 발사자(Instigator)는 무시
+	// 발사자(Instigator) 무시
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator()
 		|| OtherActor == this || OtherActor->IsA(StaticClass()))
 		return;
 
-	// 수풀의 감지용 스피어는 무시
-	if (OtherActor->IsA(ABrawlBush::StaticClass()) && OtherComp && OtherComp->GetName().Contains(TEXT("ProximitySphere")))
+	// 수풀 처리
+	if (OtherActor->IsA(ABrawlBush::StaticClass()))
 	{
-		return;
+		// 감지용 스피어는 항상 무시
+		if (OtherComp && OtherComp->GetName().Contains(TEXT("ProximitySphere")))
+		{
+			return;
+		}
+
+		// 지형 파괴 옵션이 꺼져 있다면 무시
+		if (!bDestroyObstacles)
+		{
+			return;
+		}
 	}
 
 	// 이미 처리된 액터면 무시
@@ -329,7 +458,7 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 		// 장애물 관통 능력이 없다면 파괴
 		if (!bCanPierceHardObstacle && bIsHardObstacle)
 		{
-			Destroy();
+			Deactivate();
 			return;
 		}
 		
@@ -349,7 +478,7 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 	// 관통 능력이 없다면 파괴
 	if (!bCanPierce)
 	{
-		Destroy();
+		Deactivate();
 	}
 }
 

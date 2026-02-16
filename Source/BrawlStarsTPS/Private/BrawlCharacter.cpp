@@ -26,6 +26,8 @@
 #include "Components/PostProcessComponent.h"
 #include "Environment/BrawlPoisonZone.h"
 #include "DrawDebugHelpers.h"
+#include "BrawlPoolSubsystem.h"
+#include "Abilities/BrawlGameplayAbility_Fire.h"
 
 ABrawlCharacter::ABrawlCharacter()
 {
@@ -150,7 +152,8 @@ void ABrawlCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	// 스폰 시 바닥에 파묻힘 방지 (Z축 보정)
-	if (HasAuthority())
+	// 소환물(Summon)은 생성 시 발사체 등에서 넘겨주는 위치값을 정확히 유지해야 하므로 보정을 건너뜁니다.
+	if (HasAuthority() && CharacterType != EBrawlCharacterType::Summon)
 	{
 		FVector Loc = GetActorLocation();
 		// 만약 Z값이 거의 0이거나 매우 낮다면, 지면 위로 올림 (일반적인 캡슐 높이 고려)
@@ -189,6 +192,32 @@ void ABrawlCharacter::BeginPlay()
 
 	// 초기 가시성 설정
 	UpdateMeshVisibility();
+
+	// 발사체 프리워밍 (오브젝트 풀링 최적화)
+	if (HasAuthority())
+	{
+		if (UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>())
+		{
+			TMap<TSubclassOf<AActor>, int32> PrewarmDataMap;
+			
+			for (const TSubclassOf<UBrawlGameplayAbility>& AbilityClass : StartupAbilities)
+			{
+				if (AbilityClass && AbilityClass->IsChildOf(UBrawlGameplayAbility_Fire::StaticClass()))
+				{
+					if (const UBrawlGameplayAbility_Fire* FireAbility = Cast<UBrawlGameplayAbility_Fire>(AbilityClass->GetDefaultObject()))
+					{
+						FireAbility->GetProjectilePrewarmData(PrewarmDataMap);
+					}
+				}
+			}
+
+			// 각 클래스별로 설정된 개수만큼 풀 미리 생성
+			for (auto& Pair : PrewarmDataMap)
+			{
+				PoolSubsystem->PrewarmPool(Pair.Key, Pair.Value);
+			}
+		}
+	}
 }
 
 void ABrawlCharacter::OnMatchStateChanged()

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "GameplayEffectTypes.h"
+#include "BrawlPoolableInterface.h"
 #include "BrawlPowerCube.generated.h"
 
 class USphereComponent;
@@ -17,15 +18,24 @@ class UGameplayEffect;
  * 획득 시 캐릭터의 파워 큐브 개수(공격력)와 최대 체력을 증가시키는 아이템입니다.
  */
 UCLASS()
-class BRAWLSTARSTPS_API ABrawlPowerCube : public AActor
+class BRAWLSTARSTPS_API ABrawlPowerCube : public AActor, public IBrawlPoolableInterface
 {
 	GENERATED_BODY()
 	
 public:	
 	ABrawlPowerCube();
 
+	// --- IBrawlPoolableInterface 구현 ---
+	virtual void OnActivate() override;
+	virtual void OnDeactivate() override;
+	virtual bool IsActive() const override { return bIsActive; }
+	// ----------------------------------
+
 protected:
 	virtual void BeginPlay() override;
+
+	/** 풀로 반환 */
+	void Deactivate();
 
 	// 오버랩 처리
 	UFUNCTION()
@@ -63,4 +73,7 @@ protected:
 	// 획득 시 파티클 효과
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
 	TObjectPtr<UParticleSystem> PickupVFX;
+
+private:
+	bool bIsActive = false;
 };
