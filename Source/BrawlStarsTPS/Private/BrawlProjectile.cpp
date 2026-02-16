@@ -29,6 +29,7 @@ ABrawlProjectile::ABrawlProjectile()
 	SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	SphereComponent->SetCollisionObjectType(ECC_WorldDynamic);
 	SphereComponent->SetCollisionResponseToAllChannels(ECR_Overlap);
+	SphereComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap); // Pawn은 항상 겹침 처리
 	SphereComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
 	SphereComponent->SetCollisionResponseToChannel(ECC_Destructible, ECR_Block);
 	SphereComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
@@ -101,9 +102,11 @@ void ABrawlProjectile::OnActivate()
 		}
 		else
 		{
-			// 일반형: 기본 응답으로 복구 (Block) 및 발사체끼리만 무시
+			// 일반형: 기본 응답으로 복구 (Block)
 			SphereComponent->SetCollisionResponseToAllChannels(ECR_Block);
 			SphereComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
+			// Pawn은 관통 여부와 상관없이 항상 Overlap (캐릭터 밀침 방지)
+			SphereComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 			// 가시성 채널 등 불필요한 채널 무시
 			SphereComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 		}

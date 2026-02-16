@@ -2,10 +2,10 @@
 
 
 #include "Abilities/Colt/BrawlGameplayAbility_Colt_Fire.h"
-
 #include "AbilitySystemComponent.h"
 #include "BrawlAttributeSet.h"
 #include "BrawlProjectile.h"
+#include "BrawlPoolSubsystem.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "GameFramework/Character.h"
@@ -20,65 +20,39 @@ void UBrawlGameplayAbility_Colt_Fire::ActivateAbility(const FGameplayAbilitySpec
 	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
 	const FGameplayEventData* TriggerEventData)
 {
-	// UE_LOG(LogTemp, Warning, TEXT("BrawlGameplayAbility_Colt_Fire::ActivateAbility Called!"));
-
-	FGameplayTagContainer RelevantTags;
-
-	// 1. 쿨다운 체크
-	if (!CheckCooldown(Handle, ActorInfo, &RelevantTags))
+	// 1. 코스트 및 쿨다운 확인 및 지불
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ActivateAbility Failed: Cooldown"));
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
-	// 2. 코스트 체크
-	if (!CheckCost(Handle, ActorInfo, &RelevantTags))
+	// 2. Gameplay Event 대기 (좌/우 총구 발사 이벤트)
+	if (UAbilityTask_WaitGameplayEvent* WaitEventTaskL = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, FireEventTagLeft))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ActivateAbility Failed: Cost"));
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
-
-	// 3. 쿨다운 및 코스트 적용 (수동 호출로 중복 방지)
-	ApplyCooldown(Handle, ActorInfo, ActivationInfo);
-	ApplyCost(Handle, ActorInfo, ActivationInfo);
-
-	// 2. Gameplay Event 대기 (Event.Weapon.Fire)
-	// 몽타주에서 노티파이로 이벤트를 보내면 OnFireEventReceived가 호출됨
-	if (UAbilityTask_WaitGameplayEvent* WaitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
-		this, FireEventTagLeft))
-	{
-		WaitEventTask->EventReceived.AddDynamic(this, &UBrawlGameplayAbility_Colt_Fire::OnFireLeftEventReceived);
-		WaitEventTask->ReadyForActivation();
+		WaitEventTaskL->EventReceived.AddDynamic(this, &UBrawlGameplayAbility_Colt_Fire::OnFireLeftEventReceived);
+		WaitEventTaskL->ReadyForActivation();
 	}
 	
-	if (UAbilityTask_WaitGameplayEvent* WaitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
-		this, FireEventTagRight))
+	if (UAbilityTask_WaitGameplayEvent* WaitEventTaskR = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, FireEventTagRight))
 	{
-		WaitEventTask->EventReceived.AddDynamic(this, &UBrawlGameplayAbility_Colt_Fire::OnFireRightEventReceived);
-		WaitEventTask->ReadyForActivation();
+		WaitEventTaskR->EventReceived.AddDynamic(this, &UBrawlGameplayAbility_Colt_Fire::OnFireRightEventReceived);
+		WaitEventTaskR->ReadyForActivation();
 	}
 
-	// 3. 몽타주 재생
-	// PlayMontageAndWait를 쓰면 몽타주 종료 시점까지 어빌리티를 유지할 수 있음
+	// 3. 몽타주 선택 (하이퍼차지 여부에 따라)
 	UAnimMontage* MontageToPlay = FireMontage;
-	
 	if (const UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
 		static FGameplayTag HyperStateTag = FGameplayTag::RequestGameplayTag(FName("State.Hypercharged"));
 		if (ASC->HasMatchingGameplayTag(HyperStateTag))
 		{
-			if (FireMontage_Hyper)
-			{
-				MontageToPlay = FireMontage_Hyper;
-			}
+			if (FireMontage_Hyper) MontageToPlay = FireMontage_Hyper;
 		}
 	}
 
-	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
-		this, NAME_None, MontageToPlay);
-	
+	// 4. 몽타주 재생
+	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, MontageToPlay);
 	if (MontageTask)
 	{
 		MontageTask->OnCompleted.AddDynamic(this, &UBrawlGameplayAbility_Colt_Fire::OnMontageEnded);
@@ -89,7 +63,6 @@ void UBrawlGameplayAbility_Colt_Fire::ActivateAbility(const FGameplayAbilitySpec
 	}
 	else
 	{
-		// 몽타주 재생 실패 시 즉시 발사 시도 (안전장치)
 		SpawnProjectile(LeftHandSocket);
 		SpawnProjectile(RightHandSocket);
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
@@ -98,13 +71,11 @@ void UBrawlGameplayAbility_Colt_Fire::ActivateAbility(const FGameplayAbilitySpec
 
 void UBrawlGameplayAbility_Colt_Fire::OnFireLeftEventReceived(FGameplayEventData Payload)
 {
-	// 이벤트 수신 시 발사체 스폰 (왼손 무기)
 	SpawnProjectile(LeftHandSocket);
 }
 
 void UBrawlGameplayAbility_Colt_Fire::OnFireRightEventReceived(FGameplayEventData Payload)
 {
-	// 이벤트 수신 시 발사체 스폰 (오른손 무기)
 	SpawnProjectile(RightHandSocket);
 }
 
@@ -113,38 +84,47 @@ void UBrawlGameplayAbility_Colt_Fire::SpawnProjectile(FName AttachParentSocketNa
 	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
 	if (!Character) return;
 
-	// 1. 발사체 클래스
 	TSubclassOf<AActor> ClassToSpawn = GetProjectileClassToSpawn();
-	if (!ClassToSpawn)
-	{
-		UE_LOG(LogTemp, Error, TEXT("SpawnProjectile Failed: ProjectileClass is NULL"));
-		return;
-	}
+	if (!ClassToSpawn) return;
 
-	// 2. 발사 시작점
+	// 부모 클래스의 유틸리티 함수들을 사용하여 위치와 방향 계산
 	FVector MuzzleLocation = GetMuzzleLocation(MuzzleSocketName, AttachParentSocketName);
-
-	// 3. 발사 방향
 	FRotator ProjectileRotation = GetAimRotation(MuzzleLocation);
+	FTransform SpawnTransform(ProjectileRotation, MuzzleLocation);
 
-	// 4. 발사체 스폰
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = Character;
-	SpawnParams.Instigator = Character;
+	// 데미지 스펙 생성
+	FGameplayEffectSpecHandle SpecHandle = MakeDamageSpecHandle(1.0f);
 
-	AActor* SpawnedActor = GetWorld()->SpawnActor<
-		AActor>(ClassToSpawn, MuzzleLocation, ProjectileRotation, SpawnParams);
-	if (ABrawlProjectile* Projectile = Cast<ABrawlProjectile>(SpawnedActor))
+	// 풀 서브시스템을 통한 생성 및 즉시 초기화
+	if (UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>())
 	{
-		// GAS 데미지 Spec 생성 및 주입
-		FGameplayEffectSpecHandle SpecHandle = MakeDamageSpecHandle(1.0f); // 1.0 Scale
-		if (SpecHandle.IsValid())
-		{
-			Projectile->InitializeProjectile(SpecHandle);
-		}
-
-		// SFX/VFX 재생 (블루프린트에서 설정한 AbilityGameplayCueTag 사용)
+		PoolSubsystem->GetFromPool(ClassToSpawn, SpawnTransform, Cast<AActor>(Character), Cast<APawn>(Character), 
+			[SpecHandle](AActor* InActor)
+			{
+				if (ABrawlProjectile* Projectile = Cast<ABrawlProjectile>(InActor))
+				{
+					Projectile->InitializeProjectile(SpecHandle);
+				}
+			});
+		
+		// 효과 재생
 		PlayGameplayCue(MuzzleLocation, ProjectileRotation.Vector());
 	}
+	else
+	{
+		// 폴백: 서브시스템이 없는 경우 (기존 방식)
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = Character;
+		SpawnParams.Instigator = Character;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+		if (AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(ClassToSpawn, MuzzleLocation, ProjectileRotation, SpawnParams))
+		{
+			if (ABrawlProjectile* Projectile = Cast<ABrawlProjectile>(SpawnedActor))
+			{
+				Projectile->InitializeProjectile(SpecHandle);
+			}
+			PlayGameplayCue(MuzzleLocation, ProjectileRotation.Vector());
+		}
+	}
 }
-		

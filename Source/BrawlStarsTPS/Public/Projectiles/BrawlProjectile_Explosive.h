@@ -22,9 +22,12 @@ protected:
 	virtual void OnActivate() override;
 	virtual void OnDeactivate() override;
 	// ----------------------------------
-
+	
 	// 충돌 시 호출 (부모의 OnHit을 오버라이드하여 폭발 로직 추가)
 	virtual void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit) override;
+
+	// 겹침 시 호출
+	virtual void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) override;
 
 	// 수명 종료 시 호출
 	virtual void OnLifeTimeExpired() override;

@@ -35,6 +35,31 @@ void ABrawlProjectile_Explosive::OnHit(UPrimitiveComponent* HitComponent, AActor
 	Super::OnHit(HitComponent, OtherActor, OtherComp, NormalImpulse, Hit);
 }
 
+void ABrawlProjectile_Explosive::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	// 이미 폭발했으면 무시
+	if (bHasExploded) return;
+
+	// 발사자(Instigator)는 무시
+	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator()
+		|| OtherActor == this || OtherActor->IsA(ABrawlProjectile::StaticClass()))
+		return;
+
+	// 폭발 처리를 위한 더미 HitResult 생성 (또는 SweepResult 활용)
+	FHitResult Hit = SweepResult;
+	if (Hit.ImpactPoint.IsZero())
+	{
+		Hit.ImpactPoint = GetActorLocation();
+		Hit.Normal = (GetActorRotation().Vector() * -1.0f);
+	}
+
+	// 폭발 처리
+	Explode(Hit);
+
+	// 부모의 OnBeginOverlap 실행 (데미지 처리 및 Deactivate 호출)
+	Super::OnBeginOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
+}
+
 void ABrawlProjectile_Explosive::OnLifeTimeExpired()
 {
 	// 수명이 다해서 죽는 경우 (OnHit을 거치지 않음)
