@@ -97,6 +97,11 @@ void ABrawlSpikeLifePlant::OnActivate()
 	
 	SetBrawlerActive(true);
 
+	if (PlantMeshComponent)
+	{
+		PlantMeshComponent->SetHiddenInGame(false);
+	}
+
 	// 1. 소환사의 팀 ID 상속
 	if (ABrawlCharacter* Summoner = Cast<ABrawlCharacter>(GetInstigator()))
 	{
@@ -121,6 +126,11 @@ void ABrawlSpikeLifePlant::OnDeactivate()
 	bIsDead = true;
 	
 	SetBrawlerActive(false);
+
+	if (PlantMeshComponent)
+	{
+		PlantMeshComponent->SetHiddenInGame(true);
+	}
 }
 
 void ABrawlSpikeLifePlant::Deactivate()
