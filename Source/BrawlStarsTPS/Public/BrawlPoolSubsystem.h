@@ -25,7 +25,7 @@ class BRAWLSTARSTPS_API UBrawlPoolSubsystem : public UWorldSubsystem
 
 public:
 	/** 풀에서 액터를 가져오거나 없으면 새로 생성합니다. */
-	AActor* GetFromPool(TSubclassOf<AActor> ActorClass, const FTransform& Transform, AActor* Owner = nullptr, APawn* Instigator = nullptr);
+	AActor* GetFromPool(TSubclassOf<AActor> ActorClass, const FTransform& Transform, AActor* Owner = nullptr, APawn* Instigator = nullptr, TFunction<void(AActor*)> PreActivateFunc = nullptr);
 
 	/** 액터를 풀로 반환합니다. */
 	void ReturnToPool(AActor* Actor);

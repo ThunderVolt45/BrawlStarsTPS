@@ -86,7 +86,8 @@ void ABrawlProjectile::OnActivate()
 	// 1. 충돌 설정 초기화
 	if (SphereComponent)
 	{
-		SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		// 생성 즉시 충돌하여 사라지는 것을 방지하기 위해 일시적으로 비활성화
+		SphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		SphereComponent->SetCollisionObjectType(ECC_WorldDynamic);
 		SphereComponent->SetGenerateOverlapEvents(true);
 
@@ -113,6 +114,9 @@ void ABrawlProjectile::OnActivate()
 		// 발사자/주인 무시 다시 설정
 		if (AActor* MyInstigator = GetInstigator()) SphereComponent->IgnoreActorWhenMoving(MyInstigator, true);
 		if (AActor* MyOwner = GetOwner()) SphereComponent->IgnoreActorWhenMoving(MyOwner, true);
+
+		// 아주 짧은 시간 뒤에 충돌 활성화
+		GetWorldTimerManager().SetTimer(CollisionDelayTimerHandle, this, &ABrawlProjectile::EnableCollisionDelayed, 0.01f, false);
 	}
 
 	// 2. 이동 초기화
@@ -152,12 +156,25 @@ void ABrawlProjectile::OnDeactivate()
 
 	// 타이머 해제
 	GetWorldTimerManager().ClearTimer(LifeTimerHandle);
+	GetWorldTimerManager().ClearTimer(CollisionDelayTimerHandle);
+
+	// 상태 및 데이터 초기화
+	DamageSpecHandle = FGameplayEffectSpecHandle();
+	HitActors.Empty();
 
 	// 이동 정지
 	if (ProjectileMovement)
 	{
 		ProjectileMovement->StopMovementImmediately();
 		ProjectileMovement->Deactivate();
+	}
+}
+
+void ABrawlProjectile::EnableCollisionDelayed()
+{
+	if (SphereComponent && bIsActive)
+	{
+		SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	}
 }
 

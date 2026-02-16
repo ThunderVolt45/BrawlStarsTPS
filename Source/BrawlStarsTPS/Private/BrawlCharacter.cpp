@@ -150,7 +150,8 @@ void ABrawlCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	// 스폰 시 바닥에 파묻힘 방지 (Z축 보정)
-	if (HasAuthority())
+	// 소환물(Summon)은 생성 시 발사체 등에서 넘겨주는 위치값을 정확히 유지해야 하므로 보정을 건너뜁니다.
+	if (HasAuthority() && CharacterType != EBrawlCharacterType::Summon)
 	{
 		FVector Loc = GetActorLocation();
 		// 만약 Z값이 거의 0이거나 매우 낮다면, 지면 위로 올림 (일반적인 캡슐 높이 고려)

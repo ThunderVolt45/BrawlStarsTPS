@@ -3,7 +3,7 @@
 #include "BrawlPoolSubsystem.h"
 #include "BrawlPoolableInterface.h"
 
-AActor* UBrawlPoolSubsystem::GetFromPool(TSubclassOf<AActor> ActorClass, const FTransform& Transform, AActor* Owner, APawn* Instigator)
+AActor* UBrawlPoolSubsystem::GetFromPool(TSubclassOf<AActor> ActorClass, const FTransform& Transform, AActor* Owner, APawn* Instigator, TFunction<void(AActor*)> PreActivateFunc)
 {
 	if (!ActorClass) return nullptr;
 
@@ -32,12 +32,21 @@ AActor* UBrawlPoolSubsystem::GetFromPool(TSubclassOf<AActor> ActorClass, const F
 		// 풀에서 꺼낸 경우 정보 업데이트
 		Actor->SetOwner(Owner);
 		Actor->SetInstigator(Instigator);
-		Actor->SetActorTransform(Transform);
+		
+		// 충돌을 무시하고 강제로 위치를 이동시키기 위해 TeleportPhysics 사용
+		Actor->SetActorLocationAndRotation(Transform.GetLocation(), Transform.GetRotation(), false, nullptr, ETeleportType::TeleportPhysics);
+		Actor->SetActorScale3D(Transform.GetScale3D());
 	}
 
 	if (Actor)
 	{
-		// 3. 인터페이스가 있으면 OnActivate 호출, 없으면 기본 활성화
+		// 3. 활성화 전 초기화 콜백 실행 (데미지 설정 등)
+		if (PreActivateFunc)
+		{
+			PreActivateFunc(Actor);
+		}
+
+		// 4. 인터페이스가 있으면 OnActivate 호출, 없으면 기본 활성화
 		if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(Actor))
 		{
 			Poolable->OnActivate();

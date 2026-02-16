@@ -43,13 +43,24 @@ void ABrawlProjectile_Spawner::OnHit(UPrimitiveComponent* HitComponent, AActor* 
 		if (World)
 		{
 			// 스폰 위치 계산 (충돌 지점 + 법선 방향 오프셋)
-			FVector SpawnLocation = Hit.Location + (Hit.Normal * SpawnZOffset);
+			// ImpactPoint를 사용하여 발사체 크기에 상관없이 지면에 정확히 배치합니다.
+			FVector SpawnLocation = Hit.ImpactPoint + (Hit.Normal * SpawnZOffset);
 			FRotator SpawnRotation = FRotator::ZeroRotator;
 			FTransform SpawnTransform(SpawnRotation, SpawnLocation);
 
-			AActor* SpawnedActor = PoolSubsystem ?
-				PoolSubsystem->GetFromPool(ActorClassToSpawn, SpawnTransform, GetOwner(), GetInstigator()) :
-				World->SpawnActor<AActor>(ActorClassToSpawn, SpawnLocation, SpawnRotation);
+			AActor* SpawnedActor = nullptr;
+			if (PoolSubsystem)
+			{
+				SpawnedActor = PoolSubsystem->GetFromPool(ActorClassToSpawn, SpawnTransform, GetOwner(), GetInstigator());
+			}
+			else
+			{
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.Owner = GetOwner();
+				SpawnParams.Instigator = GetInstigator();
+				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+				SpawnedActor = World->SpawnActor<AActor>(ActorClassToSpawn, SpawnTransform, SpawnParams);
+			}
 			
 			// 만약 스폰된 액터가 BrawlAreaEffect라면, 데미지 정보(SpecHandle) 전달
 			if (ABrawlAreaEffect* AreaEffect = Cast<ABrawlAreaEffect>(SpawnedActor))

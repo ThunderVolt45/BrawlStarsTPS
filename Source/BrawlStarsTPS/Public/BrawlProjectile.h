@@ -111,4 +111,7 @@ private:
 	bool bIsActive = false;
 
 	FTimerHandle LifeTimerHandle;
+	FTimerHandle CollisionDelayTimerHandle;
+
+	void EnableCollisionDelayed();
 };
