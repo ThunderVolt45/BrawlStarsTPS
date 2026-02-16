@@ -207,8 +207,17 @@ void ABrawlProjectile::Tick(float DeltaTime)
 		return;
 	}
 
-	// 이동 경로에 대한 스윕(Sweep) 검사 수행 (빠른 탄속에 의한 터널링 방지)
 	FVector CurrentLocation = GetActorLocation();
+
+	// 충돌 지연 시간 동안에는 수동 정밀 검사(Sweep)를 건너뛰지만, 위치 기록은 계속 갱신합니다.
+	// (충돌 활성화 시점에 이전 유예 기간의 궤적까지 훑는 현상 방지)
+	if (SphereComponent->GetCollisionEnabled() == ECollisionEnabled::NoCollision)
+	{
+		PreviousLocation = CurrentLocation;
+		return;
+	}
+
+	// 이동 경로에 대한 스윕(Sweep) 검사 수행 (빠른 탄속에 의한 터널링 방지)
 
 	// 움직임이 거의 없으면 스킵
 	if (FVector::DistSquared(PreviousLocation, CurrentLocation) < 1.0f)
