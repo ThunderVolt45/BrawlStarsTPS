@@ -136,8 +136,8 @@ void ABrawlProjectile_Explosive::ExplodeDamage(const FVector& Location)
 	}
 
 	// 디버그 시각화 (개발용)
-	DrawDebugSphere(GetWorld(), ExplosionLocation, ExplosionRadius, 12, 
-		FColor::Orange, false, 2.0f);
+	// DrawDebugSphere(GetWorld(), ExplosionLocation, ExplosionRadius, 12, 
+	// 	FColor::Orange, false, 2.0f);
 }
 
 void ABrawlProjectile_Explosive::SpawnSplinters(const FVector& Location, const FVector& Normal)
