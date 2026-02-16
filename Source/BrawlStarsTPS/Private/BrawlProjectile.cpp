@@ -31,6 +31,7 @@ ABrawlProjectile::ABrawlProjectile()
 	SphereComponent->SetCollisionResponseToAllChannels(ECR_Overlap);
 	SphereComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
 	SphereComponent->SetCollisionResponseToChannel(ECC_Destructible, ECR_Block);
+	SphereComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	SphereComponent->SetGenerateOverlapEvents(true);
 	SphereComponent->SetCanEverAffectNavigation(false); // NavMesh에 영향 주지 않음
 	
@@ -105,6 +106,9 @@ void ABrawlProjectile::OnActivate()
 			// 가시성 채널 등 불필요한 채널 무시
 			SphereComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 		}
+
+		// 카메라 충돌은 항상 무시 (카메라 튐 방지)
+		SphereComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 
 		// 발사자/주인 무시 다시 설정
 		if (AActor* MyInstigator = GetInstigator()) SphereComponent->IgnoreActorWhenMoving(MyInstigator, true);
