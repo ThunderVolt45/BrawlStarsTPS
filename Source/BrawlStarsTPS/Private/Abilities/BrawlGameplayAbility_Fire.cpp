@@ -87,6 +87,12 @@ void UBrawlGameplayAbility_Fire::OnFireEventReceived(FGameplayEventData Payload)
 	SpawnProjectile();
 }
 
+void UBrawlGameplayAbility_Fire::GetProjectilePrewarmData(TMap<TSubclassOf<AActor>, int32>& OutData) const
+{
+	if (ProjectileClass) OutData.FindOrAdd(ProjectileClass) += PrewarmCount;
+	if (ProjectileClass_Hyper) OutData.FindOrAdd(ProjectileClass_Hyper) += PrewarmCount;
+}
+
 TSubclassOf<AActor> UBrawlGameplayAbility_Fire::GetProjectileClassToSpawn() const
 {
 	// 기본 발사체

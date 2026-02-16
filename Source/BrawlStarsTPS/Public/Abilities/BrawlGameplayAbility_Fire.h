@@ -21,6 +21,9 @@ public:
 
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 
+	/** 이 어빌리티가 사용하는 발사체 클래스와 권장 프리워밍 개수 반환 */
+	void GetProjectilePrewarmData(TMap<TSubclassOf<AActor>, int32>& OutData) const;
+
 protected:
 	// Gameplay Event 수신 시 호출될 콜백
 	UFUNCTION()
@@ -106,4 +109,8 @@ protected:
 	// 각 펠릿(Pellet)당 데미지 비율 (기본값: 1.0f, 산탄총의 경우 1보다 작을 수 있음)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl")
 	float DamagePerPelletScale = 1.0f;
+
+	// 게임 시작 시 미리 생성해둘 발사체 개수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|Pooling")
+	int32 PrewarmCount = 15;
 };

@@ -26,6 +26,8 @@
 #include "Components/PostProcessComponent.h"
 #include "Environment/BrawlPoisonZone.h"
 #include "DrawDebugHelpers.h"
+#include "BrawlPoolSubsystem.h"
+#include "Abilities/BrawlGameplayAbility_Fire.h"
 
 ABrawlCharacter::ABrawlCharacter()
 {
@@ -190,6 +192,32 @@ void ABrawlCharacter::BeginPlay()
 
 	// 초기 가시성 설정
 	UpdateMeshVisibility();
+
+	// 발사체 프리워밍 (오브젝트 풀링 최적화)
+	if (HasAuthority())
+	{
+		if (UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>())
+		{
+			TMap<TSubclassOf<AActor>, int32> PrewarmDataMap;
+			
+			for (const TSubclassOf<UBrawlGameplayAbility>& AbilityClass : StartupAbilities)
+			{
+				if (AbilityClass && AbilityClass->IsChildOf(UBrawlGameplayAbility_Fire::StaticClass()))
+				{
+					if (const UBrawlGameplayAbility_Fire* FireAbility = Cast<UBrawlGameplayAbility_Fire>(AbilityClass->GetDefaultObject()))
+					{
+						FireAbility->GetProjectilePrewarmData(PrewarmDataMap);
+					}
+				}
+			}
+
+			// 각 클래스별로 설정된 개수만큼 풀 미리 생성
+			for (auto& Pair : PrewarmDataMap)
+			{
+				PoolSubsystem->PrewarmPool(Pair.Key, Pair.Value);
+			}
+		}
+	}
 }
 
 void ABrawlCharacter::OnMatchStateChanged()
