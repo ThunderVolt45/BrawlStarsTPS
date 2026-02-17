@@ -19,7 +19,7 @@ class BRAWLSTARSTPS_API UBrawlGameplayCueManager : public UGameplayCueManager
 public:
 	/** 
 	 * GameplayCue 라이브러리를 비동기로 로드할지 여부를 반환합니다. 
-	 * false를 반환하면 시작 시 모든 큐 에셋을 동기적으로 로드하여 게임 중 히치를 방지합니다.
+	 * false를 반환하면 시작 시 모든 큐 에셋을 동기적으로 로드하여 게임 중 Hitch를 방지합니다.
 	 */
 	virtual bool ShouldAsyncLoadRuntimeObjectLibraries() const override { return false; }
 };
