@@ -47,6 +47,14 @@ public:
 	/** 플레이어 입장 시 호출 (팀 할당 로직 포함) */
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
+	/** 유효한(활성 상태이며 Hero 타입인) 브롤러인지 확인합니다. */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|GameMode")
+	virtual bool IsActiveHero(AActor* Actor) const;
+
+	/** 단순 Hero 타입 여부 및 풀링 활성 여부만 확인합니다. (사망 체크 제외) */
+	UFUNCTION(BlueprintCallable, Category = "Brawl|GameMode")
+	virtual bool IsHero(AActor* Actor) const;
+
 	/** 플레이어 스폰 전 초기화 (RestartPlayer 호출 전) */
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 

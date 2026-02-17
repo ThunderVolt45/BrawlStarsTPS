@@ -44,7 +44,7 @@ void ABrawlGameMode_Showdown::BeginPlay()
 	AliveBrawlerCount = 0;
 	for (AActor* Actor : FoundBrawlers)
 	{
-		if (Actor && !Actor->IsA<ABrawlPowerCubeBox>())
+		if (IsActiveHero(Actor))
 		{
 			AliveBrawlerCount++;
 		}
@@ -121,7 +121,7 @@ void ABrawlGameMode_Showdown::NotifyKill(AActor* Killer, AActor* Victim)
 {
 	Super::NotifyKill(Killer, Victim);
 
-	if (Victim && !Victim->IsA<ABrawlPowerCubeBox>())
+	if (IsHero(Victim))
 	{
 		DropPowerCubes(Victim);
 		AliveBrawlerCount--;

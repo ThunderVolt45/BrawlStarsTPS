@@ -148,8 +148,9 @@ void ABrawlGameMode_Knockout::StartMatch()
 
 	for (AActor* Actor : FoundBrawlers)
 	{
-		if (ABrawlCharacter* Brawler = Cast<ABrawlCharacter>(Actor))
+		if (IsActiveHero(Actor))
 		{
+			ABrawlCharacter* Brawler = Cast<ABrawlCharacter>(Actor);
 			if (Brawler->GetTeamID() == 0) Team1AliveCount++;
 			else if (Brawler->GetTeamID() == 1) Team2AliveCount++;
 		}
@@ -165,8 +166,9 @@ void ABrawlGameMode_Knockout::NotifyKill(AActor* Killer, AActor* Victim)
 		if (GS->GetMatchState() != EBrawlMatchState::Playing) return;
 	}
 
-	if (ABrawlCharacter* VictimBrawler = Cast<ABrawlCharacter>(Victim))
+	if (IsHero(Victim))
 	{
+		ABrawlCharacter* VictimBrawler = Cast<ABrawlCharacter>(Victim);
 		if (VictimBrawler->GetTeamID() == 0) Team1AliveCount--;
 		else if (VictimBrawler->GetTeamID() == 1) Team2AliveCount--;
 
@@ -240,8 +242,9 @@ void ABrawlGameMode_Knockout::StartNewRound()
 
 	for (AActor* Actor : FoundBrawlers)
 	{
-		if (ABrawlCharacter* Brawler = Cast<ABrawlCharacter>(Actor))
+		if (IsActiveHero(Actor))
 		{
+			ABrawlCharacter* Brawler = Cast<ABrawlCharacter>(Actor);
 			if (Brawler->GetTeamID() == 0) Team1AliveCount++;
 			else if (Brawler->GetTeamID() == 1) Team2AliveCount++;
 		}

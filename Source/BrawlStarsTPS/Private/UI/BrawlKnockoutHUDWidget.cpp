@@ -4,6 +4,7 @@
 #include "BrawlGameState_Knockout.h"
 #include "BrawlPlayerState.h"
 #include "Kismet/GameplayStatics.h"
+#include "BrawlStarsTPSGameMode.h"
 
 void UBrawlKnockoutHUDWidget::NativeConstruct()
 {
@@ -69,8 +70,12 @@ void UBrawlKnockoutHUDWidget::InitializeIcons()
 	int32 AllyIdx = 0;
 	int32 EnemyIdx = 0;
 
+	ABrawlStarsTPSGameMode* GM = Cast<ABrawlStarsTPSGameMode>(UGameplayStatics::GetGameMode(this));
+
 	for (AActor* Actor : FoundBrawlers)
 	{
+		if (GM && !GM->IsActiveHero(Actor)) continue;
+
 		if (ABrawlCharacter* Brawler = Cast<ABrawlCharacter>(Actor))
 		{
 			UImage* TargetIcon = nullptr;

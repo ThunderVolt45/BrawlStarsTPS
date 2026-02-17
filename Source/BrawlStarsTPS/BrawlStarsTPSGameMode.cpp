@@ -14,6 +14,7 @@
 #include "Internationalization/StringTable.h"
 #include "Internationalization/StringTableRegistry.h"
 #include "BrawlPoolSubsystem.h"
+#include "BrawlPoolableInterface.h"
 
 ABrawlStarsTPSGameMode::ABrawlStarsTPSGameMode()
 {
@@ -263,6 +264,51 @@ AActor* ABrawlStarsTPSGameMode::ChoosePlayerStart_Implementation(AController* Pl
 
 	UE_LOG(LogTemp, Warning, TEXT("ChoosePlayerStart: No suitable BrawlSpawnPoint found for Team %d, falling back to Super"), TeamID);
 	return Super::ChoosePlayerStart_Implementation(Player);
+}
+
+bool ABrawlStarsTPSGameMode::IsActiveHero(AActor* Actor) const
+{
+	if (!IsValid(Actor)) return false;
+
+	if (ABrawlCharacter* Brawler = Cast<ABrawlCharacter>(Actor))
+	{
+		// 1. Hero 타입인지 확인
+		if (Brawler->GetCharacterType() != EBrawlCharacterType::Hero) return false;
+
+		// 2. 풀링 가능한 오브젝트인 경우 활성화 상태인지 확인
+		if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(Brawler))
+		{
+			if (!Poolable->IsActive()) return false;
+		}
+
+		// 3. 사망 상태가 아닌지 확인
+		if (Brawler->IsDead()) return false;
+
+		return true;
+	}
+
+	return false;
+}
+
+bool ABrawlStarsTPSGameMode::IsHero(AActor* Actor) const
+{
+	if (!IsValid(Actor)) return false;
+
+	if (ABrawlCharacter* Brawler = Cast<ABrawlCharacter>(Actor))
+	{
+		// 1. Hero 타입인지 확인
+		if (Brawler->GetCharacterType() != EBrawlCharacterType::Hero) return false;
+
+		// 2. 풀링 가능한 오브젝트인 경우 활성화 상태인지 확인
+		if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(Brawler))
+		{
+			if (!Poolable->IsActive()) return false;
+		}
+
+		return true;
+	}
+
+	return false;
 }
 
 void ABrawlStarsTPSGameMode::SetupTeams()
