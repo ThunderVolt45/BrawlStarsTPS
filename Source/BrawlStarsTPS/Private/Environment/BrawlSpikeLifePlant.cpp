@@ -7,6 +7,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/WidgetComponent.h"
+#include "UI/BrawlHealthWidget.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "Perception/AISense_Sight.h"
@@ -118,6 +119,15 @@ void ABrawlSpikeLifePlant::OnActivate()
 
 	// 3. 가시성 강제 업데이트
 	UpdateMeshVisibility();
+
+	// 4. 체력바 색상 업데이트 (팀 정보가 변경되었을 수 있으므로)
+	if (HealthBarComponent)
+	{
+		if (UBrawlHealthWidget* HealthWidget = Cast<UBrawlHealthWidget>(HealthBarComponent->GetWidget()))
+		{
+			HealthWidget->SetupPlayerStateBindings();
+		}
+	}
 }
 
 void ABrawlSpikeLifePlant::OnDeactivate()

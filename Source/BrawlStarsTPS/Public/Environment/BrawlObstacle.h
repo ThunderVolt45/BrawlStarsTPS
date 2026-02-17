@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Environment/BrawlDestructibleInterface.h"
+#include "BrawlPoolableInterface.h"
 #include "BrawlObstacle.generated.h"
 
 class USoundBase;
@@ -16,7 +17,7 @@ class USoundBase;
  * IBrawlDestructibleInterface를 구현하여 특수 공격 등에 의해 파괴될 수 있음
  */
 UCLASS()
-class BRAWLSTARSTPS_API ABrawlObstacle : public AActor, public IBrawlDestructibleInterface
+class BRAWLSTARSTPS_API ABrawlObstacle : public AActor, public IBrawlDestructibleInterface, public IBrawlPoolableInterface
 {
 	GENERATED_BODY()
 	
@@ -29,6 +30,13 @@ public:
 	virtual bool IsDestructible() const override;
 	virtual bool IsHardObstacle() const override;
 	virtual void OnDestruction(AActor* InstigatorActor) override;
+
+	// --- IBrawlPoolableInterface 구현 (프리워밍 용도) ---
+	virtual void OnActivate() override {}
+	virtual void OnDeactivate() override {}
+	virtual bool IsActive() const override { return true; } // 레벨 배치형이므로 항상 활성 상태로 간주
+	virtual void GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const override;
+	// ----------------------------------
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Obstacle")

@@ -73,3 +73,11 @@ void ABrawlProjectile_Spawner::OnHit(UPrimitiveComponent* HitComponent, AActor* 
 	// 발사체 비활성화 (풀 반환)
 	Deactivate();
 }
+
+void ABrawlProjectile_Spawner::GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const
+{
+	if (ActorClassToSpawn)
+	{
+		OutRequirements.FindOrAdd(ActorClassToSpawn) += BaseCount;
+	}
+}

@@ -4,7 +4,6 @@
 #include "GameMode/BrawlGameMode_Showdown.h"
 #include "Environment/BrawlPowerCubeBox.h"
 #include "Environment/BrawlPowerCube.h" 
-#include "Environment/BrawlPoisonZone.h"
 #include "NavigationSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "BrawlCharacter.h"
@@ -14,8 +13,7 @@
 #include "BrawlAttributeSet.h" 
 #include "BrawlGameState.h"
 #include "BrawlPlayerState.h"
-#include "BrawlStarsTPSPlayerController.h"
-#include "AI/BrawlAIController.h"
+#include "BrawlPoolSubsystem.h"
 
 ABrawlGameMode_Showdown::ABrawlGameMode_Showdown()
 {
@@ -34,6 +32,15 @@ void ABrawlGameMode_Showdown::BeginPlay()
 	SpawnPowerCubeBoxes();
 	SpawnBots();
 	
+	// 브롤러 처치 시 드롭될 큐브들을 위해 넉넉하게 추가 프리워밍 (상자 요구량 외 여분 20개)
+	if (UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>())
+	{
+		if (PowerCubeClass)
+		{
+			PoolSubsystem->PrewarmPool(PowerCubeClass, 20);
+		}
+	}
+
 	// 플레이어 팀 설정
 	SetupTeams();
 
@@ -44,7 +51,7 @@ void ABrawlGameMode_Showdown::BeginPlay()
 	AliveBrawlerCount = 0;
 	for (AActor* Actor : FoundBrawlers)
 	{
-		if (Actor && !Actor->IsA<ABrawlPowerCubeBox>())
+		if (IsActiveHero(Actor))
 		{
 			AliveBrawlerCount++;
 		}
@@ -121,7 +128,7 @@ void ABrawlGameMode_Showdown::NotifyKill(AActor* Killer, AActor* Victim)
 {
 	Super::NotifyKill(Killer, Victim);
 
-	if (Victim && !Victim->IsA<ABrawlPowerCubeBox>())
+	if (IsHero(Victim))
 	{
 		DropPowerCubes(Victim);
 		AliveBrawlerCount--;
@@ -151,15 +158,25 @@ void ABrawlGameMode_Showdown::DropPowerCubes(AActor* Victim)
 	}
 
 	FVector CenterLocation = Victim->GetActorLocation();
+	UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>();
+
 	for (int32 i = 0; i < DropCount; i++)
 	{
 		FVector2D RandomOffset = FMath::RandPointInCircle(100.0f);
 		FVector SpawnLocation = CenterLocation + FVector(RandomOffset.X, RandomOffset.Y, 0);
 		SpawnLocation.Z = FMath::Max(SpawnLocation.Z, 10.0f);
+		FTransform SpawnTransform(FRotator::ZeroRotator, SpawnLocation);
 
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-		GetWorld()->SpawnActor<ABrawlPowerCube>(PowerCubeClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
+		if (PoolSubsystem)
+		{
+			PoolSubsystem->GetFromPool(PowerCubeClass, SpawnTransform);
+		}
+		else
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			GetWorld()->SpawnActor<ABrawlPowerCube>(PowerCubeClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
+		}
 	}
 }
 

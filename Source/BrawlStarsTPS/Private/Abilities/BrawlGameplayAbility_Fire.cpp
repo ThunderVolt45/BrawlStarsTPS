@@ -89,8 +89,33 @@ void UBrawlGameplayAbility_Fire::OnFireEventReceived(FGameplayEventData Payload)
 
 void UBrawlGameplayAbility_Fire::GetProjectilePrewarmData(TMap<TSubclassOf<AActor>, int32>& OutData) const
 {
-	if (ProjectileClass) OutData.FindOrAdd(ProjectileClass) += PrewarmCount;
-	if (ProjectileClass_Hyper) OutData.FindOrAdd(ProjectileClass_Hyper) += PrewarmCount;
+	// 람다 함수로 재귀적으로 클래스를 수집하는 헬퍼 정의
+	TFunction<void(TSubclassOf<AActor>, int32)> ProcessClass;
+	ProcessClass = [&](TSubclassOf<AActor> Class, int32 Count)
+	{
+		if (!Class) return;
+		
+		OutData.FindOrAdd(Class) += Count;
+
+		AActor* CDO = Cast<AActor>(Class->GetDefaultObject());
+		if (!CDO) return;
+
+		// 풀링 인터페이스를 통해 추가 요구사항(하위 발사체 등) 확인
+		if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(CDO))
+		{
+			TMap<TSubclassOf<AActor>, int32> SubRequirements;
+			Poolable->GetPrewarmRequirements(SubRequirements, Count);
+
+			for (auto& Pair : SubRequirements)
+			{
+				// 하위 클래스들도 재귀적으로 처리하여 클래스와 개수 수집
+				ProcessClass(Pair.Key, Pair.Value);
+			}
+		}
+	};
+
+	ProcessClass(ProjectileClass, PrewarmCount);
+	ProcessClass(ProjectileClass_Hyper, PrewarmCount);
 }
 
 TSubclassOf<AActor> UBrawlGameplayAbility_Fire::GetProjectileClassToSpawn() const

@@ -6,9 +6,39 @@
 #include "Data/BrawlGameModeData.h"
 #include "MoviePlayer.h"
 #include "UI/SBrawlLoadingScreen.h"
+#include "UObject/ConstructorHelpers.h"
+#include "Engine/Texture2D.h"
+#include "Materials/MaterialInterface.h"
 
 UBrawlGameInstance::UBrawlGameInstance()
 {
+	// 로딩 화면 리소스 미리 로드 (생성자에서 수행하여 메모리 상주 보장)
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BackgroundMatObj(TEXT("/Game/Materials/M_ScrollingBackground"));
+	if (BackgroundMatObj.Succeeded())
+	{
+		LoadingBackgroundMaterial = BackgroundMatObj.Object;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UTexture2D> CenterTexObj(TEXT("/Game/UI/Textures/2239_10x"));
+	if (CenterTexObj.Succeeded())
+	{
+		LoadingCenterTexture = CenterTexObj.Object;
+		LoadingCenterTexture->NeverStream = true;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UTexture2D> WingTexObj(TEXT("/Game/UI/Textures/2238_10x"));
+	if (WingTexObj.Succeeded())
+	{
+		LoadingWingTexture = WingTexObj.Object;
+		LoadingWingTexture->NeverStream = true;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UTexture2D> FillerTexObj(TEXT("/Game/Textures/WhiteDot"));
+	if (FillerTexObj.Succeeded())
+	{
+		LoadingFillerTexture = FillerTexObj.Object;
+		LoadingFillerTexture->NeverStream = true;
+	}
 }
 
 void UBrawlGameInstance::Init()
@@ -17,27 +47,9 @@ void UBrawlGameInstance::Init()
 
 	if (!IsRunningDedicatedServer())
 	{
-		// 로딩 화면 리소스 프리로드
-		LoadingBackgroundMaterial = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, 
-			TEXT("/Game/Materials/M_ScrollingBackground.M_ScrollingBackground")));
-		
-		LoadingCenterTexture = Cast<UTexture2D>(StaticLoadObject(UTexture2D::StaticClass(), nullptr, 
-			TEXT("/Game/UI/Textures/2239_10x.2239_10x")));
-		
-		LoadingWingTexture = Cast<UTexture2D>(StaticLoadObject(UTexture2D::StaticClass(), nullptr, 
-			TEXT("/Game/UI/Textures/2238_10x.2238_10x")));
-		
-		LoadingFillerTexture = Cast<UTexture2D>(StaticLoadObject(UTexture2D::StaticClass(), nullptr, 
-			TEXT("/Game/Textures/WhiteDot.WhiteDot")));
-
 		// 스트링 테이블 프리로드
 		GameModeStringTable = StaticLoadObject(UObject::StaticClass(), nullptr, 
 			TEXT("/Game/Data/ST_GameModeInfo.ST_GameModeInfo"));
-
-		// 텍스처 리소스가 즉시 사용 가능하도록 보장
-		if (LoadingCenterTexture) LoadingCenterTexture->UpdateResource();
-		if (LoadingWingTexture) LoadingWingTexture->UpdateResource();
-		if (LoadingFillerTexture) LoadingFillerTexture->UpdateResource();
 
 		// 초기 로딩 화면 설정 (게임 시작 시 적용됨)
 		FLoadingScreenAttributes LoadingScreen;

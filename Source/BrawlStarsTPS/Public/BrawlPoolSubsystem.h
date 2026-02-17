@@ -33,7 +33,14 @@ public:
 	/** 특정 클래스의 풀을 미리 생성해둡니다. (최적화용) */
 	void PrewarmPool(TSubclassOf<AActor> ActorClass, int32 Count);
 
+	/** 레벨에 배치된 환경 오브젝트(장애물, 상자 등)들을 스캔하여 필요한 클래스들을 미리 생성합니다. */
+	void PrewarmEnvironmentActors();
+
 private:
 	UPROPERTY()
 	TMap<TSubclassOf<AActor>, FBrawlActorPool> PoolMap;
+
+	/** 이미 사전 로드(Preload) 또는 프리워밍이 완료된 클래스 목록 */
+	UPROPERTY()
+	TSet<TSubclassOf<AActor>> PreloadedClasses;
 };

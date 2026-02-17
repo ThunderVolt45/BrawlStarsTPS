@@ -21,6 +21,8 @@ public:
 	// 착탄 시 처리 오버라이드
 	virtual void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit) override;
 
+	virtual void GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const override;
+
 protected:
 	// 스폰할 액터 클래스 (예: BP_Spike_Super_Area)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Spawner")

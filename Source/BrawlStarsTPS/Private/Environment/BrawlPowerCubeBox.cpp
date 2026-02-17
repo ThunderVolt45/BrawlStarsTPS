@@ -124,17 +124,19 @@ void ABrawlPowerCubeBox::Die()
 	if (bIsDeadInternal) return;
 	bIsDeadInternal = true;
 
+	UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>();
+
 	// 파워 큐브 드롭
 	if (PowerCubeClass)
 	{
-		if (UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>())
+		if (PoolSubsystem)
 		{
 			PoolSubsystem->GetFromPool(PowerCubeClass, GetActorTransform());
 		}
 		else
 		{
 			FActorSpawnParameters SpawnParams;
-			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 			GetWorld()->SpawnActor<ABrawlPowerCube>(PowerCubeClass, GetActorTransform(), SpawnParams);
 		}
 	}
@@ -142,13 +144,23 @@ void ABrawlPowerCubeBox::Die()
 	// 파괴 연출 (ABrawlObstacle 로직 이식)
 	if (DestructionEffectClass)
 	{
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		
 		FVector SpawnLocation = GetActorLocation() + FVector(0.0f, 0.0f, -50.0f);
 		FRotator SpawnRotation = GetActorRotation();
+		FTransform SpawnTransform(SpawnRotation, SpawnLocation);
 		
-		if (AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(DestructionEffectClass, SpawnLocation, SpawnRotation, SpawnParams))
+		AActor* SpawnedActor = nullptr;
+		if (PoolSubsystem)
+		{
+			SpawnedActor = PoolSubsystem->GetFromPool(DestructionEffectClass, SpawnTransform);
+		}
+		else
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			SpawnedActor = GetWorld()->SpawnActor<AActor>(DestructionEffectClass, SpawnLocation, SpawnRotation, SpawnParams);
+		}
+
+		if (SpawnedActor)
 		{
 			// 지오메트리 컬렉션 컴포넌트를 찾아 물리적 충격 가하기 (즉시 파괴 연출)
 			if (UGeometryCollectionComponent* GCComp = SpawnedActor->FindComponentByClass<UGeometryCollectionComponent>())
@@ -163,7 +175,18 @@ void ABrawlPowerCubeBox::Die()
 		UGameplayStatics::PlaySoundAtLocation(this, DestructionSFX, GetActorLocation());
 	}
 
-	// 캐릭터 사망 처리 (ABrawlCharacter::Die()는 랙돌 등을 처리하므로 여기서는 파괴 위주로)
-	// Super::Die()를 호출하면 랙돌이 되려 하므로, 직접 Destroy 처리
+	// 캐릭터 사망 처리
 	Destroy();
+}
+
+void ABrawlPowerCubeBox::GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const
+{
+	if (PowerCubeClass)
+	{
+		OutRequirements.FindOrAdd(PowerCubeClass) += BaseCount;
+	}
+	if (DestructionEffectClass)
+	{
+		OutRequirements.FindOrAdd(DestructionEffectClass) += BaseCount;
+	}
 }

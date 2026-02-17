@@ -8,9 +8,9 @@
 #include "AbilitySystemComponent.h"
 #include "BrawlCharacter.h"
 #include "DrawDebugHelpers.h"
-#include "Engine/OverlapResult.h"
 #include "Environment/BrawlDestructibleInterface.h"
 #include "Environment/BrawlBush.h" 
+#include "Environment/BrawlPowerCube.h"
 #include "GenericTeamAgentInterface.h"
 #include "BrawlPoolSubsystem.h"
 
@@ -173,6 +173,19 @@ void ABrawlProjectile::OnDeactivate()
 	}
 }
 
+void ABrawlProjectile::GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const
+{
+	// 기본 발사체는 추가 요구사항 없음
+}
+
+void ABrawlProjectile::GetGameplayCueTags(FGameplayTagContainer& OutTags) const
+{
+	if (HitGameplayCueTag.IsValid())
+	{
+		OutTags.AddTag(HitGameplayCueTag);
+	}
+}
+
 void ABrawlProjectile::EnableCollisionDelayed()
 {
 	if (SphereComponent && bIsActive)
@@ -276,8 +289,11 @@ void ABrawlProjectile::Tick(float DeltaTime)
 
 			if (HitActor && !HitActors.Contains(HitActor))
 			{
-				// 발사체끼리는 무시
-				if (HitActor->IsA(StaticClass())) continue;
+				// 발사체 및 아이템(파워큐브) 무시
+				if (HitActor->IsA(StaticClass()) || HitActor->IsA(ABrawlPowerCube::StaticClass()))
+				{
+					continue;
+				}
 				
 				// 처리 등록
 				HitActors.Add(HitActor);
@@ -297,9 +313,9 @@ void ABrawlProjectile::Tick(float DeltaTime)
 
 void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	// 발사자(Instigator) 무시
+	// 발사자(Instigator) 및 발사체, 아이템 무시
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator() 
-		|| OtherActor == this || OtherActor->IsA(StaticClass())) 
+		|| OtherActor == this || OtherActor->IsA(StaticClass()) || OtherActor->IsA(ABrawlPowerCube::StaticClass())) 
 		return;
 
 	// 수풀 처리
@@ -331,9 +347,9 @@ void ABrawlProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherAct
 
 void ABrawlProjectile::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	// 발사자(Instigator) 무시
+	// 발사자(Instigator) 및 발사체, 아이템 무시
 	if (!OtherActor || OtherActor == GetOwner() || OtherActor == GetInstigator()
-		|| OtherActor == this || OtherActor->IsA(StaticClass()))
+		|| OtherActor == this || OtherActor->IsA(StaticClass()) || OtherActor->IsA(ABrawlPowerCube::StaticClass()))
 		return;
 
 	// 수풀 처리

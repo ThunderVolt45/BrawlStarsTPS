@@ -10,6 +10,7 @@
 
 class USphereComponent;
 class URotatingMovementComponent;
+class UProjectileMovementComponent;
 class UGameplayEffect;
 
 /**
@@ -29,6 +30,8 @@ public:
 	virtual void OnActivate() override;
 	virtual void OnDeactivate() override;
 	virtual bool IsActive() const override { return bIsActive; }
+	virtual void GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const override;
+	virtual void GetGameplayCueTags(FGameplayTagContainer& OutTags) const;
 	// ----------------------------------
 
 protected:
@@ -43,16 +46,21 @@ protected:
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<USceneComponent> SceneRoot;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UStaticMeshComponent> CubeMesh;
 
+	/** 지형 충돌용 작은 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<USphereComponent> CollisionSphere;
+
+	/** 캐릭터 획득 감지용 큰 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<USphereComponent> PickupSphere;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<URotatingMovementComponent> RotatingMovement;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UProjectileMovementComponent> ProjectileMovement;
 
 	// AI 감지용 소스 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Brawl|AI")
@@ -62,17 +70,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
 	TSubclassOf<UGameplayEffect> PowerCubeEffectClass;
 
-	// 획득 효과음
+	// 획득 시 실행할 GameplayCue 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
-	TObjectPtr<USoundBase> PickupSound;
+	FGameplayTag PickupCueTag;
 
-	// 등장 효과음 (스폰 시 재생)
+	// 등장 시 실행할 GameplayCue 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
-	TObjectPtr<USoundBase> SpawnSound;
-
-	// 획득 시 파티클 효과
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
-	TObjectPtr<UParticleSystem> PickupVFX;
+	FGameplayTag SpawnCueTag;
 
 private:
 	bool bIsActive = false;

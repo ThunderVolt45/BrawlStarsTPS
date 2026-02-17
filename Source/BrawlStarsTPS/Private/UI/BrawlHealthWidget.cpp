@@ -41,6 +41,9 @@ void UBrawlHealthWidget::InitializeWithAbilitySystem(UAbilitySystemComponent* AS
 
 void UBrawlHealthWidget::SetupPlayerStateBindings()
 {
+	// 재사용 시 재시도 횟수 초기화
+	PS_RetryCount = 0;
+
 	// 위젯이 붙은 실제 캐릭터 사용
 	ABrawlCharacter* TargetChar = TargetCharacter.Get();
 	

@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "BrawlCharacter.h"
 #include "BrawlPoolSubsystem.h"
 
 void ABrawlProjectile_Explosive::OnActivate()
@@ -17,6 +18,14 @@ void ABrawlProjectile_Explosive::OnActivate()
 void ABrawlProjectile_Explosive::OnDeactivate()
 {
 	Super::OnDeactivate();
+}
+
+void ABrawlProjectile_Explosive::GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const
+{
+	if (SplinterClass)
+	{
+		OutRequirements.FindOrAdd(SplinterClass) += SplinterCount * BaseCount;
+	}
 }
 
 void ABrawlProjectile_Explosive::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
@@ -131,11 +140,22 @@ void ABrawlProjectile_Explosive::ExplodeDamage(const FVector& Location)
 	if (bHasOverlap)
 	{
 		TArray<AActor*> DamagedActors;
+		
+		// Instigator(공격자) 정보 확보
+		AActor* SourceActor = GetInstigator() ? GetInstigator() : GetOwner();
+		ABrawlCharacter* SourceBrawler = Cast<ABrawlCharacter>(SourceActor);
+
 		for (const FHitResult& Overlap : OverlapResults)
 		{
 			AActor* Victim = Overlap.GetActor();
 			if (Victim && !DamagedActors.Contains(Victim))
 			{
+				// 아군(소환물 포함)이면 데미지 제외
+				if (SourceBrawler && SourceBrawler->IsAlly(Victim))
+				{
+					continue;
+				}
+
 				DamagedActors.Add(Victim);
 					
 				// GAS 데미지 적용
