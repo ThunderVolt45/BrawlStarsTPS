@@ -13,6 +13,7 @@
 #include "BrawlStarsTPSPlayerController.h"
 #include "Internationalization/StringTable.h"
 #include "Internationalization/StringTableRegistry.h"
+#include "BrawlPoolSubsystem.h"
 
 ABrawlStarsTPSGameMode::ABrawlStarsTPSGameMode()
 {
@@ -83,6 +84,12 @@ void ABrawlStarsTPSGameMode::BeginPlay()
 	{
 		FTimerHandle StartTimerHandle;
 		GetWorldTimerManager().SetTimer(StartTimerHandle, this, &ABrawlStarsTPSGameMode::StartMatch, StartDelay, false);
+	}
+
+	// 4. 환경 오브젝트(장애물, 상자 등) 프리워밍 수행
+	if (UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>())
+	{
+		PoolSubsystem->PrewarmEnvironmentActors();
 	}
 }
 

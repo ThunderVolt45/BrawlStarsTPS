@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "BrawlCharacter.h"
+#include "BrawlPoolableInterface.h"
 #include "BrawlPowerCubeBox.generated.h"
 
 /**
@@ -13,7 +14,7 @@
  * AI 타겟팅 및 회전 문제를 해결하기 위해 ABrawlCharacter를 상속받습니다.
  */
 UCLASS()
-class BRAWLSTARSTPS_API ABrawlPowerCubeBox : public ABrawlCharacter
+class BRAWLSTARSTPS_API ABrawlPowerCubeBox : public ABrawlCharacter, public IBrawlPoolableInterface
 {
 	GENERATED_BODY()
 	
@@ -23,6 +24,13 @@ public:
 	//~ABrawlCharacter interface
 	virtual void Die() override;
 	//~End of ABrawlCharacter interface
+
+	// --- IBrawlPoolableInterface 구현 ---
+	virtual void OnActivate() override {}
+	virtual void OnDeactivate() override {}
+	virtual bool IsActive() const override { return true; }
+	virtual void GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const override;
+	// ----------------------------------
 
 protected:
 	virtual void BeginPlay() override;

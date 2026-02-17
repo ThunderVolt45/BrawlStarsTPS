@@ -2,6 +2,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
+#include "BrawlPoolSubsystem.h"
 
 ABrawlObstacle::ABrawlObstacle()
 {
@@ -45,19 +46,29 @@ void ABrawlObstacle::OnDestruction(AActor* InstigatorActor)
 {
 	if (!bIsDestructible) return;
 
-	// 1. 파괴된 형상(액터) 스폰 (교체)
+	// 1. 파괴된 형상(액터) 스폰 (오브젝트 풀링 사용)
 	if (DestructionEffectClass)
 	{
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>();
+		AActor* SpawnedActor = nullptr;
+
+		if (PoolSubsystem)
+		{
+			SpawnedActor = PoolSubsystem->GetFromPool(DestructionEffectClass, GetActorTransform());
+		}
+		else
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			SpawnedActor = GetWorld()->SpawnActor<AActor>(DestructionEffectClass, GetActorTransform(), SpawnParams);
+		}
 		
-		// 원본과 동일한 위치/회전/스케일에 스폰
-		if (AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(DestructionEffectClass, GetActorTransform(), SpawnParams))
+		if (SpawnedActor)
 		{
 			// 지오메트리 컬렉션 컴포넌트를 찾아 물리적 충격 가하기 (즉시 파괴 연출)
 			if (UGeometryCollectionComponent* GCComp = SpawnedActor->FindComponentByClass<UGeometryCollectionComponent>())
 			{
-				// 공격자 방향에서 밀려나도록 위치 설정 (공격자가 없으면 중앙 하단에서 폭발)
+				// 공격자 방향에서 밀려나도록 위치 설정
 				FVector ImpulseOrigin = InstigatorActor ? 
 					GetActorLocation() + (InstigatorActor->GetActorLocation() - GetActorLocation()).GetSafeNormal() * 50.0f : 
 					GetActorLocation() - FVector(0, 0, 50.0f);
@@ -75,4 +86,12 @@ void ABrawlObstacle::OnDestruction(AActor* InstigatorActor)
 	
 	// 3. 원본 삭제
 	Destroy();
+}
+
+void ABrawlObstacle::GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const
+{
+	if (DestructionEffectClass)
+	{
+		OutRequirements.FindOrAdd(DestructionEffectClass) += BaseCount;
+	}
 }

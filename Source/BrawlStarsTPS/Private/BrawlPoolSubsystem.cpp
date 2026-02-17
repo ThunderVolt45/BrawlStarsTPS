@@ -2,6 +2,7 @@
 
 #include "BrawlPoolSubsystem.h"
 #include "BrawlPoolableInterface.h"
+#include "EngineUtils.h"
 
 AActor* UBrawlPoolSubsystem::GetFromPool(TSubclassOf<AActor> ActorClass, const FTransform& Transform, AActor* Owner, APawn* Instigator, TFunction<void(AActor*)> PreActivateFunc)
 {
@@ -84,8 +85,29 @@ void UBrawlPoolSubsystem::ReturnToPool(AActor* Actor)
 
 void UBrawlPoolSubsystem::PrewarmPool(TSubclassOf<AActor> ActorClass, int32 Count)
 {
-	if (!ActorClass) return;
+	if (!ActorClass || Count <= 0) return;
 
+	// 인터페이스 구현 여부 확인
+	bool bIsPoolable = ActorClass->ImplementsInterface(UBrawlPoolableInterface::StaticClass());
+
+	// 1. 풀링이 불가능한 클래스 (예: GeometryCollectionActor) 처리
+	if (!bIsPoolable)
+	{
+		// 이미 한 번이라도 로드(스폰)되었다면 다시 하지 않음
+		if (PreloadedClasses.Contains(ActorClass)) return;
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		if (AActor* TempActor = GetWorld()->SpawnActor<AActor>(ActorClass, FTransform::Identity, SpawnParams))
+		{
+			TempActor->Destroy();
+			PreloadedClasses.Add(ActorClass);
+			UE_LOG(LogTemp, Log, TEXT("PoolSubsystem: Successfully Pre-loaded Non-Poolable Class [%s]"), *ActorClass->GetName());
+		}
+		return;
+	}
+
+	// 2. 풀링 가능한 클래스 처리 (브롤러별/오브젝트별 요청 개수만큼 누적 생성)
 	for (int32 i = 0; i < Count; ++i)
 	{
 		AActor* NewActor = GetWorld()->SpawnActor<AActor>(ActorClass, FTransform::Identity);
@@ -93,5 +115,36 @@ void UBrawlPoolSubsystem::PrewarmPool(TSubclassOf<AActor> ActorClass, int32 Coun
 		{
 			ReturnToPool(NewActor);
 		}
+	}
+
+	// 로드 완료 표시 (풀링 가능 클래스도 관리 대상에 포함)
+	PreloadedClasses.Add(ActorClass);
+}
+
+void UBrawlPoolSubsystem::PrewarmEnvironmentActors()
+{
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	TMap<TSubclassOf<AActor>, int32> TotalRequirements;
+
+	// 레벨에 배치된 모든 액터 중 풀링 인터페이스를 구현한 액터 스캔
+	for (FActorIterator It(World); It; ++It)
+	{
+		AActor* Actor = *It;
+		if (IsValid(Actor))
+		{
+			if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(Actor))
+			{
+				// 각 액터에게 필요한 프리워밍 정보 요청 (기본 1개분)
+				Poolable->GetPrewarmRequirements(TotalRequirements, 1);
+			}
+		}
+	}
+
+	// 수집된 요구사항대로 풀 생성
+	for (auto& Pair : TotalRequirements)
+	{
+		PrewarmPool(Pair.Key, Pair.Value);
 	}
 }
