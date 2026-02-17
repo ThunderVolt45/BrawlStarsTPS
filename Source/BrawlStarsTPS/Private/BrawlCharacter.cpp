@@ -5,10 +5,8 @@
 #include "BrawlAbilitySystemComponent.h"
 #include "BrawlAttributeSet.h"
 #include "BrawlGameState.h"
-#include "BrawlStarsTPS.h"
 #include "BrawlStarsTPSGameMode.h"
 #include "BrawlPlayerState.h"
-#include "GameMode/BrawlGameMode_Bounty.h"
 #include "Net/UnrealNetwork.h"
 #include "Data/BrawlCharacterData.h"
 #include "Data/BrawlAIData.h"
@@ -18,10 +16,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Components/WidgetComponent.h"
-#include "GameFramework/GameSession.h"
 #include "UI/BrawlHealthWidget.h"
 #include "Kismet/GameplayStatics.h"
-#include "Perception/AISense_Damage.h"
 #include "GameplayEffect.h" // 추가
 #include "Components/PostProcessComponent.h"
 #include "Environment/BrawlPoisonZone.h"
@@ -717,11 +713,6 @@ void ABrawlCharacter::InitializeAttributes()
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetMaxHyperChargeAttribute(), Row->MaxHyperCharge);
 		AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargePerHitAttribute(), Row->HyperChargePerHit);
 		
-		// 초기 1회 생성 시에만 0으로 설정하고 싶다면 BeginPlay 등에서 수행해야 함
-		// 여기서는 리스폰 시 호출되므로 값을 덮어쓰지 않도록 주석 처리하거나 제거
-		// AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetSuperChargeAttribute(), 0.0f);
-		// AbilitySystemComponent->SetNumericAttributeBase(UBrawlAttributeSet::GetHyperChargeAttribute(), 0.0f);
-		
 		// 이동 속도 값은 CharacterMovement에 직접 주입한다
 		if (GetCharacterMovement())
 		{
@@ -918,14 +909,34 @@ void ABrawlCharacter::UpdatePoisonScreenEffect(float DeltaTime)
 	}
 	
 	// 목표 강도 설정
-	float TargetIntensity = bInPoison ? 1.0f : 0.0f;
+	float TargetIntensity = bInPoison ? 2.0f : 0.0f;
+	
+	// [Debug] 독구름 상태 변화 시 로그 출력 (로컬 플레이어만)
+	// if (IsLocallyControlled())
+	// {
+	// 	static bool bLastInPoison = false;
+	// 	if (bInPoison != bLastInPoison)
+	// 	{
+	// 		UE_LOG(LogTemp, Warning, TEXT("Poison State Changed: %s | Target Intensity: %.2f"), 
+	// 			bInPoison ? TEXT("ENTERED") : TEXT("EXITED"), TargetIntensity);
+	// 		bLastInPoison = bInPoison;
+	// 	}
+	//
+	// 	// 강도가 유의미할 때 지속적으로 파라미터 모니터링
+	// 	if (CurrentPoisonIntensity > 0.001f || bInPoison)
+	// 	{
+	// 		GEngine->AddOnScreenDebugMessage(10, 0.1f, FColor::Purple, 
+	// 			FString::Printf(TEXT("Poison Intensity: %.3f (Target: %.1f)"), CurrentPoisonIntensity, TargetIntensity));
+	// 	}
+	// }
 	
 	// 보간 속도 차등 적용: 들어갈 때는 빠르게(8.0), 나올 때는 부드럽게(3.0)
 	float InterpSpeed = (TargetIntensity > CurrentPoisonIntensity) ? 8.0f : 3.0f;
 	CurrentPoisonIntensity = FMath::FInterpTo(CurrentPoisonIntensity, TargetIntensity, DeltaTime, InterpSpeed);
 
-	// 포스트 프로세스 가중치 조절
-	PoisonPostProcess->BlendWeight = CurrentPoisonIntensity;
+	// [Fix] 이중 보간 방지: 컴포넌트 가중치는 1.0으로 유지하고 머티리얼 파라미터로만 조절합니다.
+	// 효과가 완전히 0일 때만 가중치를 0으로 하여 성능을 최적화합니다.
+	PoisonPostProcess->BlendWeight = (CurrentPoisonIntensity > 0.001f) ? 1.0f : 0.0f;
 	
 	// 머티리얼 파라미터 업데이트
 	if (PoisonPPMaterialInstance)

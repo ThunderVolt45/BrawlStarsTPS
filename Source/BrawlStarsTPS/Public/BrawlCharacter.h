@@ -114,15 +114,16 @@ public:
 	// --- Environment & Perception ---
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
 	void SetInBush(bool bInBush);
+	
+	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
+	void SetRevealed(bool bRevealed);
 
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
 	bool IsHiddenInBush() const { return bIsHiddenInBush; }
 
 	UFUNCTION(BlueprintCallable, Category = "Brawl|Environment")
 	virtual bool IsVisibleTo(const FGenericTeamId& ObserverTeam) const;
-
-	void SetRevealed(bool bRevealed);
-
+	
 	// --- AI Support ---
 	UFUNCTION(BlueprintCallable, Category = "Brawl|AI")
 	const FAICombatSettings& GetAICombatSettings() const { return AICombatSettings; }
@@ -248,7 +249,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Brawl|Debug")
 	bool DrawDebugMuzzleLine = false;
 
-protected:
 	// --- Internal Variables (Accessible to derived classes) ---
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Brawl|Stats")
 	uint8 TeamID = 255;
