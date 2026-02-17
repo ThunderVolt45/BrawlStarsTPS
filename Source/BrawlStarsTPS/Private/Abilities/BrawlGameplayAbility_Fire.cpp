@@ -87,9 +87,9 @@ void UBrawlGameplayAbility_Fire::OnFireEventReceived(FGameplayEventData Payload)
 	SpawnProjectile();
 }
 
-void UBrawlGameplayAbility_Fire::GetProjectilePrewarmData(TMap<TSubclassOf<AActor>, int32>& OutData, FGameplayTagContainer& OutTags) const
+void UBrawlGameplayAbility_Fire::GetProjectilePrewarmData(TMap<TSubclassOf<AActor>, int32>& OutData) const
 {
-	// 람다 함수로 재귀적으로 클래스와 태그를 수집하는 헬퍼 정의
+	// 람다 함수로 재귀적으로 클래스를 수집하는 헬퍼 정의
 	TFunction<void(TSubclassOf<AActor>, int32)> ProcessClass;
 	ProcessClass = [&](TSubclassOf<AActor> Class, int32 Count)
 	{
@@ -100,13 +100,7 @@ void UBrawlGameplayAbility_Fire::GetProjectilePrewarmData(TMap<TSubclassOf<AActo
 		AActor* CDO = Cast<AActor>(Class->GetDefaultObject());
 		if (!CDO) return;
 
-		// 1. 발사체라면 태그 수집
-		if (ABrawlProjectile* ProjectileCDO = Cast<ABrawlProjectile>(CDO))
-		{
-			ProjectileCDO->GetGameplayCueTags(OutTags);
-		}
-
-		// 2. 풀링 인터페이스를 통해 추가 요구사항(하위 발사체 등) 확인
+		// 풀링 인터페이스를 통해 추가 요구사항(하위 발사체 등) 확인
 		if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(CDO))
 		{
 			TMap<TSubclassOf<AActor>, int32> SubRequirements;
@@ -114,7 +108,7 @@ void UBrawlGameplayAbility_Fire::GetProjectilePrewarmData(TMap<TSubclassOf<AActo
 
 			for (auto& Pair : SubRequirements)
 			{
-				// 하위 클래스들도 재귀적으로 처리하여 클래스, 개수, 태그 모두 수집
+				// 하위 클래스들도 재귀적으로 처리하여 클래스와 개수 수집
 				ProcessClass(Pair.Key, Pair.Value);
 			}
 		}

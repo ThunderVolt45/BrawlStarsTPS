@@ -11,7 +11,6 @@
 #include "AbilitySystemGlobals.h"
 #include "GameplayCueManager.h"
 #include "BrawlCharacter.h"
-#include "Kismet/GameplayStatics.h"
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "Perception/AISense_Sight.h"
 #include "BrawlPoolSubsystem.h"

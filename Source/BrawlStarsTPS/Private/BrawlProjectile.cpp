@@ -8,7 +8,6 @@
 #include "AbilitySystemComponent.h"
 #include "BrawlCharacter.h"
 #include "DrawDebugHelpers.h"
-#include "Engine/OverlapResult.h"
 #include "Environment/BrawlDestructibleInterface.h"
 #include "Environment/BrawlBush.h" 
 #include "Environment/BrawlPowerCube.h"

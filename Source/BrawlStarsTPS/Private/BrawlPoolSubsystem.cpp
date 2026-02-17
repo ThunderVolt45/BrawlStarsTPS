@@ -3,10 +3,6 @@
 #include "BrawlPoolSubsystem.h"
 #include "BrawlPoolableInterface.h"
 #include "EngineUtils.h"
-#include "AbilitySystemGlobals.h"
-#include "BrawlProjectile.h"
-#include "GameplayCueManager.h"
-#include "Environment/BrawlPowerCube.h"
 
 AActor* UBrawlPoolSubsystem::GetFromPool(TSubclassOf<AActor> ActorClass, const FTransform& Transform, AActor* Owner, APawn* Instigator, TFunction<void(AActor*)> PreActivateFunc)
 {
@@ -131,7 +127,6 @@ void UBrawlPoolSubsystem::PrewarmEnvironmentActors()
 	if (!World) return;
 
 	TMap<TSubclassOf<AActor>, int32> TotalRequirements;
-	FGameplayTagContainer TotalCueTags;
 
 	// 재귀적으로 요구사항을 수집하는 헬퍼 람다
 	TFunction<void(TSubclassOf<AActor>, int32)> ProcessClass;
@@ -143,17 +138,7 @@ void UBrawlPoolSubsystem::PrewarmEnvironmentActors()
 
 		if (AActor* CDO = Cast<AActor>(ActorClass->GetDefaultObject()))
 		{
-			// 1. 발사체나 파워큐브 등이라면 태그 수집
-			if (ABrawlProjectile* ProjectileCDO = Cast<ABrawlProjectile>(CDO))
-			{
-				ProjectileCDO->GetGameplayCueTags(TotalCueTags);
-			}
-			else if (ABrawlPowerCube* PowerCubeCDO = Cast<ABrawlPowerCube>(CDO))
-			{
-				PowerCubeCDO->GetGameplayCueTags(TotalCueTags);
-			}
-
-			// 2. 풀링 인터페이스를 통해 하위 요구사항 확인
+			// 풀링 인터페이스를 통해 하위 요구사항 확인
 			if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(CDO))
 			{
 				TMap<TSubclassOf<AActor>, int32> SubRequirements;
@@ -174,12 +159,6 @@ void UBrawlPoolSubsystem::PrewarmEnvironmentActors()
 		{
 			if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(Actor))
 			{
-				// 레벨 배치 액터 자신의 태그 수집
-				if (ABrawlPowerCube* PowerCube = Cast<ABrawlPowerCube>(Actor))
-				{
-					PowerCube->GetGameplayCueTags(TotalCueTags);
-				}
-
 				// 하위 요구사항들 수집
 				TMap<TSubclassOf<AActor>, int32> SubRequirements;
 				Poolable->GetPrewarmRequirements(SubRequirements, 1);
@@ -192,36 +171,9 @@ void UBrawlPoolSubsystem::PrewarmEnvironmentActors()
 		}
 	}
 
-	// 수집된 요구사항대로 풀 생성 및 큐 프리로딩
+	// 수집된 요구사항대로 풀 생성
 	for (auto& Pair : TotalRequirements)
 	{
 		PrewarmPool(Pair.Key, Pair.Value);
-	}
-	PrewarmGameplayCues(TotalCueTags);
-}
-
-void UBrawlPoolSubsystem::PrewarmGameplayCues(const FGameplayTagContainer& CueTags)
-{
-	UWorld* World = GetWorld();
-	if (!World || CueTags.IsEmpty()) return;
-
-	UGameplayCueManager* GCM = UAbilitySystemGlobals::Get().GetGameplayCueManager();
-	if (!GCM) return;
-
-	// GameplayCue 실행 시 타겟 액터가 필요하므로 WorldSettings를 더미 타겟으로 사용합니다.
-	AActor* TargetActor = Cast<AActor>(World->GetWorldSettings());
-	if (!TargetActor) return;
-
-	for (auto It = CueTags.CreateConstIterator(); It; ++It)
-	{
-		FGameplayTag Tag = *It;
-		
-		if (PreloadedTags.Contains(Tag)) continue;
-
-		// 매니저가 해당 태그의 Notify 객체를 로드하고 캐싱하도록 유도합니다.
-		GCM->HandleGameplayCue(TargetActor, Tag, EGameplayCueEvent::WhileActive, FGameplayCueParameters());
-		
-		PreloadedTags.Add(Tag);
-		UE_LOG(LogTemp, Log, TEXT("PoolSubsystem: Pre-loading GameplayCue Tag [%s]"), *Tag.ToString());
 	}
 }

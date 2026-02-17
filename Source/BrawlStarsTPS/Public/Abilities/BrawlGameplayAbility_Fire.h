@@ -21,8 +21,8 @@ public:
 
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 
-	/** 이 어빌리티가 사용하는 발사체 클래스와 권장 프리워밍 개수 및 관련 태그 반환 */
-	void GetProjectilePrewarmData(TMap<TSubclassOf<AActor>, int32>& OutData, FGameplayTagContainer& OutTags) const;
+	/** 이 어빌리티가 사용하는 발사체 클래스와 권장 프리워밍 개수 반환 */
+	void GetProjectilePrewarmData(TMap<TSubclassOf<AActor>, int32>& OutData) const;
 
 protected:
 	// Gameplay Event 수신 시 호출될 콜백
