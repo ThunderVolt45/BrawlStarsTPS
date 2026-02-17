@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
+#include "GameplayTagContainer.h"
 #include "BrawlPoolSubsystem.generated.h"
 
 USTRUCT()
@@ -36,6 +37,9 @@ public:
 	/** 레벨에 배치된 환경 오브젝트(장애물, 상자 등)들을 스캔하여 필요한 클래스들을 미리 생성합니다. */
 	void PrewarmEnvironmentActors();
 
+	/** 지정된 태그 목록에 해당하는 GameplayCue 에셋들을 미리 로드합니다. */
+	void PrewarmGameplayCues(const FGameplayTagContainer& CueTags);
+
 private:
 	UPROPERTY()
 	TMap<TSubclassOf<AActor>, FBrawlActorPool> PoolMap;
@@ -43,4 +47,8 @@ private:
 	/** 이미 사전 로드(Preload) 또는 프리워밍이 완료된 클래스 목록 */
 	UPROPERTY()
 	TSet<TSubclassOf<AActor>> PreloadedClasses;
+
+	/** 이미 사전 로드된 GameplayCue 태그 목록 */
+	UPROPERTY()
+	TSet<FGameplayTag> PreloadedTags;
 };

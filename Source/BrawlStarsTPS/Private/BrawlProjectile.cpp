@@ -178,6 +178,14 @@ void ABrawlProjectile::GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& 
 	// 기본 발사체는 추가 요구사항 없음
 }
 
+void ABrawlProjectile::GetGameplayCueTags(FGameplayTagContainer& OutTags) const
+{
+	if (HitGameplayCueTag.IsValid())
+	{
+		OutTags.AddTag(HitGameplayCueTag);
+	}
+}
+
 void ABrawlProjectile::EnableCollisionDelayed()
 {
 	if (SphereComponent && bIsActive)

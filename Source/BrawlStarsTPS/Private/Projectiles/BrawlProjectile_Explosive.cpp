@@ -23,17 +23,7 @@ void ABrawlProjectile_Explosive::GetPrewarmRequirements(TMap<TSubclassOf<AActor>
 {
 	if (SplinterClass)
 	{
-		int32 TotalSplinters = SplinterCount * BaseCount;
-		OutRequirements.FindOrAdd(SplinterClass) += TotalSplinters;
-
-		// 재귀적으로 요구사항 수집
-		if (AActor* CDO = Cast<AActor>(SplinterClass->GetDefaultObject()))
-		{
-			if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(CDO))
-			{
-				Poolable->GetPrewarmRequirements(OutRequirements, TotalSplinters);
-			}
-		}
+		OutRequirements.FindOrAdd(SplinterClass) += SplinterCount * BaseCount;
 	}
 }
 

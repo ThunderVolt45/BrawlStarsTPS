@@ -79,14 +79,5 @@ void ABrawlProjectile_Spawner::GetPrewarmRequirements(TMap<TSubclassOf<AActor>, 
 	if (ActorClassToSpawn)
 	{
 		OutRequirements.FindOrAdd(ActorClassToSpawn) += BaseCount;
-
-		// 재귀적으로 요구사항 수집
-		if (AActor* CDO = Cast<AActor>(ActorClassToSpawn->GetDefaultObject()))
-		{
-			if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(CDO))
-			{
-				Poolable->GetPrewarmRequirements(OutRequirements, BaseCount);
-			}
-		}
 	}
 }

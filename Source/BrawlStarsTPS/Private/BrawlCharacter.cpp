@@ -199,16 +199,27 @@ void ABrawlCharacter::BeginPlay()
 		if (UBrawlPoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UBrawlPoolSubsystem>())
 		{
 			TMap<TSubclassOf<AActor>, int32> PrewarmDataMap;
+			FGameplayTagContainer AllCueTags;
+
+			// 1. 캐릭터 공통 태그 추가
+			if (RespawnCueTag.IsValid()) AllCueTags.AddTag(RespawnCueTag);
+			if (DeathCueTag.IsValid()) AllCueTags.AddTag(DeathCueTag);
 			
 			for (const TSubclassOf<UBrawlGameplayAbility>& AbilityClass : StartupAbilities)
 			{
-				if (AbilityClass && AbilityClass->IsChildOf(UBrawlGameplayAbility_Fire::StaticClass()))
+				if (!AbilityClass) continue;
+
+				const UBrawlGameplayAbility* AbilityCDO = Cast<UBrawlGameplayAbility>(AbilityClass->GetDefaultObject());
+				if (!AbilityCDO) continue;
+
+				// 2. 발사체 및 관련 태그 정보 수집
+				if (const UBrawlGameplayAbility_Fire* FireAbility = Cast<UBrawlGameplayAbility_Fire>(AbilityCDO))
 				{
-					if (const UBrawlGameplayAbility_Fire* FireAbility = Cast<UBrawlGameplayAbility_Fire>(AbilityClass->GetDefaultObject()))
-					{
-						FireAbility->GetProjectilePrewarmData(PrewarmDataMap);
-					}
+					FireAbility->GetProjectilePrewarmData(PrewarmDataMap, AllCueTags);
 				}
+
+				// 3. 어빌리티 자체의 GameplayCue 태그 수집
+				AbilityCDO->GetGameplayCueTags(AllCueTags);
 			}
 
 			// 각 클래스별로 설정된 개수만큼 풀 미리 생성
@@ -216,6 +227,9 @@ void ABrawlCharacter::BeginPlay()
 			{
 				PoolSubsystem->PrewarmPool(Pair.Key, Pair.Value);
 			}
+
+			// GameplayCue 프리로딩 수행
+			PoolSubsystem->PrewarmGameplayCues(AllCueTags);
 		}
 	}
 }

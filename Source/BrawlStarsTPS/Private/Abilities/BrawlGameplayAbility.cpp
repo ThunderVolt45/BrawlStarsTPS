@@ -15,6 +15,12 @@ UBrawlGameplayAbility::UBrawlGameplayAbility()
 	// 태그 설정 등 초기화
 }
 
+void UBrawlGameplayAbility::GetGameplayCueTags(FGameplayTagContainer& OutTags) const
+{
+	if (AbilityGameplayCueTag.IsValid()) OutTags.AddTag(AbilityGameplayCueTag);
+	if (AbilityGameplayCueTag_Hyper.IsValid()) OutTags.AddTag(AbilityGameplayCueTag_Hyper);
+}
+
 void UBrawlGameplayAbility::ApplyEffectToSelf(TSubclassOf<UGameplayEffect> EffectClass, FGameplayTag DataTag, float Magnitude)
 {
 	if (!EffectClass) return;

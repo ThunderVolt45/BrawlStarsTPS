@@ -20,6 +20,9 @@ class BRAWLSTARSTPS_API UBrawlGameplayAbility : public UGameplayAbility
 public:
 	UBrawlGameplayAbility();
 	
+	/** 이 어빌리티가 사용하는 GameplayCue 태그들을 수집합니다 (프리워밍용) */
+	virtual void GetGameplayCueTags(FGameplayTagContainer& OutTags) const;
+
 	// 이 어빌리티를 발동시킬 때 사용할 입력 태그 (예: InputTag.Ability.Gadget)
 	// UBrawlHeroComponent에서 입력을 처리할 때 식별자로 사용
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
