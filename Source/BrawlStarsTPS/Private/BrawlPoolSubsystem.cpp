@@ -4,7 +4,9 @@
 #include "BrawlPoolableInterface.h"
 #include "EngineUtils.h"
 #include "AbilitySystemGlobals.h"
+#include "BrawlProjectile.h"
 #include "GameplayCueManager.h"
+#include "Environment/BrawlPowerCube.h"
 
 AActor* UBrawlPoolSubsystem::GetFromPool(TSubclassOf<AActor> ActorClass, const FTransform& Transform, AActor* Owner, APawn* Instigator, TFunction<void(AActor*)> PreActivateFunc)
 {
@@ -129,6 +131,7 @@ void UBrawlPoolSubsystem::PrewarmEnvironmentActors()
 	if (!World) return;
 
 	TMap<TSubclassOf<AActor>, int32> TotalRequirements;
+	FGameplayTagContainer TotalCueTags;
 
 	// 재귀적으로 요구사항을 수집하는 헬퍼 람다
 	TFunction<void(TSubclassOf<AActor>, int32)> ProcessClass;
@@ -140,6 +143,17 @@ void UBrawlPoolSubsystem::PrewarmEnvironmentActors()
 
 		if (AActor* CDO = Cast<AActor>(ActorClass->GetDefaultObject()))
 		{
+			// 1. 발사체나 파워큐브 등이라면 태그 수집
+			if (ABrawlProjectile* ProjectileCDO = Cast<ABrawlProjectile>(CDO))
+			{
+				ProjectileCDO->GetGameplayCueTags(TotalCueTags);
+			}
+			else if (ABrawlPowerCube* PowerCubeCDO = Cast<ABrawlPowerCube>(CDO))
+			{
+				PowerCubeCDO->GetGameplayCueTags(TotalCueTags);
+			}
+
+			// 2. 풀링 인터페이스를 통해 하위 요구사항 확인
 			if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(CDO))
 			{
 				TMap<TSubclassOf<AActor>, int32> SubRequirements;
@@ -160,8 +174,13 @@ void UBrawlPoolSubsystem::PrewarmEnvironmentActors()
 		{
 			if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(Actor))
 			{
-				// 레벨에 이미 배치된 액터 본인은 풀링(새로 생성)할 필요가 없습니다.
-				// 대신 그 액터가 파괴/사망 시 필요로 하는 하위 요구사항들만 재귀적으로 수집합니다.
+				// 레벨 배치 액터 자신의 태그 수집
+				if (ABrawlPowerCube* PowerCube = Cast<ABrawlPowerCube>(Actor))
+				{
+					PowerCube->GetGameplayCueTags(TotalCueTags);
+				}
+
+				// 하위 요구사항들 수집
 				TMap<TSubclassOf<AActor>, int32> SubRequirements;
 				Poolable->GetPrewarmRequirements(SubRequirements, 1);
 				
@@ -173,11 +192,12 @@ void UBrawlPoolSubsystem::PrewarmEnvironmentActors()
 		}
 	}
 
-	// 수집된 요구사항대로 풀 생성
+	// 수집된 요구사항대로 풀 생성 및 큐 프리로딩
 	for (auto& Pair : TotalRequirements)
 	{
 		PrewarmPool(Pair.Key, Pair.Value);
 	}
+	PrewarmGameplayCues(TotalCueTags);
 }
 
 void UBrawlPoolSubsystem::PrewarmGameplayCues(const FGameplayTagContainer& CueTags)

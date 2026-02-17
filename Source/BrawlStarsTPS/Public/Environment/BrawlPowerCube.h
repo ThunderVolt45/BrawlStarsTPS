@@ -30,6 +30,8 @@ public:
 	virtual void OnActivate() override;
 	virtual void OnDeactivate() override;
 	virtual bool IsActive() const override { return bIsActive; }
+	virtual void GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const override;
+	virtual void GetGameplayCueTags(FGameplayTagContainer& OutTags) const;
 	// ----------------------------------
 
 protected:
@@ -68,17 +70,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
 	TSubclassOf<UGameplayEffect> PowerCubeEffectClass;
 
-	// 획득 효과음
+	// 획득 시 실행할 GameplayCue 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
-	TObjectPtr<USoundBase> PickupSound;
+	FGameplayTag PickupCueTag;
 
-	// 등장 효과음 (스폰 시 재생)
+	// 등장 시 실행할 GameplayCue 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
-	TObjectPtr<USoundBase> SpawnSound;
-
-	// 획득 시 파티클 효과
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Brawl|PowerCube")
-	TObjectPtr<UParticleSystem> PickupVFX;
+	FGameplayTag SpawnCueTag;
 
 private:
 	bool bIsActive = false;

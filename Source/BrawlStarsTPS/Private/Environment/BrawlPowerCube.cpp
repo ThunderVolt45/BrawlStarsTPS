@@ -6,7 +6,10 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/RotatingMovementComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemGlobals.h"
+#include "GameplayCueManager.h"
 #include "BrawlCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
@@ -122,9 +125,15 @@ void ABrawlPowerCube::OnActivate()
 		ProjectileMovement->Activate(true); // true: 강제 리셋 활성화
 	}
 
-	if (SpawnSound)
+	// 등장 GameplayCue 실행
+	if (SpawnCueTag.IsValid())
 	{
-		UGameplayStatics::PlaySoundAtLocation(this, SpawnSound, GetActorLocation());
+		if (UGameplayCueManager* GCM = UAbilitySystemGlobals::Get().GetGameplayCueManager())
+		{
+			FGameplayCueParameters Params;
+			Params.Location = GetActorLocation();
+			GCM->HandleGameplayCue(this, SpawnCueTag, EGameplayCueEvent::Executed, Params);
+		}
 	}
 }
 
@@ -167,6 +176,22 @@ void ABrawlPowerCube::Deactivate()
 	}
 }
 
+void ABrawlPowerCube::GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const
+{
+}
+
+void ABrawlPowerCube::GetGameplayCueTags(FGameplayTagContainer& OutTags) const
+{
+	if (PickupCueTag.IsValid())
+	{
+		OutTags.AddTag(PickupCueTag);
+	}
+	if (SpawnCueTag.IsValid())
+	{
+		OutTags.AddTag(SpawnCueTag);
+	}
+}
+
 void ABrawlPowerCube::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	// 서버가 아니면 리턴
@@ -194,14 +219,13 @@ void ABrawlPowerCube::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor
 			{
 				TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 				
-				if (PickupSound)
+				// 획득 GameplayCue 실행
+				if (PickupCueTag.IsValid())
 				{
-					UGameplayStatics::PlaySoundAtLocation(this, PickupSound, GetActorLocation());
-				}
-
-				if (PickupVFX)
-				{
-					UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), PickupVFX, GetActorLocation());
+					FGameplayCueParameters Params;
+					Params.Location = GetActorLocation();
+					Params.Instigator = Character;
+					TargetASC->ExecuteGameplayCue(PickupCueTag, Params);
 				}
 
 				// 획득 성공 후 제거 대신 비활성화 (풀 반환)
