@@ -136,7 +136,7 @@ void ABrawlPowerCubeBox::Die()
 		else
 		{
 			FActorSpawnParameters SpawnParams;
-			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 			GetWorld()->SpawnActor<ABrawlPowerCube>(PowerCubeClass, GetActorTransform(), SpawnParams);
 		}
 	}
