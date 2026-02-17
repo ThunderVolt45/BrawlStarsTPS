@@ -19,6 +19,24 @@ void ABrawlProjectile_Explosive::OnDeactivate()
 	Super::OnDeactivate();
 }
 
+void ABrawlProjectile_Explosive::GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const
+{
+	if (SplinterClass)
+	{
+		int32 TotalSplinters = SplinterCount * BaseCount;
+		OutRequirements.FindOrAdd(SplinterClass) += TotalSplinters;
+
+		// 재귀적으로 요구사항 수집
+		if (AActor* CDO = Cast<AActor>(SplinterClass->GetDefaultObject()))
+		{
+			if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(CDO))
+			{
+				Poolable->GetPrewarmRequirements(OutRequirements, TotalSplinters);
+			}
+		}
+	}
+}
+
 void ABrawlProjectile_Explosive::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
 	// 이미 폭발했으면 무시

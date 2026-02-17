@@ -21,6 +21,7 @@ protected:
 	// --- IBrawlPoolableInterface 구현 ---
 	virtual void OnActivate() override;
 	virtual void OnDeactivate() override;
+	virtual void GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const override;
 	// ----------------------------------
 	
 	// 충돌 시 호출 (부모의 OnHit을 오버라이드하여 폭발 로직 추가)

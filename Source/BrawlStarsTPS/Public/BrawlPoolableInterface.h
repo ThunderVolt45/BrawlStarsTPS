@@ -28,4 +28,7 @@ public:
 
 	/** 현재 활성 상태인지 확인 */
 	virtual bool IsActive() const = 0;
+
+	/** 게임 시작 시 미리 생성해둘 추가 요구사항 반환 (BaseCount: 이 액터의 생성 예정 개수) */
+	virtual void GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const {}
 };

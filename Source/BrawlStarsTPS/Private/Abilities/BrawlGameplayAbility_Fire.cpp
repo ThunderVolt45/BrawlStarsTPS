@@ -89,8 +89,23 @@ void UBrawlGameplayAbility_Fire::OnFireEventReceived(FGameplayEventData Payload)
 
 void UBrawlGameplayAbility_Fire::GetProjectilePrewarmData(TMap<TSubclassOf<AActor>, int32>& OutData) const
 {
-	if (ProjectileClass) OutData.FindOrAdd(ProjectileClass) += PrewarmCount;
-	if (ProjectileClass_Hyper) OutData.FindOrAdd(ProjectileClass_Hyper) += PrewarmCount;
+	auto ProcessClass = [&](TSubclassOf<AActor> Class, int32 Count)
+	{
+		if (!Class) return;
+		
+		OutData.FindOrAdd(Class) += Count;
+
+		if (AActor* CDO = Cast<AActor>(Class->GetDefaultObject()))
+		{
+			if (IBrawlPoolableInterface* Poolable = Cast<IBrawlPoolableInterface>(CDO))
+			{
+				Poolable->GetPrewarmRequirements(OutData, Count);
+			}
+		}
+	};
+
+	ProcessClass(ProjectileClass, PrewarmCount);
+	ProcessClass(ProjectileClass_Hyper, PrewarmCount);
 }
 
 TSubclassOf<AActor> UBrawlGameplayAbility_Fire::GetProjectileClassToSpawn() const

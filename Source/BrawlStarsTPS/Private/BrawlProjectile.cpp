@@ -173,6 +173,11 @@ void ABrawlProjectile::OnDeactivate()
 	}
 }
 
+void ABrawlProjectile::GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const
+{
+	// 기본 발사체는 추가 요구사항 없음
+}
+
 void ABrawlProjectile::EnableCollisionDelayed()
 {
 	if (SphereComponent && bIsActive)

@@ -29,6 +29,7 @@ public:
 	virtual void OnActivate() override;
 	virtual void OnDeactivate() override;
 	virtual bool IsActive() const override { return bIsActive; }
+	virtual void GetPrewarmRequirements(TMap<TSubclassOf<AActor>, int32>& OutRequirements, int32 BaseCount) const override;
 	// ----------------------------------
 
 protected:
