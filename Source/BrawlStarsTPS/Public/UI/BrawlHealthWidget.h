@@ -26,6 +26,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Brawl|UI")
 	void InitializeWithAbilitySystem(UAbilitySystemComponent* ASC);
 
+	/** 초기 팀 설정 및 PlayerState 연결 (풀링 시 재호출용) */
+	void SetupPlayerStateBindings();
+
 protected:
 	// 체력 변경 시 호출될 이벤트
 	UFUNCTION()
@@ -53,9 +56,6 @@ private:
 	void UpdatePowerCubeDisplay(float NewCount);
 	void UpdateBountyDisplay(int32 NewBounty);
 	void UpdateTieBreakerDisplay(bool bHasTieBreaker);
-
-	/** 초기 팀 설정 및 PlayerState 연결 */
-	void SetupPlayerStateBindings();
 
 public:
 	// 블루프린트에서 바인딩할 UI 요소들
