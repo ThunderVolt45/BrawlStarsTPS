@@ -6,7 +6,6 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/RotatingMovementComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
-#include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
 #include "BrawlCharacter.h"
 #include "Kismet/GameplayStatics.h"
@@ -36,13 +35,14 @@ ABrawlPowerCube::ABrawlPowerCube()
 	PickupSphere->SetupAttachment(CollisionSphere);
 	PickupSphere->SetSphereRadius(60.0f);
 	
-	// 겹침 감지 설정
+	// [Fix] 다른 모든 채널을 확실하게 Ignore하고 오직 Pawn만 Overlap합니다.
+	// 발사체가 주로 사용하는 WorldDynamic이나 Visibility 등과의 접점을 원천 차단합니다.
 	PickupSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	PickupSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 	PickupSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	PickupSphere->SetGenerateOverlapEvents(true);
 
-	// 3. 나머지를 CollisionSphere에 부착
+	// 3. 메시 부착
 	CubeMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CubeMesh"));
 	CubeMesh->SetupAttachment(CollisionSphere);
 	CubeMesh->SetCollisionProfileName(TEXT("NoCollision"));
@@ -107,7 +107,7 @@ void ABrawlPowerCube::OnActivate()
 	// 톡 튀어오르는 효과 적용 (랜덤 방향)
 	if (ProjectileMovement)
 	{
-		// 1. 컴포넌트 강제 재활성화 및 업데이트 대상 재지정
+		// 루트 컴포넌트를 기준으로 물리 이동 수행
 		ProjectileMovement->SetUpdatedComponent(CollisionSphere);
 		ProjectileMovement->StopMovementImmediately();
 		
