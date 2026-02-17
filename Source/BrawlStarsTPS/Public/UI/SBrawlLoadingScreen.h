@@ -43,16 +43,16 @@ private:
 	float RotationSpeed = 120.0f;
 
 	/** 날개들의 렌더 트랜스폼 데이터 */
-	TArray<TSharedPtr<class SImage>> Wings;
+	TArray<TSharedPtr<SImage>> Wings;
 
 	/** 중앙 로고 이미지 */
-	TSharedPtr<class SImage> CenterImage;
+	TSharedPtr<SImage> CenterImage;
 
 	/** 날개 뒤를 채워줄 Filler 이미지 */
-	TSharedPtr<class SImage> FillerImage;
+	TSharedPtr<SImage> FillerImage;
 
 	/** 동적 머티리얼 인스턴스 (배경 흐름 제어용) */
-	TObjectPtr<class UMaterialInstanceDynamic> BackgroundMID;
+	TObjectPtr<UMaterialInstanceDynamic> BackgroundMID;
 
 	/** UV 오프셋 및 설정값 */
 	FVector2D CurrentUVOffset = FVector2D::ZeroVector;

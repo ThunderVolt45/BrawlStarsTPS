@@ -17,16 +17,24 @@ void SBrawlLoadingScreen::Construct(const FArguments& InArgs)
 	UBrawlGameInstance* GI = InArgs._GameInstance;
 
 	// 1. 배경 머티리얼 로드 및 MID 생성
-	UMaterialInterface* BaseMat = (GI && GI->LoadingBackgroundMaterial) ? GI->LoadingBackgroundMaterial.Get() : 
-		Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, 
-			TEXT("/Game/Materials/M_ScrollingBackground.M_ScrollingBackground")));
+	UMaterialInterface* BaseMat = nullptr;
+	if (GI && GI->LoadingBackgroundMaterial)
+	{
+		BaseMat = GI->LoadingBackgroundMaterial;
+	}
+	else
+	{
+		BaseMat = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, TEXT("/Game/Materials/M_ScrollingBackground")));
+	}
 	
+	BackgroundMID = nullptr;
 	if (BaseMat)
 	{
-		BackgroundMID = UMaterialInstanceDynamic::Create(BaseMat, nullptr);
+		// GI를 Outer로 사용하여 객체 수명 관리 보강
+		BackgroundMID = UMaterialInstanceDynamic::Create(BaseMat, GI);
 		if (BackgroundMID)
 		{
-			// 초기 파라미터 즉시 설정 (Tick을 기다리지 않음)
+			// 초기 파라미터 즉시 설정
 			BackgroundMID->SetScalarParameterValue(TEXT("UOffset"), CurrentUVOffset.X);
 			BackgroundMID->SetScalarParameterValue(TEXT("VOffset"), CurrentUVOffset.Y);
 			BackgroundMID->SetScalarParameterValue(TEXT("Alpha"), BackgroundAlpha);
@@ -35,19 +43,18 @@ void SBrawlLoadingScreen::Construct(const FArguments& InArgs)
 		}
 	}
 	
-	// 브러시 생성 시 ResourceObject로 MID를 전달합니다.
-	BackgroundBrush = MakeShareable(new FSlateImageBrush(BackgroundMID, 
-		FVector2D(1920.0f, 1080.0f)));
+	// 브러시 생성
+	BackgroundBrush = MakeShareable(new FSlateImageBrush(BackgroundMID, FVector2D(1920.0f, 1080.0f)));
 	
 	// 중앙 로고 및 날개 이미지 텍스처 사용 (프리로드된 것 우선)
-	CenterTexture = (GI && GI->LoadingCenterTexture) ? GI->LoadingCenterTexture.Get() : 
-		StaticLoadObject(UObject::StaticClass(), nullptr, TEXT("/Game/UI/Textures/2239_10x.2239_10x"));
+	CenterTexture = (GI && GI->LoadingCenterTexture) ? (UObject*)GI->LoadingCenterTexture : 
+		StaticLoadObject(UObject::StaticClass(), nullptr, TEXT("/Game/UI/Textures/2239_10x"));
 	
-	WingTexture = (GI && GI->LoadingWingTexture) ? GI->LoadingWingTexture.Get() : 
-		StaticLoadObject(UObject::StaticClass(), nullptr, TEXT("/Game/UI/Textures/2238_10x.2238_10x"));
+	WingTexture = (GI && GI->LoadingWingTexture) ? (UObject*)GI->LoadingWingTexture : 
+		StaticLoadObject(UObject::StaticClass(), nullptr, TEXT("/Game/UI/Textures/2238_10x"));
 	
-	FillerTexture = (GI && GI->LoadingFillerTexture) ? GI->LoadingFillerTexture.Get() : 
-		StaticLoadObject(UObject::StaticClass(), nullptr, TEXT("/Game/Textures/WhiteDot.WhiteDot"));
+	FillerTexture = (GI && GI->LoadingFillerTexture) ? (UObject*)GI->LoadingFillerTexture : 
+		StaticLoadObject(UObject::StaticClass(), nullptr, TEXT("/Game/Textures/WhiteDot"));
 
 	CenterBrush = MakeShareable(new FSlateImageBrush(CenterTexture, FVector2D(310.0f, 316.0f)));
 	WingBrush = MakeShareable(new FSlateImageBrush(WingTexture, FVector2D(207.5f, 117.0f)));
