@@ -9,6 +9,8 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInterface.h"
+#include "GameFramework/GameUserSettings.h"
+#include "Windows/WindowsApplicationErrorOutputDevice.h"
 
 UBrawlGameInstance::UBrawlGameInstance()
 {
@@ -47,7 +49,28 @@ void UBrawlGameInstance::Init()
 
 	if (!IsRunningDedicatedServer())
 	{
-		// 스트링 테이블 프리로드
+		// 1. 하드웨어에 맞게 그래픽 설정 최적화
+		if (UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings())
+		{
+			// 현재 모니터의 기본 해상도 적용
+			Settings->SetScreenResolution(Settings->GetDesktopResolution());
+			
+			// 렌더링 스케일 100% 강제 (해상도가 낮게 보이는 문제 해결)
+			Settings->SetResolutionScaleValueEx(100.0f);
+			
+			// 창모드 전체화면 설정
+			Settings->SetFullscreenMode(EWindowMode::WindowedFullscreen);
+			
+			// 전체 퀄리티 설정 (3 = Epic)
+			Settings->SetOverallScalabilityLevel(3);
+			
+			Settings->ApplySettings(false);
+			
+			UE_LOG(LogTemp, Log, TEXT("BrawlGameInstance: Hardware optimized - Resolution: %s, Scale: 100%%"), 
+				*Settings->GetDesktopResolution().ToString());
+		}
+
+		// 2. 스트링 테이블 프리로드
 		GameModeStringTable = StaticLoadObject(UObject::StaticClass(), nullptr, 
 			TEXT("/Game/Data/ST_GameModeInfo.ST_GameModeInfo"));
 
