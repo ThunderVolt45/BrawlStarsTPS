@@ -27,7 +27,8 @@ public class BrawlStarsTPS : ModuleRules
 			"NavigationSystem",
 			"Niagara",
 			"MoviePlayer",
-			"SlateCore"
+			"SlateCore",
+			"ApplicationCore"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
