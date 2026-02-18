@@ -1,6 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "BrawlCharacter.h"
 #include "BrawlAbilitySystemComponent.h"
 #include "BrawlAttributeSet.h"
@@ -18,7 +17,7 @@
 #include "Components/WidgetComponent.h"
 #include "UI/BrawlHealthWidget.h"
 #include "Kismet/GameplayStatics.h"
-#include "GameplayEffect.h" // 추가
+#include "GameplayEffect.h"
 #include "Components/PostProcessComponent.h"
 #include "Environment/BrawlPoisonZone.h"
 #include "DrawDebugHelpers.h"
