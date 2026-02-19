@@ -412,10 +412,10 @@ void ABrawlProjectile::ProcessHit(AActor* OtherActor, const FVector& HitLocation
 	if (!OtherActor) return;
 	
 	// 디버그 구체 그리기
-	if (GetWorld())
-	{
-		DrawDebugSphere(GetWorld(), HitLocation, 10.0f, 12, FColor::Red, false, 2.0f);
-	}
+	// if (GetWorld())
+	// {
+	// 	DrawDebugSphere(GetWorld(), HitLocation, 10.0f, 12, FColor::Red, false, 2.0f);
+	// }
 
 	// 팀 관계 확인
 	bool bIsHostile = true;
