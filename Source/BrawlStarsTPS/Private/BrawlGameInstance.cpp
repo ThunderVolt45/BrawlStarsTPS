@@ -11,6 +11,7 @@
 #include "Materials/MaterialInterface.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Windows/WindowsApplicationErrorOutputDevice.h"
+#include "GenericPlatform/GenericApplication.h"
 
 UBrawlGameInstance::UBrawlGameInstance()
 {
@@ -52,8 +53,14 @@ void UBrawlGameInstance::Init()
 		// 1. 하드웨어에 맞게 그래픽 설정 최적화
 		if (UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings())
 		{
-			// 현재 모니터의 기본 해상도 적용
-			Settings->SetScreenResolution(Settings->GetDesktopResolution());
+			// DPI 배율을 무시한 실제 물리 해상도 가져오기
+			FDisplayMetrics DisplayMetrics;
+			FDisplayMetrics::RebuildDisplayMetrics(DisplayMetrics);
+			
+			FIntPoint PhysicalResolution(DisplayMetrics.PrimaryDisplayWidth, DisplayMetrics.PrimaryDisplayHeight);
+
+			// 실제 물리 해상도 적용
+			Settings->SetScreenResolution(PhysicalResolution);
 			
 			// 렌더링 스케일 100% 강제 (해상도가 낮게 보이는 문제 해결)
 			Settings->SetResolutionScaleValueEx(100.0f);
@@ -66,8 +73,8 @@ void UBrawlGameInstance::Init()
 			
 			Settings->ApplySettings(false);
 			
-			UE_LOG(LogTemp, Log, TEXT("BrawlGameInstance: Hardware optimized - Resolution: %s, Scale: 100%%"), 
-				*Settings->GetDesktopResolution().ToString());
+			UE_LOG(LogTemp, Log, TEXT("BrawlGameInstance: Hardware optimized (Physical) - Resolution: %s, Scale: 100%%"), 
+				*PhysicalResolution.ToString());
 		}
 
 		// 2. 스트링 테이블 프리로드
