@@ -54,6 +54,6 @@
 ---
 
 ## 🛠 Tech Stack
-*   **Engine**: Unreal Engine 5.3+
+*   **Engine**: Unreal Engine 5.7
 *   **Language**: C++ (Core Logic), Blueprints (UI & Data)
 *   **Features**: GAS (Gameplay Ability System), World Subsystem, DLSS, Slate UI, Object Pooling, Navigation/AI.
