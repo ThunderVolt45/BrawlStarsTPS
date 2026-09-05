@@ -1,10 +1,10 @@
 # BrawlStarsTPS
 
+![BrawlStarsTPS 메인 메뉴 스크린샷](/Docs/Image/2.png)
+
 모바일 탑다운 슈팅 게임 **브롤스타즈**를 3인칭 슈팅(TPS)으로 재해석한 언리얼 엔진 5 포트폴리오 프로젝트입니다. 플레이어는 **고도화된 AI 봇**과 경쟁하며 쇼다운·바운티·녹아웃 등 클래식 모드를 플레이합니다.
 
 > **Technical Focus** — Lyra 스타일 모듈러 아키텍처(GAS·컴포넌트 기반), AI 주도 게임플레이(Behavior Tree), 그리고 실무 수준의 런타임 최적화(오브젝트 풀링)를 C++로 구현하는 것을 목표로 합니다.
-
----
 
 ## ✨ 주요 특징
 
@@ -18,8 +18,6 @@
 | **그래픽 완성도** | NVIDIA DLSS 통합, Slate 기반 심리스 로딩 화면 |
 
 자세한 기술 설명은 [PORTFOLIO_HIGHLIGHTS.md](PORTFOLIO_HIGHLIGHTS.md)를 참고하세요.
-
----
 
 ## 🏗️ 아키텍처 개요
 
@@ -47,8 +45,6 @@ graph TD
 
 기능 모듈별 상세 클래스 다이어그램은 **[Docs/ClassDiagrams/](Docs/ClassDiagrams/00_Overview.md)** 에 정리되어 있습니다.
 
----
-
 ## 📂 프로젝트 구조
 
 ```
@@ -71,8 +67,6 @@ BrawlStarsTPS/
 
 핵심 파일 경로는 [KEY_FILE_PATHS.md](KEY_FILE_PATHS.md)에 정리되어 있습니다.
 
----
-
 ## 🎮 게임 모드
 
 | 모드 | 설명 |
@@ -81,15 +75,11 @@ BrawlStarsTPS/
 | **Bounty (바운티)** | 팀 처치 점수 경쟁, 타이 브레이커 시스템 |
 | **Knockout (녹아웃)** | 라운드제 팀 전멸전 (3선 2승) |
 
----
-
 ## 🛠 Tech Stack
 
 - **Engine**: Unreal Engine 5 (5.7)
 - **Language**: C++ (코어 로직), Blueprint (UI · 데이터)
 - **Core Systems**: GAS, World Subsystem, Enhanced Input, Behavior Tree/AI, Object Pooling, Slate UI, NVIDIA DLSS
-
----
 
 ## 📖 문서
 
@@ -98,7 +88,9 @@ BrawlStarsTPS/
 - [KEY_FILE_PATHS.md](KEY_FILE_PATHS.md) — 주요 파일 경로 인덱스
 - [Docs/ClassDiagrams/](Docs/ClassDiagrams/00_Overview.md) — 기능 모듈별 클래스 다이어그램
 
----
+## 📸 스크린샷
+
+![BrawlStarsTPS 스크린샷](/Docs/Image/1.png)
 
 ## 📜 License
 
